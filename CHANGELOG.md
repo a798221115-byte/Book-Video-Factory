@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 - 2026-07-23
+
+- 增加 Mac 中央后台部署说明、持久化数据目录和 Windows GPU/TTS Worker 配置模板。
+- 修复 Next.js 多进程构建期间 SQLite 初始化竞争导致的 `SQLITE_BUSY`。
+- 增加 SQLite 一致性在线备份脚本。
+
 ## 1.1.0 - 2026-07-23
 
 - 新增长标题、短标题两级确认门：基于 TikHub 抖音原标题和 `dbs-xhs-title` 生成 10 个可追溯长标题，确认后再生成 10 个短标题。

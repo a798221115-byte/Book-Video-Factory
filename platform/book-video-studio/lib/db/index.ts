@@ -10,12 +10,38 @@ const dbPath = path.join(DATA_DIR, "app.db");
 
 const sqlite = new Database(dbPath);
 sqlite.pragma("busy_timeout = 10000");
-sqlite.pragma("journal_mode = WAL");
 
 export const db = drizzle(sqlite, { schema });
 
-// 启动即建表（V1 简化，不走 migration）
-sqlite.exec(`
+function isBusyError(error: unknown) {
+  return error instanceof Error && (
+    error.message.includes("database is locked")
+    || error.message.includes("database is busy")
+  );
+}
+
+function wait(ms: number) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function withBusyRetry<T>(operation: () => T, attempts = 20): T {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return operation();
+    } catch (error) {
+      if (!isBusyError(error)) throw error;
+      lastError = error;
+      wait(Math.min(1000, 50 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
+// Next.js 构建会在多个进程中加载路由模块。数据库初始化必须允许这些
+// 进程短暂竞争同一个 SQLite 文件，而不是让构建因 SQLITE_BUSY 失败。
+withBusyRetry(() => sqlite.pragma("journal_mode = WAL"));
+withBusyRetry(() => sqlite.exec(`
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY,
   source_url TEXT NOT NULL,
@@ -42,17 +68,19 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 CREATE INDEX IF NOT EXISTS idx_steps_task ON steps(task_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_task ON artifacts(task_id);
-`);
+`));
 
-const taskColumns = sqlite.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+const taskColumns = withBusyRetry(
+  () => sqlite.prepare("PRAGMA table_info(tasks)").all() as { name: string }[],
+);
 if (!taskColumns.some((column) => column.name === "notes")) {
-  sqlite.exec("ALTER TABLE tasks ADD COLUMN notes TEXT");
+  withBusyRetry(() => sqlite.exec("ALTER TABLE tasks ADD COLUMN notes TEXT"));
 }
 if (!taskColumns.some((column) => column.name === "project_path")) {
-  sqlite.exec("ALTER TABLE tasks ADD COLUMN project_path TEXT");
+  withBusyRetry(() => sqlite.exec("ALTER TABLE tasks ADD COLUMN project_path TEXT"));
 }
 if (!taskColumns.some((column) => column.name === "current_gate")) {
-  sqlite.exec("ALTER TABLE tasks ADD COLUMN current_gate TEXT NOT NULL DEFAULT 'INTAKE'");
+  withBusyRetry(() => sqlite.exec("ALTER TABLE tasks ADD COLUMN current_gate TEXT NOT NULL DEFAULT 'INTAKE'"));
 }
 
 export { schema };

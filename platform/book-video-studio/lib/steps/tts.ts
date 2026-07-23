@@ -8,6 +8,7 @@ import { buildAtempoFilter, normalizeSpeed } from "./ttsSpeed";
 import { estimateSegmentDuration, parseSegmentArtifactMeta, splitScriptSegments, toScriptSegmentMeta } from "./scriptSegments";
 
 const execFileP = promisify(execFile);
+const FFMPEG_BIN = process.env.FFMPEG_BIN?.trim() || "ffmpeg";
 
 function roundDur(sec: number): number {
   return +Math.max(0, sec || 0).toFixed(3);
@@ -131,7 +132,7 @@ export async function runTts(taskId: string) {
     let speedDur = rawDur;
     if (speedFilter) {
       const speeded = path.join(dir, `seg_${String(i).padStart(2, "0")}.speed.wav`);
-      await execFileP("ffmpeg", [
+      await execFileP(FFMPEG_BIN, [
         "-y", "-nostdin", "-i", wav,
         "-filter:a", speedFilter,
         "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le",
@@ -171,7 +172,7 @@ export async function runTts(taskId: string) {
   const listPath = path.join(dir, "tts_concat.txt");
   fs.writeFileSync(listPath, segMeta.map((s) => `file '${s.wav}'`).join("\n"), "utf-8");
   const outWav = path.join(dir, "tts.wav");
-  await execFileP("ffmpeg", [
+  await execFileP(FFMPEG_BIN, [
     "-y", "-nostdin", "-f", "concat", "-safe", "0", "-i", listPath,
     "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", outWav,
   ]);

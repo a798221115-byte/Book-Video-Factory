@@ -11,10 +11,11 @@ import path from "node:path";
 
 const execFileP = promisify(execFile);
 const CLEAN_CHUNK_MAX_CHARS = 1800;
+const FFMPEG_BIN = process.env.FFMPEG_BIN?.trim() || "ffmpeg";
 
 // 从视频抽 16k 单声道 wav（whisper 友好，体积远小于原 mp4，对中转站更稳）
 async function extractAudio16k(video: string, out: string): Promise<void> {
-  await execFileP("ffmpeg", ["-y", "-nostdin", "-i", video, "-vn", "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", out], {
+  await execFileP(FFMPEG_BIN, ["-y", "-nostdin", "-i", video, "-vn", "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", out], {
     maxBuffer: 1024 * 1024 * 64,
   });
 }

@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { tc3Headers } from "./tencent-sign";
 
 const execFileP = promisify(execFile);
+const FFMPEG_BIN = process.env.FFMPEG_BIN?.trim() || "ffmpeg";
 
 export interface AsrWord { word: string; start: number; end: number }
 export interface AsrResult { text: string; words?: AsrWord[] }
@@ -19,7 +20,7 @@ export interface AsrProvider {
 // 把任意音频/视频转成 16k 单声道 wav（whisper.cpp 要求）
 async function toWav16k(input: string): Promise<string> {
   const out = path.join(os.tmpdir(), `asr_${Date.now()}_${Math.random().toString(36).slice(2)}.wav`);
-  await execFileP("ffmpeg", ["-y", "-i", input, "-ar", "16000", "-ac", "1", "-f", "wav", out], {
+  await execFileP(FFMPEG_BIN, ["-y", "-i", input, "-ar", "16000", "-ac", "1", "-f", "wav", out], {
     maxBuffer: 1024 * 1024 * 64,
   });
   return out;
@@ -28,7 +29,7 @@ async function toWav16k(input: string): Promise<string> {
 // 转 16k 单声道 MP3（腾讯云同步直传体积小，~24kbps 下 4 分钟约 0.7MB）
 async function toMp3_16k(input: string): Promise<string> {
   const out = path.join(os.tmpdir(), `asr_${Date.now()}_${Math.random().toString(36).slice(2)}.mp3`);
-  await execFileP("ffmpeg", ["-y", "-i", input, "-ar", "16000", "-ac", "1", "-b:a", "32k", out], {
+  await execFileP(FFMPEG_BIN, ["-y", "-i", input, "-ar", "16000", "-ac", "1", "-b:a", "32k", out], {
     maxBuffer: 1024 * 1024 * 64,
   });
   return out;

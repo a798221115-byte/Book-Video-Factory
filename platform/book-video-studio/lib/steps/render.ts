@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { assignStillImageMotions, stillImageMotionFilter } from "../stillImageMotion";
 
 const execFileP = promisify(execFile);
 const FFMPEG_BIN = process.env.FFMPEG_BIN?.trim() || "ffmpeg";
@@ -795,37 +796,6 @@ function writeAssSubtitles(opts: {
   return { path: opts.out, events: events.length };
 }
 
-function slideshowVideoFilter(opts: SlideshowOptions): string {
-  if (opts.fit === "contain-blur") {
-    return [
-      "split=2[cover][fg]",
-      [
-        `[cover]scale=${opts.width}:${opts.height}:force_original_aspect_ratio=increase`,
-        `crop=${opts.width}:${opts.height}`,
-        "boxblur=24:1",
-        "eq=brightness=-0.04:saturation=0.9[bg]",
-      ].join(","),
-      `[fg]scale=${opts.width}:${opts.height}:force_original_aspect_ratio=decrease[fgfit]`,
-      "[bg][fgfit]overlay=(W-w)/2:(H-h)/2,setsar=1,fps=25",
-    ].join(";");
-  }
-  if (opts.fit === "contain") {
-    const padColor = opts.padColor || "black";
-    return [
-      `scale=${opts.width}:${opts.height}:force_original_aspect_ratio=decrease`,
-      `pad=${opts.width}:${opts.height}:(ow-iw)/2:(oh-ih)/2:color=${padColor}`,
-      "setsar=1",
-      "fps=25",
-    ].join(",");
-  }
-  return [
-    `scale=${opts.width}:${opts.height}:force_original_aspect_ratio=increase`,
-    `crop=${opts.width}:${opts.height}`,
-    "setsar=1",
-    "fps=25",
-  ].join(",");
-}
-
 function slideshowCacheKey(opts: SlideshowOptions): string {
   return `${opts.width}x${opts.height}-${opts.fit}-${opts.padColor || "none"}`;
 }
@@ -927,7 +897,6 @@ function buildTimedSlides(
   return slides.filter((slide) => slide.duration > 0.01);
 }
 
-// 用配图分镜 + 段落时长合成"轮播背景"视频（每张图按对应段落时长显示）
 async function buildSlideshow(
   slides: TimedSlide[],
   totalDur: number,
@@ -936,24 +905,41 @@ async function buildSlideshow(
   opts: SlideshowOptions = FULL_FRAME_SLIDESHOW,
 ): Promise<string | null> {
   if (!slides.length) return null;
-  // concat demuxer 列表（最后一张需重复一行，否则末张时长被吞）
-  const listLines: string[] = [];
-  for (const slide of slides) {
-    listLines.push(`file '${path.resolve(slide.path)}'`);
-    listLines.push(`duration ${slide.duration.toFixed(3)}`);
-  }
-  listLines.push(`file '${path.resolve(slides[slides.length - 1].path)}'`);
-  const listPath = path.join(dir, `${prefix}_slides.txt`);
-  fs.writeFileSync(listPath, listLines.join("\n"), "utf-8");
   const out = path.join(dir, `${prefix}.mp4`);
-  // 用绝对路径，不设 cwd（避免二次拼接）。
+  const slideKeys = slides.map((slide) => `${slide.sourceIndex}:${path.basename(slide.path)}`);
+  const motions = assignStillImageMotions(slideKeys);
+  const inputs = slides.flatMap((slide) => [
+    "-loop", "1",
+    "-t", slide.duration.toFixed(3),
+    "-i", path.resolve(slide.path),
+  ]);
+  const filters = slides.map((slide, index) =>
+    `[${index}:v]${stillImageMotionFilter(motions[index], {
+      width: opts.width,
+      height: opts.height,
+      duration: slide.duration,
+      fps: 60,
+      supersample: 2,
+    })}[slide${index}]`,
+  );
+  filters.push(
+    `${slides.map((_, index) => `[slide${index}]`).join("")}` +
+    `concat=n=${slides.length}:v=1:a=0[outv]`,
+  );
   await execFileP(FFMPEG_BIN, [
-    "-y", "-nostdin", "-f", "concat", "-safe", "0", "-i", path.resolve(listPath),
-    "-vf", slideshowVideoFilter(opts),
-    "-c:v", "libx264", "-preset", RENDER_PRESET, "-crf", RENDER_CRF, "-pix_fmt", "yuv420p",
-    "-t", String(totalDur), path.resolve(out),
+    "-y", "-nostdin",
+    ...inputs,
+    "-filter_complex", filters.join(";"),
+    "-map", "[outv]",
+    "-c:v", "libx264",
+    "-preset", RENDER_PRESET,
+    "-crf", RENDER_CRF,
+    "-profile:v", "high",
+    "-pix_fmt", "yuv420p",
+    "-r", "60",
+    "-t", String(totalDur),
+    path.resolve(out),
   ], { maxBuffer: 1024 * 1024 * 64 });
-  try { fs.unlinkSync(listPath); } catch {}
   return fs.existsSync(out) ? path.resolve(out) : null;
 }
 
@@ -1287,7 +1273,9 @@ export async function runRender(taskId: string) {
   const hfMaxSec = Number(process.env.RENDER_HF_MAX_SEC || 30);
   const forceLongHyperframes = process.env.RENDER_ENGINE_FORCE === "1";
   const tooLongForHF = dur > hfMaxSec && !forceLongHyperframes;
-  const wantHF = (engine === "hyperframes" || engine === "auto") && (useImages || !!videoAbs) && !tooLongForHF;
+  // Approved storyboard stills always use the deterministic per-shot FFmpeg
+  // motion template. HyperFrames retains its role for video-backed renders.
+  const wantHF = (engine === "hyperframes" || engine === "auto") && !useImages && !!videoAbs && !tooLongForHF;
   if (tooLongForHF) {
     console.warn(`[render] 时长 ${dur.toFixed(0)}s > ${hfMaxSec}s，走 ffmpeg（HyperFrames 长视频逐帧截图过慢）。如需强制 HTML 渲染设 RENDER_ENGINE=hyperframes 且 RENDER_ENGINE_FORCE=1`);
   }

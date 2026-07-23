@@ -55,6 +55,19 @@
     "preserveWholeUnits": ["causal_statement", "contrast", "emotional_unit"],
     "forbidFillerToReachCount": true
   },
+  "stillImageMotion": {
+    "enabled": true,
+    "assignment": "deterministic-random",
+    "avoidAdjacentDuplicates": true,
+    "oneMotionPerImage": true,
+    "motions": ["zoom-out", "zoom-in", "pan-left-to-right", "pan-right-to-left"],
+    "zoomRange": [1.0, 1.2],
+    "referenceDurationSeconds": 8,
+    "durationMode": "normalize-to-shot",
+    "easing": "smoothstep",
+    "supersample": 2,
+    "fps": 60
+  },
   "backgroundMusic": "固定/背景音乐.mp3",
   "voicePreset": "assets/voice-presets/female-book-narrator-locked-v1.json",
   "voicePresetDefaultVariant": "female",

@@ -135,6 +135,9 @@ Copy reusable media from `assets/`; never move originals.
 
 ## Narration, captions, render, and draft
 
+- Apply exactly one still-image motion to each storyboard image: centered zoom-out from 120% to 100%, centered zoom-in from 100% to 120%, fixed-120% left-to-right pan, or fixed-120% right-to-left pan. Never combine zoom and pan on the same image or reverse direction inside a shot.
+- Assign motions with reproducible pseudo-random selection and exclude the immediately previous motion from the next shot's candidates, so adjacent images do not repeat the same effect.
+- Normalize each motion across the image's actual narration-aligned hold. Use the approved slow 8-second reference pace, monotonic smoothstep easing, 60fps, and 2x supersampled motion before downscaling to delivery size to suppress pixel stepping and shake.
 - Default to `female-book-narrator-locked-v1`; use `male-podcast-locked-v2` only when explicitly requested. When the user is silent about the variant, resolve `female` without adding another approval gate.
 - Resolve the production variant before post-production and pair it with the matching fixed intro. Stop on a mismatch unless the user explicitly requests cross-pairing.
 - Preserve the selected preset's reference mode, reference audio, prompt transcript, CFG 2.0, 20 inference steps, seed 42 for every segment, native 1.00x speed, pauses, and mastering chain.

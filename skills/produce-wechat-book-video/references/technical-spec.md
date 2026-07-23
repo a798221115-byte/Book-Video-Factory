@@ -9,6 +9,15 @@
 - Audio: AAC, 48kHz.
 - Visual speed: 1.00x unless explicitly changed.
 
+### Still-image motion
+
+- Each storyboard image receives exactly one motion: `zoom-out`, `zoom-in`, `pan-left-to-right`, or `pan-right-to-left`.
+- `zoom-out` is centered and monotonically decreases from 120% to 100%. `zoom-in` is centered and monotonically increases from 100% to 120%.
+- Both pan motions remain at a fixed 120% scale for edge coverage and move in only one direction. They must not zoom, reverse, expose a black edge, or move outside the frame.
+- Select motions with a deterministic pseudo-random seed. Exclude the immediately preceding motion before selecting the next one, so adjacent storyboard images never repeat the same motion while rerenders stay reproducible.
+- Treat eight seconds as the approved reference pace and normalize the easing over the actual narration-aligned image hold.
+- Use monotonic smoothstep easing, calculate at a 2x working resolution, then Lanczos-downscale to 1080x1920 at 60fps. Do not use sinusoidal crop coordinates or any expression that reverses direction within one shot.
+
 ### Standard typography baseline
 
 Use these rendered canvas字号 for standard videos unless the user explicitly overrides them:

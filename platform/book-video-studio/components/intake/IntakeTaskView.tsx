@@ -214,7 +214,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     [topHighlightsMeta],
   );
   const wereadBook = topHighlightsMeta.book || {};
-  const hasMoreHighlights = Boolean(topHighlightsMeta.hasMore);
+  const hasMoreHighlights = topHighlights.length >= 10 && topHighlightsMeta.hasMore !== false;
 
   useEffect(() => {
     if (!data) return;

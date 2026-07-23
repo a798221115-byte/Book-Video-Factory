@@ -85,18 +85,45 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (!["ready_for_weread", "highlights_confirmed", "waiting_script_confirmation"].includes(task.status)) {
       return NextResponse.json({ error: "请先确认准确书名和作者" }, { status: 409 });
     }
-    const content = String(body.highlightsText || "").trim();
-    const highlights = parseHighlights(content);
+    const structuredHighlights = Array.isArray(body.highlights)
+      ? body.highlights
+        .slice(0, 30)
+        .map((item: any) => ({
+          text: String(item.text || "").trim().slice(0, 2000),
+          chapter: String(item.chapter || "").trim().slice(0, 300),
+          count: item.count == null || item.count === ""
+            ? null
+            : Number.isFinite(Number(item.count)) ? Number(item.count) : null,
+          sourceType: String(item.sourceType || body.sourceType || "weread"),
+          sourceLabel: String(item.sourceLabel || ""),
+          sourceFile: String(item.sourceFile || ""),
+          location: String(item.location || ""),
+          relevanceReason: String(item.relevanceReason || ""),
+        }))
+        .filter((item: VerifiedHighlight) => item.text)
+      : [];
+    const legacyContent = String(body.highlightsText || "").trim();
+    const highlights = structuredHighlights.length
+      ? structuredHighlights
+      : parseHighlights(legacyContent);
     if (!highlights.length) {
-      return NextResponse.json({ error: "请粘贴至少一条微信读书热门划线" }, { status: 400 });
+      return NextResponse.json({ error: "请至少选择一条可追溯的原文证据" }, { status: 400 });
     }
+    const sourceType = String(body.sourceType || highlights[0]?.sourceType || "weread");
+    const content = structuredHighlights.length
+      ? highlights.map((item: VerifiedHighlight) => (
+        `${item.count == null ? "原书" : item.count}｜${item.chapter || "章节未返回"}｜${item.text}`
+      )).join("\n")
+      : legacyContent;
     upsertArtifact({
       taskId: id,
       stepName: "weread",
       kind: "popular_highlights",
-      label: "已确认的微信读书热门划线",
+      label: sourceType === "uploaded_epub"
+        ? "已确认的 EPUB 原书相关段落"
+        : "已确认的微信读书热门划线",
       content,
-      meta: { highlights, confirmedAt: Date.now() },
+      meta: { highlights, sourceType, confirmedAt: Date.now() },
     });
     updateTask(id, { status: "highlights_confirmed", currentGate: "COPY_GENERATION" });
     return NextResponse.json({ ok: true, count: highlights.length });
@@ -131,7 +158,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const task = getTask(id);
   if (!task) return NextResponse.json({ error: "任务不存在" }, { status: 404 });
   if (!["highlights_confirmed", "waiting_script_confirmation"].includes(task.status)) {
-    return NextResponse.json({ error: "请先展示并明确确认微信读书热门划线" }, { status: 409 });
+    return NextResponse.json({ error: "请先展示并明确确认可追溯的原文证据" }, { status: 409 });
   }
   if (!task.bookTitle || !task.bookAuthor) {
     return NextResponse.json({ error: "缺少已确认的书名或作者" }, { status: 409 });
@@ -157,7 +184,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   );
   const highlights = parseJson(highlightArtifact?.meta).highlights as VerifiedHighlight[] | undefined;
   if (!Array.isArray(highlights) || !highlights.length) {
-    return NextResponse.json({ error: "缺少已确认的热门划线" }, { status: 409 });
+    return NextResponse.json({ error: "缺少已确认的原文证据" }, { status: 409 });
   }
   const cleaned = artifacts.find(
     (item) => item.stepName === "transcribe" && item.kind === "cleaned",

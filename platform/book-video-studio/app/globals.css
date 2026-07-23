@@ -172,6 +172,59 @@
   color: #7c6d62;
 }
 
+.intake-source-status,
+.intake-book-source-upload {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 13px 14px;
+  border: 1px solid #e7d8ca;
+  border-radius: 14px;
+  background: #fbf6ef;
+}
+
+.intake-source-status.unavailable {
+  border-color: #e7c6aa;
+  color: #77462e;
+  background: #fff2e6;
+}
+
+.intake-source-status span,
+.intake-book-source-upload span {
+  display: block;
+  color: #786b60;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.intake-book-source-upload input[type="file"] {
+  width: 100%;
+  padding: 9px;
+  border: 1px dashed #d8c5b4;
+  border-radius: 10px;
+  color: #65584e;
+  background: #fffdf9;
+}
+
+.intake-book-source-upload button {
+  padding: 10px 14px;
+  border: 1px solid rgba(178, 90, 54, 0.32);
+  border-radius: 11px;
+  color: #8f4526;
+  background: #f2dfd0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.intake-book-source-upload button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.intake-book-source-upload .error {
+  color: #a13e2a;
+}
+
 .intake-weread-book {
   display: flex;
   flex-direction: column;

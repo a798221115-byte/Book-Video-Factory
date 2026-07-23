@@ -11,6 +11,25 @@ function parseMeta(value: unknown) {
   }
 }
 
+function saveWereadStatus(taskId: string, status: "available" | "unavailable", detail: string) {
+  const existing = getArtifacts(taskId).find(
+    (item) => item.stepName === "weread" && item.kind === "weread_status",
+  );
+  const payload = {
+    label: "微信读书来源状态",
+    content: detail,
+    meta: JSON.stringify({ status, detail, checkedAt: Date.now() }),
+  };
+  if (existing) patchArtifact(existing.id, payload);
+  else saveArtifact({
+    taskId,
+    stepName: "weread",
+    kind: "weread_status",
+    ...payload,
+    meta: { status, detail, checkedAt: Date.now() },
+  });
+}
+
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const task = getTask(id);
@@ -72,8 +91,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         meta: { ...responsePayload, fetchedAt: Date.now() },
       });
     }
+    saveWereadStatus(id, "available", `已匹配《${result.book.title || task.bookTitle}》并获取热门划线`);
     return NextResponse.json(responsePayload);
   } catch (error: any) {
-    return NextResponse.json({ error: String(error?.message || error) }, { status: 502 });
+    const detail = String(error?.message || error);
+    saveWereadStatus(id, "unavailable", detail);
+    return NextResponse.json({
+      error: detail,
+      sourceStatus: "unavailable",
+      fallback: "uploaded_epub",
+    }, { status: 502 });
   }
 }

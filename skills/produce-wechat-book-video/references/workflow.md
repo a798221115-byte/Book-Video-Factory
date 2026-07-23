@@ -124,7 +124,11 @@ The workbench UI and the server-side image executor must both reject image gener
 
 Start only after explicit G02 approval and completion of both title sub-gates.
 
-Split the approved copy by semantic change. Target roughly 8–12 visual beats for one minute. Record:
+Split the approved copy by meaningful changes in idea, action, scene, emotion, or narrative function. Let the copy determine the total number of visual beats; do not set a default range or derive a fixed count from video length.
+
+Use roughly eight seconds per image only as a soft pacing review after semantic segmentation. Dense information, a new action, or a fast emotional turn may justify a shorter image; a complete causal statement, contrast, sustained emotion, or single narrative unit may justify a longer image. Never cut a complete semantic unit to hit eight seconds, and never add repetitive or low-value beats to reach a target count.
+
+Record:
 
 - narration range;
 - visual subject and action;

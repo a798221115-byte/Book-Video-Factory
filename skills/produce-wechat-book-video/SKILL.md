@@ -125,6 +125,9 @@ Copy reusable media from `assets/`; never move originals.
   - regenerating or changing the long title invalidates all short-title candidates and approval.
 - Generate exactly one style sample at G03.
 - Generate remaining images only after explicit style approval.
+- Derive the total storyboard-image count from the approved copy. Do not set a default, minimum, maximum, or one-minute image count.
+- Split first at meaningful changes in idea, action, scene, emotion, or narrative function. Use roughly eight seconds per image only as a soft pacing check after semantic segmentation; allow shorter or longer holds when the copy requires them.
+- Never split a complete causal statement, contrast, or emotional unit merely to approach eight seconds, and never add filler images to reach a target count.
 - Keep generated backgrounds free of text; add title, author, column, and captions deterministically.
 - Keep the upper title-safe region compact, normally no more than 15% of frame height, while continuing low-contrast environmental detail through it.
 - Vary visual grammar across people, empty environments, objects, architecture, weather, and landscapes.

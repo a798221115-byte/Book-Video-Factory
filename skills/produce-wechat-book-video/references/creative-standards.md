@@ -24,6 +24,14 @@
 
 Use premium literary editorial illustration with painterly paper texture, restrained cinematic light, and original scenes. Favor indigo, teal, warm gold, parchment, and limited coral accents. Avoid monochrome gloom and neon saturation.
 
+Storyboard segmentation:
+
+- Let the approved copy determine the image count; never impose a fixed total or a fixed one-minute range.
+- Split when the idea, action, scene, emotion, or narrative function changes enough to require a new visual.
+- Treat roughly eight seconds per image as a soft pacing check, not a generation formula.
+- Allow shorter images for dense information or rapid turns and longer images for complete causal, contrastive, or emotional units.
+- Preserve semantic completeness. Do not split sentences or add filler frames merely to approach eight seconds or a target count.
+
 Composition rules:
 
 - Reserve only a compact upper region for column, title, and author, normally no more than about 15% of frame height.

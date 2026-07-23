@@ -44,6 +44,17 @@
     "requireBothSelectionsBeforeImages": true,
     "artifact": "titles.json"
   },
+  "storyboardSegmentation": {
+    "strategy": "semantic-first",
+    "fixedImageCount": null,
+    "minimumImageCount": null,
+    "maximumImageCount": null,
+    "targetSecondsPerImage": 8,
+    "targetSecondsIsSoft": true,
+    "splitOn": ["idea_change", "action_change", "scene_change", "emotion_change", "narrative_function_change"],
+    "preserveWholeUnits": ["causal_statement", "contrast", "emotional_unit"],
+    "forbidFillerToReachCount": true
+  },
   "backgroundMusic": "固定/背景音乐.mp3",
   "voicePreset": "assets/voice-presets/female-book-narrator-locked-v1.json",
   "voicePresetDefaultVariant": "female",

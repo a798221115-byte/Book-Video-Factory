@@ -205,14 +205,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     const meta = parseJson(candidateArtifact?.meta);
     return Array.isArray(meta.candidates) ? meta.candidates : [];
   }, [candidateArtifact?.meta]);
-  const topHighlights = useMemo(() => {
-    const meta = parseJson(topHighlightsArtifact?.meta);
-    return Array.isArray(meta.highlights) ? meta.highlights : [];
-  }, [topHighlightsArtifact?.meta]);
-  const wereadBook = useMemo(
-    () => parseJson(topHighlightsArtifact?.meta).book || {},
+  const topHighlightsMeta = useMemo(
+    () => parseJson(topHighlightsArtifact?.meta),
     [topHighlightsArtifact?.meta],
   );
+  const topHighlights = useMemo(
+    () => Array.isArray(topHighlightsMeta.highlights) ? topHighlightsMeta.highlights : [],
+    [topHighlightsMeta],
+  );
+  const wereadBook = topHighlightsMeta.book || {};
+  const hasMoreHighlights = Boolean(topHighlightsMeta.hasMore);
 
   useEffect(() => {
     if (!data) return;
@@ -233,11 +235,14 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       (Array.isArray(confirmed.highlights) ? confirmed.highlights : [])
         .map((item: any) => String(item.text || "")),
     );
-    setSelectedHighlightIds(
-      topHighlights
+    const visibleIds = new Set(topHighlights.map((item: any) => String(item.id)));
+    const confirmedIds = topHighlights
         .filter((item: any) => confirmedTexts.has(String(item.text || "")))
-        .map((item: any) => String(item.id)),
-    );
+        .map((item: any) => String(item.id));
+    setSelectedHighlightIds((current) => Array.from(new Set([
+      ...current.filter((id) => visibleIds.has(id)),
+      ...confirmedIds,
+    ])));
   }, [highlightsArtifact?.meta, topHighlights]);
 
   useEffect(() => {
@@ -310,19 +315,31 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
-  const fetchTopHighlights = async () => {
+  const fetchTopHighlights = async (mode: "reset" | "append" = "reset") => {
     if (demoMode) {
       setMessage("演示任务不会调用微信读书，请在正式任务中操作。");
       return;
     }
     setBusy(true);
-    setMessage("正在微信读书核验版本并获取全书前 10 热门划线…");
+    setMessage(mode === "append"
+      ? "正在按热度继续获取后 10 条热门划线…"
+      : "正在微信读书核验版本并获取全书前 10 热门划线…");
     try {
-      const response = await fetch(`/api/tasks/${taskId}/weread`, { method: "POST" });
+      const response = await fetch(`/api/tasks/${taskId}/weread`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          offset: mode === "append" ? topHighlights.length : 0,
+          limit: 10,
+          reset: mode === "reset",
+        }),
+      });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "微信读书热门划线获取失败");
-      setSelectedHighlightIds([]);
-      setMessage(`已获取《${payload.book?.title || bookTitle}》前 ${payload.highlights?.length || 0} 条热门划线，请勾选。`);
+      if (mode === "reset") setSelectedHighlightIds([]);
+      setMessage(mode === "append"
+        ? `新增 ${payload.batch?.length || 0} 条，已按热度加载 ${payload.loadedCount || 0} 条热门划线。`
+        : `已获取《${payload.book?.title || bookTitle}》前 ${payload.loadedCount || 0} 条热门划线，请勾选。`);
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -336,7 +353,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       selectedHighlightIds.includes(String(item.id)),
     );
     if (!selected.length) {
-      setMessage("请先从前 10 热门划线中至少勾选一条。");
+      setMessage("请先从已加载的热门划线中至少勾选一条。");
       return;
     }
     if (demoMode) {
@@ -694,7 +711,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           {readyForWeread ? (
             <div className="intake-next-gate">
               <strong>可以查询热门划线</strong>
-              <span>下方会自动核验微信读书版本并提供全书前 10 条热门划线供你挑选。</span>
+              <span>下方会自动核验微信读书版本，并按热度分批提供热门划线，每次 10 条。</span>
             </div>
           ) : (
             <small>当前状态：{waitingForBook ? "等待你的确认" : "等待分析完成"}</small>
@@ -715,16 +732,31 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           <div className="intake-dbs-grid">
             <article className="intake-dbs-card">
               <span className="intake-kicker">G01 确认门</span>
-              <h3>全书前 10 热门划线</h3>
-              <p>根据已确认的书名和作者匹配微信读书版本，按真实划线人数从高到低排列。</p>
-              <button
-                type="button"
-                className="intake-weread-fetch"
-                disabled={busy || readyForStyleSample}
-                onClick={fetchTopHighlights}
-              >
-                {busy ? "正在查询微信读书…" : topHighlights.length ? "重新获取前 10 热门划线" : "获取前 10 热门划线"}
-              </button>
+              <h3>全书热门划线{topHighlights.length ? `（已加载 ${topHighlights.length} 条）` : ""}</h3>
+              <p>根据已确认的书名和作者匹配微信读书版本，按真实划线人数从高到低连续排列。</p>
+              <div className="intake-weread-actions">
+                <button
+                  type="button"
+                  className="intake-weread-fetch"
+                  disabled={busy || readyForStyleSample}
+                  onClick={() => fetchTopHighlights("reset")}
+                >
+                  {busy ? "正在查询微信读书…" : topHighlights.length ? "重新获取前 10 条" : "获取前 10 条"}
+                </button>
+                {topHighlights.length && hasMoreHighlights ? (
+                  <button
+                    type="button"
+                    className="intake-weread-fetch intake-weread-more"
+                    disabled={busy || readyForStyleSample}
+                    onClick={() => fetchTopHighlights("append")}
+                  >
+                    再获取 10 条
+                  </button>
+                ) : null}
+              </div>
+              {topHighlights.length && !hasMoreHighlights ? (
+                <small className="intake-weread-pagination-note">已加载当前可获取的全部热门划线。</small>
+              ) : null}
               {wereadBook.bookId ? (
                 <div className="intake-weread-book">
                   <strong>已匹配：《{wereadBook.title}》</strong>
@@ -759,7 +791,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   })}
                 </div>
               ) : (
-                <div className="intake-highlight-empty">点击上方按钮后，前 10 条热门划线会显示在这里。</div>
+                <div className="intake-highlight-empty">点击上方按钮后，首批 10 条热门划线会显示在这里。</div>
               )}
               <small>已选择 {selectedHighlightIds.length} 条；确认后这些原句才能进入 DBS 二创阶段。</small>
               <button

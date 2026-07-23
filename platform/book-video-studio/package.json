@@ -1,6 +1,6 @@
 {
   "name": "book-video-studio",
-  "version": "1.1.3",
+  "version": "1.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,6 +12,7 @@
     "verify:tts-speed": "node scripts/verify-tts-speed.mjs",
     "accept:tts-speed": "node scripts/accept-real-tts-speed.mjs",
     "verify:image-briefs": "node scripts/verify-image-briefs.mjs",
+    "verify:weread-pagination": "node --experimental-strip-types scripts/verify-weread-pagination.mjs",
     "accept:toast-failures": "node scripts/accept-toast-failures.mjs",
     "verify:render-variants": "node scripts/verify-render-variants.mjs",
     "preview:motions": "node scripts/make-motion-effect-previews.mjs"

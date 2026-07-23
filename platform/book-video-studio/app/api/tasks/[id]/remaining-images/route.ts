@@ -1,22 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import {
   getArtifacts,
   getTask,
   patchArtifact,
-  projectArtifactPath,
-  saveArtifact,
-  setStepStatus,
-  taskDir,
   updateTask,
 } from "@/lib/pipeline/repo";
-import { parseArtifactMeta, startRemainingImageQueue } from "@/lib/storyboardGeneration";
-
-function fileSha256(filePath: string) {
-  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
-}
+import { enqueueCodexRemainingImages } from "@/lib/codexRemainingImagesJob";
+import { registerRemainingImageFile } from "@/lib/remainingImageRegistry";
+import { parseArtifactMeta } from "@/lib/storyboardGeneration";
 
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -30,7 +21,17 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
   ].includes(task.status)) {
     return NextResponse.json({ error: "当前阶段不能启动剩余分镜生图" }, { status: 409 });
   }
-  return NextResponse.json({ ok: true, manifest: startRemainingImageQueue(id) });
+  try {
+    const result = enqueueCodexRemainingImages(id);
+    return NextResponse.json({
+      ok: true,
+      manifest: result.manifest,
+      jobId: result.job.artifact.id,
+      job: result.job.meta,
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: String(error?.message || error) }, { status: 409 });
+  }
 }
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -45,59 +46,32 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (!manifestArtifact) return NextResponse.json({ error: "剩余分镜生图队列不存在" }, { status: 409 });
   const manifest = parseArtifactMeta(manifestArtifact.meta);
 
+  if (action === "retry") {
+    try {
+      const result = enqueueCodexRemainingImages(id, { force: true });
+      return NextResponse.json({
+        ok: true,
+        manifest: result.manifest,
+        jobId: result.job.artifact.id,
+        job: result.job.meta,
+      });
+    } catch (error: any) {
+      return NextResponse.json({ error: String(error?.message || error) }, { status: 409 });
+    }
+  }
+
   if (action === "register") {
-    const jobId = String(body.jobId || "");
-    const job = (manifest.jobs || []).find((item: any) => item.id === jobId);
-    if (!job) return NextResponse.json({ error: "未知分镜任务" }, { status: 400 });
-    const imageRoot = path.resolve(taskDir(id), "storyboard", "images");
-    const imageFileName = path.basename(String(body.imageFileName || job.imageFileName || ""));
-    const imagePath = path.resolve(imageRoot, imageFileName);
-    if (!imagePath.startsWith(imageRoot + path.sep) || !fs.existsSync(imagePath)) {
-      return NextResponse.json({ error: "图片必须存在于当前任务 storyboard/images 目录" }, { status: 400 });
-    }
-    const storedPath = projectArtifactPath(imagePath);
-    const sha256 = fileSha256(imagePath);
-    const existingImage = getArtifacts(id).find(
-      (item) => item.stepName === "storyboard" && item.kind === "storyboard_image" &&
-        parseArtifactMeta(item.meta).jobId === jobId,
-    );
-    const imageMeta = { jobId, generatedBy: "codex-built-in-imagegen", sha256, registeredAt: Date.now() };
-    if (existingImage) {
-      patchArtifact(existingImage.id, {
-        label: `G04 ${jobId} ${job.label}`,
-        path: storedPath,
-        meta: JSON.stringify(imageMeta),
+    try {
+      const result = registerRemainingImageFile(id, {
+        sceneJobId: String(body.jobId || ""),
+        imageFileName: String(body.imageFileName || ""),
+        codexJobId: String(body.codexJobId || "") || undefined,
       });
-    } else {
-      saveArtifact({
-        taskId: id,
-        stepName: "storyboard",
-        kind: "storyboard_image",
-        label: `G04 ${jobId} ${job.label}`,
-        path: storedPath,
-        meta: imageMeta,
-      });
+      return NextResponse.json({ ok: true, ...result });
+    } catch (error: any) {
+      const message = String(error?.message || error);
+      return NextResponse.json({ error: message }, { status: message.includes("必须存在") ? 400 : 409 });
     }
-    job.status = "done";
-    job.imagePath = storedPath;
-    job.sha256 = sha256;
-    job.error = null;
-    const completed = manifest.jobs.filter((item: any) => item.status === "done").length;
-    const allDone = completed === manifest.jobs.length;
-    manifest.status = allDone ? "done" : "running";
-    manifest.updatedAt = Date.now();
-    patchArtifact(manifestArtifact.id, { meta: JSON.stringify(manifest) });
-    setStepStatus(id, "images", {
-      status: allDone ? "done" : "running",
-      progress: completed / manifest.jobs.length,
-      finishedAt: allDone ? Date.now() : undefined,
-      error: "",
-    });
-    updateTask(id, {
-      status: allDone ? "waiting_images_confirmation" : "generating_remaining_images",
-      currentGate: allDone ? "ALL_IMAGES_CONFIRMATION" : "REMAINING_IMAGES_GENERATING",
-    });
-    return NextResponse.json({ ok: true, completed, total: manifest.jobs.length, allDone, path: storedPath });
   }
 
   if (action === "confirm_all") {

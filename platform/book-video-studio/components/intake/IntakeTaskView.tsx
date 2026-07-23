@@ -19,6 +19,7 @@ type Artifact = {
   path: string | null;
   content: string | null;
   meta: string | null;
+  createdAt?: number;
 };
 
 type TaskData = {
@@ -149,6 +150,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     if (!data) return;
     const active =
       data.task.status === "running" ||
+      data.task.status === "generating_style_sample" ||
       data.task.status === "generating_remaining_images" ||
       data.steps.some((step) => step.status === "running");
     if (!active) return;
@@ -200,6 +202,17 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const styleSampleArtifact = artifacts.find(
     (item) => item.stepName === "storyboard" && item.kind === "style_sample",
   );
+  const codexJobArtifacts = artifacts
+    .filter((item) => item.stepName === "storyboard" && item.kind === "codex_job")
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+  const codexStyleSampleJobArtifact = codexJobArtifacts.find(
+    (item) => parseJson(item.meta).jobType === "style_sample",
+  );
+  const codexStyleSampleJob = parseJson(codexStyleSampleJobArtifact?.meta);
+  const codexRemainingImagesJobArtifact = codexJobArtifacts.find(
+    (item) => parseJson(item.meta).jobType === "remaining_images",
+  );
+  const codexRemainingImagesJob = parseJson(codexRemainingImagesJobArtifact?.meta);
   const remainingImageManifestArtifact = artifacts.find(
     (item) => item.stepName === "storyboard" && item.kind === "remaining_image_manifest",
   );
@@ -226,6 +239,68 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const hasMoreHighlights = topHighlights.length >= 10 && topHighlightsMeta.hasMore !== false;
   const wereadStatus = parseJson(wereadStatusArtifact?.meta);
   const bookSourceStatus = parseJson(bookSourceStatusArtifact?.meta);
+
+  useEffect(() => {
+    if (
+      demoMode ||
+      data?.task.status !== "ready_for_style_sample" ||
+      !titleWorkflowComplete ||
+      styleSampleArtifact ||
+      codexStyleSampleJobArtifact
+    ) return;
+    let cancelled = false;
+    fetch(`/api/tasks/${taskId}/style-sample`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "enqueue" }),
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "Codex G03 任务派发失败");
+        if (!cancelled) await load();
+      })
+      .catch((error) => {
+        if (!cancelled) setMessage(String(error?.message || error));
+      });
+    return () => { cancelled = true; };
+  }, [
+    demoMode,
+    taskId,
+    data?.task.status,
+    titleWorkflowComplete,
+    styleSampleArtifact,
+    codexStyleSampleJobArtifact,
+    load,
+  ]);
+
+  useEffect(() => {
+    if (
+      demoMode ||
+      data?.task.status !== "generating_remaining_images" ||
+      !remainingImageJobs.length ||
+      remainingImageJobs.every((item: any) => item.status === "done") ||
+      codexRemainingImagesJobArtifact
+    ) return;
+    let cancelled = false;
+    fetch(`/api/tasks/${taskId}/remaining-images`, { method: "POST" })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "Codex G04 任务派发失败");
+        if (!cancelled) await load();
+      })
+      .catch((error) => {
+        if (!cancelled) setMessage(String(error?.message || error));
+      });
+    return () => { cancelled = true; };
+  }, [
+    demoMode,
+    taskId,
+    data?.task.status,
+    remainingImageJobs.length,
+    completedRemainingImages,
+    codexRemainingImagesJobArtifact,
+    load,
+  ]);
 
   useEffect(() => {
     if (!data) return;
@@ -529,6 +604,27 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
+  const retryStyleSample = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/style-sample`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "retry" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Codex G03 任务重试失败");
+      setMessage("已重新创建 Codex G03 生图任务，页面会持续显示进度。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startRemainingImages = async () => {
     if (demoMode) return;
     setBusy(true);
@@ -538,6 +634,27 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "剩余分镜生图任务启动失败");
       setMessage(`已创建 ${Number(payload.manifest?.jobs?.length || 0)} 张 Codex 生图任务。`);
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const retryRemainingImages = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/remaining-images`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "retry" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Codex G04 任务重试失败");
+      setMessage(`已重新创建 Codex G04 任务，将继续生成剩余 ${Number(payload.job?.total || 0) - Number(payload.job?.completed || 0)} 张图片。`);
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -576,6 +693,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const highlightsConfirmed = data.task.status === "highlights_confirmed";
   const waitingForScript = data.task.status === "waiting_script_confirmation";
   const readyForStyleSample = data.task.status === "ready_for_style_sample";
+  const generatingStyleSample = data.task.status === "generating_style_sample";
   const waitingForStyleConfirmation = data.task.status === "waiting_style_confirmation";
   const readyForRemainingImages = data.task.status === "ready_for_remaining_images";
   const generatingRemainingImages = data.task.status === "generating_remaining_images";
@@ -1002,7 +1120,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      {((readyForStyleSample && titleWorkflowComplete) || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || readyForPostProduction) ? (
+      {((readyForStyleSample && titleWorkflowComplete) || generatingStyleSample || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || readyForPostProduction) ? (
         <section className="intake-style-sample-workspace">
           <div className="intake-section-heading">
             <div>
@@ -1043,10 +1161,54 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               </article>
             </div>
           ) : (
-            <div className="intake-style-sample-empty">
-              <strong>等待 Codex 生成一张样图</strong>
-              <span>不需要配置第三方图片 API。请在当前 Codex 任务中继续 G03，生成结果会自动写回这里。</span>
-            </div>
+            codexStyleSampleJobArtifact ? (
+              <div className="intake-codex-job">
+                <div className="intake-codex-job-head">
+                  <div>
+                    <span className={`intake-codex-state ${codexStyleSampleJob.status || "queued"}`}>
+                      {codexStyleSampleJob.status === "failed"
+                        ? "生成失败"
+                        : codexStyleSampleJob.status === "succeeded"
+                          ? "已完成"
+                          : codexStyleSampleJob.status === "queued"
+                            ? "排队中"
+                            : "正在生成"}
+                    </span>
+                    <strong>{codexStyleSampleJob.message || "Codex 正在处理 G03 风格样图"}</strong>
+                  </div>
+                  {codexStyleSampleJob.threadId ? (
+                    <a
+                      className="intake-confirm-action"
+                      href={`codex://threads/${codexStyleSampleJob.threadId}`}
+                    >
+                      在 Codex 中打开任务
+                    </a>
+                  ) : null}
+                </div>
+                <div className="intake-image-progress" aria-label="G03 Codex 生成进度">
+                  <span style={{ width: `${Math.round(Number(codexStyleSampleJob.progress || 0) * 100)}%` }} />
+                </div>
+                <div className="intake-codex-job-meta">
+                  <span>阶段：{codexStyleSampleJob.phase || "queued"}</span>
+                  <span>进度：{Math.round(Number(codexStyleSampleJob.progress || 0) * 100)}%</span>
+                  <span>工作台任务：{codexStyleSampleJobArtifact.id}</span>
+                  {codexStyleSampleJob.threadId ? <span>Codex：{codexStyleSampleJob.threadId}</span> : null}
+                </div>
+                {codexStyleSampleJob.error ? (
+                  <p className="intake-codex-error">{codexStyleSampleJob.error}</p>
+                ) : null}
+                {codexStyleSampleJob.status === "failed" ? (
+                  <button type="button" className="intake-confirm-action" disabled={busy} onClick={retryStyleSample}>
+                    重新创建 Codex 生图任务
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <div className="intake-style-sample-empty">
+                <strong>正在创建 Codex G03 任务</strong>
+                <span>任务创建后会出现在 Codex 任务列表，并在这里持续回传生成进度。</span>
+              </div>
+            )
           )}
         </section>
       ) : null}
@@ -1065,6 +1227,49 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
 
           {remainingImageJobs.length ? (
             <>
+              {codexRemainingImagesJobArtifact ? (
+                <div className="intake-codex-job">
+                  <div className="intake-codex-job-head">
+                    <div>
+                      <span className={`intake-codex-state ${codexRemainingImagesJob.status || "queued"}`}>
+                        {codexRemainingImagesJob.status === "failed"
+                          ? "生成失败"
+                          : codexRemainingImagesJob.status === "succeeded"
+                            ? "已完成"
+                            : codexRemainingImagesJob.status === "queued"
+                              ? "排队中"
+                              : "正在生成"}
+                      </span>
+                      <strong>{codexRemainingImagesJob.message || "Codex 正在生成剩余分镜"}</strong>
+                    </div>
+                    {codexRemainingImagesJob.threadId ? (
+                      <a
+                        className="intake-confirm-action"
+                        href={`codex://threads/${codexRemainingImagesJob.threadId}`}
+                      >
+                        在 Codex 中打开任务
+                      </a>
+                    ) : null}
+                  </div>
+                  <div className="intake-image-progress" aria-label="G04 Codex 生成进度">
+                    <span style={{ width: `${Math.round(Number(codexRemainingImagesJob.progress || 0) * 100)}%` }} />
+                  </div>
+                  <div className="intake-codex-job-meta">
+                    <span>阶段：{codexRemainingImagesJob.phase || "queued"}</span>
+                    <span>{Number(codexRemainingImagesJob.completed || 0)}/{Number(codexRemainingImagesJob.total || remainingImageJobs.length)} 张</span>
+                    <span>工作台任务：{codexRemainingImagesJobArtifact.id}</span>
+                    {codexRemainingImagesJob.threadId ? <span>Codex：{codexRemainingImagesJob.threadId}</span> : null}
+                  </div>
+                  {codexRemainingImagesJob.error ? (
+                    <p className="intake-codex-error">{codexRemainingImagesJob.error}</p>
+                  ) : null}
+                  {codexRemainingImagesJob.status === "failed" ? (
+                    <button type="button" className="intake-confirm-action" disabled={busy} onClick={retryRemainingImages}>
+                      保留已完成图片并重试
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="intake-image-progress" aria-label="剩余图片生成进度">
                 <span style={{ width: `${Math.round((completedRemainingImages / remainingImageJobs.length) * 100)}%` }} />
               </div>

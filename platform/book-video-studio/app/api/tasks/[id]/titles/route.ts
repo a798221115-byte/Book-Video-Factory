@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getArtifacts, getTask, patchArtifact, saveArtifact, taskDir, updateTask } from "@/lib/pipeline/repo";
 import { getLLM } from "@/lib/providers/llm";
+import { enqueueCodexStyleSample } from "@/lib/codexStyleSampleJob";
 import type { TitleCandidate } from "@/lib/titleWorkflow";
 
 const FORMULAS = [
@@ -220,7 +221,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       title_completed_at: Date.now(),
     };
     writeMeta(id, next);
-    return NextResponse.json(response(next));
+    try {
+      const dispatched = enqueueCodexStyleSample(id);
+      return NextResponse.json(response(next, {
+        codexJobId: dispatched.job?.artifact.id || null,
+        codexJob: dispatched.job?.meta || null,
+      }));
+    } catch (error: any) {
+      return NextResponse.json(response(next, {
+        codexDispatchError: String(error?.message || error),
+      }));
+    }
   }
 
   if (action === "generate_short") {

@@ -44,6 +44,22 @@ npm run dev
 
 默认地址是 `http://localhost:3000`。
 
+## Codex 生图桥接
+
+标题确认完成后，工作台会通过官方 Codex `app-server` 协议自动创建一个持久化
+Codex G03 任务。任务线程与事件保存在本机 `CODEX_HOME`，因此可以在 Codex
+桌面端任务列表中看到，并可从工作台的“在 Codex 中打开任务”按钮直接打开。
+
+工作台会持久化 `threadId`、阶段、进度、最新消息、错误和 JSONL 事件日志。
+G03 图片完成后自动登记为待确认样图；用户确认样图后，系统会再创建 G04
+Codex 任务，逐张生成并写回剩余分镜。Codex 登录态或生图工具不可用时，
+任务会进入明确的失败状态并显示重试入口，不会无限显示“等待 Codex”。
+
+Windows 默认优先使用 `F:\Codex\tools\codex-cli\codex.exe`。其他部署环境可通过
+`BOOK_VIDEO_CODEX_PATH` 指定 Codex CLI。若 Windows 项目路径包含中文，可用
+`BOOK_VIDEO_CODEX_WORKDIR` 指向该项目的
+ASCII 路径目录联接；本机默认目录联接为 `F:\Codex\workspaces\book-video-factory`。
+
 ## 安全与流程限制
 
 - 第一版禁用任务删除和批量删除。

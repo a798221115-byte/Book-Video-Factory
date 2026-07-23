@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>图书口播模板预览</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f4f1ea;
+        color: #211f1b;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      .wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 28px 24px 44px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 28px;
+        line-height: 1.2;
+      }
+      .intro {
+        margin: 0 0 22px;
+        color: #6d665d;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(190px, 1fr));
+        gap: 16px;
+        align-items: start;
+      }
+      .template {
+        display: grid;
+        gap: 10px;
+      }
+      .phone {
+        position: relative;
+        aspect-ratio: 9 / 16;
+        overflow: hidden;
+        border: 1px solid rgba(18,18,18,.14);
+        border-radius: 8px;
+        background: #111;
+        box-shadow: 0 18px 42px rgba(32,28,21,.18);
+      }
+      .name {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 950;
+      }
+      .note {
+        margin: 0;
+        color: #746b60;
+        font-size: 12px;
+        line-height: 1.5;
+        font-weight: 750;
+      }
+      .photo {
+        position: absolute;
+        background:
+          radial-gradient(circle at 25% 22%, rgba(255,255,255,.9), transparent 12%),
+          linear-gradient(145deg, #dbc8a4, #78908c 46%, #1f2a2b);
+      }
+      .photo::before {
+        content: "";
+        position: absolute;
+        inset: 18% 18% 20%;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #fff4da, #c95642);
+        box-shadow: 0 12px 34px rgba(0,0,0,.24);
+      }
+      .photo::after {
+        content: "";
+        position: absolute;
+        left: 18%;
+        right: 18%;
+        bottom: 22%;
+        height: 13%;
+        border-radius: 999px;
+        background: rgba(255,255,255,.22);
+      }
+      .book-title {
+        position: absolute;
+        left: 8%;
+        right: 8%;
+        text-align: center;
+        font-weight: 1000;
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+      .cap {
+        position: absolute;
+        left: 7%;
+        right: 7%;
+        padding: 10px 12px;
+        border-radius: 7px;
+        text-align: center;
+        font-weight: 950;
+        line-height: 1.28;
+      }
+      .small {
+        position: absolute;
+        left: 7%;
+        right: 7%;
+        text-align: center;
+        font-size: 10px;
+        line-height: 1.45;
+        font-weight: 800;
+      }
+      .showcase { background: #060606; }
+      .showcase .book-title {
+        top: 6%;
+        color: #ffe135;
+        font-size: 24px;
+        text-shadow: 0 2px 0 #000;
+      }
+      .showcase .photo {
+        left: 0;
+        right: 0;
+        top: 31%;
+        height: 38%;
+      }
+      .showcase .cap {
+        bottom: 19%;
+        color: #ffe135;
+        background: rgba(0,0,0,.72);
+        font-size: 17px;
+      }
+      .showcase .small {
+        bottom: 5%;
+        color: #fff2a8;
+      }
+      .notes {
+        background: linear-gradient(180deg, #f8f1df, #ebe0c9);
+      }
+      .notes .book-title {
+        top: 7%;
+        color: #231f18;
+        font-size: 20px;
+      }
+      .notes .photo {
+        left: 9%;
+        right: 9%;
+        top: 22%;
+        height: 31%;
+        border-radius: 6px;
+      }
+      .tag {
+        position: absolute;
+        left: 9%;
+        top: 58%;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #b44735;
+        color: #fff7ef;
+        font-size: 11px;
+        font-weight: 950;
+      }
+      .notes .cap {
+        bottom: 17%;
+        background: #fffaf0;
+        border-left: 5px solid #b44735;
+        color: #26221b;
+        text-align: left;
+        font-size: 15px;
+      }
+      .notes .small {
+        bottom: 5%;
+        color: #6e6251;
+      }
+      .quote {
+        background:
+          linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.76)),
+          radial-gradient(circle at 50% 32%, #6e8c93, #131313 62%);
+      }
+      .quote .book-title {
+        top: 7%;
+        color: #fff;
+        font-size: 18px;
+      }
+      .quote .cap {
+        top: 31%;
+        bottom: auto;
+        color: #fff;
+        background: transparent;
+        font-size: 25px;
+        line-height: 1.14;
+        text-shadow: 0 3px 14px rgba(0,0,0,.8);
+      }
+      .quote .accent {
+        position: absolute;
+        left: 11%;
+        right: 11%;
+        top: 54%;
+        height: 5px;
+        background: #ffe135;
+      }
+      .quote .small {
+        bottom: 9%;
+        color: #f4eee4;
+      }
+      .chapters {
+        background: #0f181d;
+      }
+      .chapters .bar {
+        position: absolute;
+        left: 8%;
+        right: 8%;
+        top: 7%;
+        height: 7px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.18);
+      }
+      .chapters .bar span {
+        display: block;
+        width: 46%;
+        height: 100%;
+        border-radius: inherit;
+        background: #ffe135;
+      }
+      .chapters .book-title {
+        top: 11%;
+        color: #e5f6f2;
+        font-size: 19px;
+      }
+      .chapters .photo {
+        left: 6%;
+        right: 6%;
+        top: 29%;
+        height: 33%;
+        border-radius: 7px;
+      }
+      .chapters .cap {
+        bottom: 19%;
+        color: #fff;
+        background: rgba(0,0,0,.62);
+        font-size: 16px;
+      }
+      .chapters .small {
+        bottom: 6%;
+        color: #9fd3cd;
+      }
+      .desk {
+        background:
+          linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.72)),
+          linear-gradient(145deg, #e2cda5, #657a74 48%, #181511);
+      }
+      .desk .book-title {
+        top: 8%;
+        color: #fff8e8;
+        font-size: 19px;
+        text-shadow: 0 3px 14px rgba(0,0,0,.45);
+      }
+      .desk .photo {
+        left: -4%;
+        right: -4%;
+        top: 22%;
+        height: 50%;
+        opacity: .78;
+      }
+      .desk .cap {
+        bottom: 18%;
+        color: #fff;
+        background: rgba(0,0,0,.48);
+        font-size: 16px;
+      }
+      .desk .small {
+        bottom: 6%;
+        color: #efe0c4;
+      }
+      @media (max-width: 1100px) {
+        .grid { grid-template-columns: repeat(3, minmax(190px, 1fr)); }
+      }
+      @media (max-width: 720px) {
+        .wrap { padding: 18px 14px 34px; }
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        h1 { font-size: 22px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>图书口播模板预览</h1>
+      <p class="intro">这是静态版式预览，用来确认方向；真正接入后会使用你的 AI 场景图、TTS 字幕和书名数据。</p>
+      <section class="grid">
+        <article class="template">
+          <div class="phone showcase">
+            <div class="book-title">《这本书》<br />值得认真看</div>
+            <div class="photo"></div>
+            <div class="cap">真正拉开差距的<br />不是努力，是长期选择</div>
+            <div class="small">基于作者与公开资料整理<br />仅作读书分享</div>
+          </div>
+          <h2 class="name">图书封面橱窗</h2>
+          <p class="note">强卖点、强书名，适合主推带货口播。</p>
+        </article>
+        <article class="template">
+          <div class="phone notes">
+            <div class="book-title">划重点笔记</div>
+            <div class="photo"></div>
+            <div class="tag">重点 01</div>
+            <div class="cap">把复杂问题拆小，先恢复生活秩序。</div>
+            <div class="small">适合知识点密集的读书笔记</div>
+          </div>
+          <h2 class="name">划重点笔记</h2>
+          <p class="note">信息更清楚，适合方法论、健康科普、成长类。</p>
+        </article>
+        <article class="template">
+          <div class="phone quote">
+            <div class="book-title">金句冲击卡</div>
+            <div class="cap">你以为是运气<br />其实是长期选择</div>
+            <div class="accent"></div>
+            <div class="small">适合前三秒强观点开头</div>
+          </div>
+          <h2 class="name">金句冲击卡</h2>
+          <p class="note">开头冲击力强，适合爆款金句和反常识标题。</p>
+        </article>
+        <article class="template">
+          <div class="phone chapters">
+            <div class="bar"><span></span></div>
+            <div class="book-title">第 2 个重点</div>
+            <div class="photo"></div>
+            <div class="cap">看到这里，你就会明白为什么很多人会卡住。</div>
+            <div class="small">进度感能降低长视频跳出</div>
+          </div>
+          <h2 class="name">章节进度条</h2>
+          <p class="note">适合长口播，观众知道当前讲到哪里。</p>
+        </article>
+        <article class="template">
+          <div class="phone desk">
+            <div class="book-title">书桌电影感</div>
+            <div class="photo"></div>
+            <div class="cap">有些改变，不是突然发生的。</div>
+            <div class="small">安静、质感、适合人生认知类</div>
+          </div>
+          <h2 class="name">书桌电影感</h2>
+          <p class="note">不那么营销，适合健康、人生、认知内容。</p>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

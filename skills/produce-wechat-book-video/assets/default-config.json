@@ -1,0 +1,142 @@
+{
+  "referenceAcquisition": {
+    "provider": "TikHub",
+    "apiKeyEnv": "TIKHUB_API_KEY",
+    "baseUrlEnv": "TIKHUB_BASE_URL",
+    "baseUrlDefault": "https://api.tikhub.io",
+    "douyinEndpoint": "/api/v1/douyin/web/fetch_one_video",
+    "maxAttempts": 3,
+    "allowImplicitFallback": false,
+    "videoFilename": "reference-YYYY-MM-DD.mp4",
+    "metadataPath": "video_clips/reference-metadata.json"
+  },
+  "projectRoot": "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/AI视频",
+  "fixedIntro": "固定/女版前3秒固定开头.mp4",
+  "introVariantDefault": "female",
+  "introVariants": {
+    "male": {
+      "label": "男版片头",
+      "path": "固定/男版前3秒固定开头.mp4",
+      "sha256": "151357AE9640CC19BA67B6F057FE2ECE0C022298176044E16FE70DED68D0C3D2",
+      "durationSeconds": 2.97,
+      "requiredVoiceVariant": "male"
+    },
+    "female": {
+      "label": "女版片头",
+      "path": "固定/女版前3秒固定开头.mp4",
+      "sha256": "1E42A0DD7D4C3351B26907E200B6BD9768435BF6697DA68408D7A318CA4F2CE4",
+      "durationSeconds": 2.97,
+      "requiredVoiceVariant": "female"
+    }
+  },
+  "requireVoiceIntroVariantMatch": true,
+  "backgroundMusic": "固定/背景音乐.mp3",
+  "voicePreset": "assets/voice-presets/female-book-narrator-locked-v1.json",
+  "voicePresetDefaultVariant": "female",
+  "voicePresets": {
+    "male": {
+      "label": "男版音色",
+      "projectPreset": "assets/voice-presets/male-podcast-locked-v2.json",
+      "bundledPreset": "assets/male-podcast-locked-v2.json"
+    },
+    "female": {
+      "label": "女版音色",
+      "projectPreset": "assets/voice-presets/female-book-narrator-locked-v1.json",
+      "bundledPreset": "assets/female-book-narrator-locked-v1.json"
+    }
+  },
+  "bundledVoicePreset": "assets/female-book-narrator-locked-v1.json",
+  "bundledVoiceReference": "assets/female-book-narrator-locked-v1-reference.wav",
+  "bundledVoiceGoldenMaster": "assets/female-book-narrator-locked-v1-full.wav",
+  "video": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 60,
+    "videoCodec": "libx264",
+    "pixelFormat": "yuv420p",
+    "audioCodec": "aac",
+    "audioRate": 48000
+  },
+  "cover": {
+    "width": 1080,
+    "height": 1260,
+    "ratio": "6:7",
+    "format": "png",
+    "embedInVideoAfterApproval": false,
+    "embedDurationSeconds": 0.0,
+    "embedPosition": null,
+    "preserveApprovedAudio": true,
+    "audioOffsetSeconds": 0.0,
+    "deliveryMode": "separate_upload_asset_only",
+    "coverGenerationEndsWorkflow": true,
+    "doNotMutateApprovedVideo": true,
+    "requireVerifiedOriginalBookCover": true,
+    "preserveOriginalCoverArtworkAndTypography": true,
+    "confirmationRequiredAfterVideoApproval": true
+  },
+  "music": {
+    "introGain": 0.63,
+    "bodyGain": 0.63,
+    "fadeOutSeconds": 1.0,
+    "duckThreshold": 0.018,
+    "duckRatio": 4.0,
+    "duckAttackMs": 10,
+    "duckReleaseMs": 220
+  },
+  "voiceGeneration": {
+    "engine": "VoxCPM2",
+    "model": "openbmb/VoxCPM2",
+    "referenceMode": "prompt_and_reference",
+    "cfgValue": 2.0,
+    "inferenceTimesteps": 20,
+    "seed": 42,
+    "normalize": false,
+    "denoise": false,
+    "retryBadcase": false,
+    "speechSpeed": 1.0,
+    "timeStretchMethod": "none",
+    "bookNamePauseSeconds": 1.8,
+    "ordinaryPauseSeconds": [0.5, 0.6],
+    "finalPauseSeconds": 0.3
+  },
+  "voiceClarity": {
+    "variant": "female-locked-v1",
+    "preGain": 1.0,
+    "highPassHz": 75,
+    "presenceEqualizer": "equalizer=f=3200:t=q:w=1.1:g=1.5",
+    "compressorThreshold": 0.12,
+    "compressorRatio": 1.4,
+    "compressorAttackMs": 12,
+    "compressorReleaseMs": 140,
+    "compressorMakeup": 1.02,
+    "loudnessTargetLufs": -15.1,
+    "loudnessRangeLu": 8.0,
+    "truePeakTargetDbfs": -1.0,
+    "postGain": 1.45,
+    "limiter": 0.91,
+    "stage1": "highpass=f=75,equalizer=f=3200:t=q:w=1.1:g=1.5,acompressor=threshold=0.12:ratio=1.4:attack=12:release=140:makeup=1.02,loudnorm=I=-15.1:LRA=8:TP=-1.0",
+    "stage2": "volume=1.45,alimiter=limit=0.91:level=false"
+  },
+  "captions": {
+    "bilingual": true,
+    "singleLine": true,
+    "forbiddenChinesePunctuation": "，。",
+    "typography": {
+      "bookTitleSize": 88,
+      "authorSize": 48,
+      "chineseCaptionSize": 58,
+      "englishCaptionSize": 30,
+      "bookTitleColor": "浅橙色",
+      "authorColor": "浅蓝色",
+      "unit": "rendered_canvas_font_size"
+    }
+  },
+  "feishu": {
+    "enabled": true,
+    "binding": "integrations/feishu-book-pipeline.json",
+    "credentialsFile": "F:/Codex/.secrets/feishu.env",
+    "syncAfterEveryStep": true
+  },
+  "bodyStartsWithBookTitle": true,
+  "fixedIntroContainsOpeningSentence": true
+}

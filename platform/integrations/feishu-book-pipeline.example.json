@@ -1,0 +1,74 @@
+{
+  "baseUrl": "https://example.feishu.cn/base/REPLACE_WITH_BASE_TOKEN",
+  "appToken": "REPLACE_WITH_APP_TOKEN",
+  "credentialsFile": "F:/Codex/.secrets/feishu.env",
+  "tables": {
+    "projects": "REPLACE_WITH_PROJECTS_TABLE_ID",
+    "gates": "REPLACE_WITH_GATES_TABLE_ID",
+    "tasks": "REPLACE_WITH_TASKS_TABLE_ID",
+    "distribution": "REPLACE_WITH_DISTRIBUTION_TABLE_ID",
+    "accounts": "REPLACE_WITH_ACCOUNTS_TABLE_ID",
+    "metrics": "REPLACE_WITH_METRICS_TABLE_ID",
+    "reviews": "REPLACE_WITH_REVIEWS_TABLE_ID",
+    "topicPool": "REPLACE_WITH_TOPIC_POOL_TABLE_ID",
+    "topicWords": "REPLACE_WITH_TOPIC_WORDS_TABLE_ID"
+  },
+  "gates": [
+    {
+      "key": "G01",
+      "order": 1,
+      "name": "微信读书热门划线确认",
+      "type": "用户确认",
+      "nextStage": "生成文案"
+    },
+    {
+      "key": "G02",
+      "order": 2,
+      "name": "文案确认",
+      "type": "用户确认",
+      "nextStage": "生成分镜与一张样图"
+    },
+    {
+      "key": "G03",
+      "order": 3,
+      "name": "风格样图确认",
+      "type": "用户确认",
+      "nextStage": "生成余下图片"
+    },
+    {
+      "key": "G04",
+      "order": 4,
+      "name": "全部图片审核",
+      "type": "用户确认",
+      "nextStage": "继续后期制作"
+    },
+    {
+      "key": "G05",
+      "order": 5,
+      "name": "后期制作技术质检",
+      "type": "系统质检",
+      "nextStage": "成片、剪映草稿与视频号封面审核"
+    },
+    {
+      "key": "G06",
+      "order": 6,
+      "name": "成片、剪映草稿与视频号封面审核",
+      "type": "用户确认",
+      "nextStage": "准备发布"
+    },
+    {
+      "key": "G07",
+      "order": 7,
+      "name": "发布确认",
+      "type": "用户确认",
+      "nextStage": "正式发布"
+    },
+    {
+      "key": "G08",
+      "order": 8,
+      "name": "发布结果与归档",
+      "type": "系统记录",
+      "nextStage": "流程结束"
+    }
+  ]
+}

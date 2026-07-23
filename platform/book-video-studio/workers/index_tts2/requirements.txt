@@ -1,0 +1,6 @@
+# index-tts2 worker 运行依赖（HTTP 服务本身）
+# 注意：torch / index-tts2 本体不在这里，按 README 单独装（torch 要选 CUDA 版）
+fastapi
+uvicorn
+pydantic
+huggingface-hub

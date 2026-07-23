@@ -1,0 +1,45 @@
+{
+  "id": "female-book-narrator-locked-v1",
+  "label": "女版音色",
+  "variant": "female",
+  "status": "user_approved_locked_option",
+  "approvedAt": "2026-07-20",
+  "source": "用户提供的 male2.mp3",
+  "engine": "VoxCPM2",
+  "model": "openbmb/VoxCPM2",
+  "referenceMode": "prompt_and_reference",
+  "referenceAudio": "female-book-narrator-locked-v1-reference.wav",
+  "referenceSha256": "FF5ACB46E11BB975B81C9E52A9D07FEFCBBC15636AD7BCFCA3D33015948D4C82",
+  "promptTranscript": "female-book-narrator-locked-v1-transcript.txt",
+  "goldenMaster": "female-book-narrator-locked-v1-full.wav",
+  "goldenMasterSha256": "05CA3BF77AA9DD2A59D7FEDA9439DEE8FC58A346F97A4075BC08FAD65992DAB7",
+  "generation": {
+    "cfgValue": 2.0,
+    "inferenceTimesteps": 20,
+    "seed": 42,
+    "seedPolicy": "fixed_42_for_every_segment",
+    "normalize": false,
+    "denoise": false,
+    "retryBadcase": false
+  },
+  "referenceMetrics": {
+    "pitchMedianHz": 143.71,
+    "pitchIqrSemitones": 2.88,
+    "medianPauseSeconds": 0.38,
+    "activeRmsMedianDb": -14.41,
+    "presenceRatioDb": -14.79,
+    "grossCharactersPerSecond": 4.52
+  },
+  "delivery": {
+    "speechSpeed": 1.0,
+    "timeStretchMethod": "none",
+    "ordinaryPauseSeconds": 0.38,
+    "sectionPauseSeconds": 0.55,
+    "finalPauseSeconds": 0.0,
+    "captionTimingAuthority": "real_generated_segment_timings"
+  },
+  "mastering": {
+    "stage1": "highpass=f=75,equalizer=f=3200:t=q:w=1.1:g=1.5,acompressor=threshold=0.12:ratio=1.4:attack=12:release=140:makeup=1.02,loudnorm=I=-15.1:LRA=8:TP=-1.0",
+    "stage2": "volume=1.45,alimiter=limit=0.91:level=false"
+  }
+}

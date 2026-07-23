@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>动效样板对比</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #111315; color: #f4f5f5; }
+      main { width: min(1480px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
+      header { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+      h1 { margin: 0 0 6px; font-size: 24px; line-height: 1.2; letter-spacing: 0; }
+      header p { margin: 0; color: #aeb4b4; font-size: 14px; line-height: 1.5; }
+      header span { color: #d8c95b; font-size: 13px; white-space: nowrap; }
+      .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+      figure { margin: 0; overflow: hidden; border: 1px solid #34383a; border-radius: 8px; background: #191c1e; }
+      video { display: block; width: 100%; aspect-ratio: 9 / 16; background: #050606; object-fit: cover; }
+      figcaption { min-height: 92px; padding: 14px; border-top: 1px solid #303436; }
+      strong { display: block; margin-bottom: 7px; font-size: 15px; letter-spacing: 0; }
+      small { display: block; color: #aeb4b4; font-size: 12px; line-height: 1.55; }
+      @media (max-width: 980px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 560px) {
+        main { width: min(100% - 20px, 420px); padding-top: 18px; }
+        header { align-items: start; flex-direction: column; }
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>静态场景图动效样板</h1>
+          <p>同一组图片、同一段音频、同一时长，仅比较镜头路径和转场。</p>
+        </div>
+        <span>1080 × 1920 · 12 秒 · 30fps</span>
+      </header>
+      <section class="grid" aria-label="动效样板">
+        <figure>
+          <video controls loop playsinline preload="metadata" poster="./motion-previews/cinematic.jpg" src="./motion-previews/cinematic.mp4"></video>
+          <figcaption><strong>电影感慢推</strong><small>缓慢推进并沿对角线移动，使用柔和交叉淡化。</small></figcaption>
+        </figure>
+        <figure>
+          <video controls loop playsinline preload="metadata" poster="./motion-previews/quick.jpg" src="./motion-previews/quick.mp4"></video>
+          <figcaption><strong>动感快切</strong><small>更明显的推进和横向位移，使用短促擦切。</small></figcaption>
+        </figure>
+        <figure>
+          <video controls loop playsinline preload="metadata" poster="./motion-previews/calm.jpg" src="./motion-previews/calm.mp4"></video>
+          <figcaption><strong>静帧轻放大</strong><small>主体始终居中，仅做克制的呼吸式放大和长溶解。</small></figcaption>
+        </figure>
+        <figure>
+          <video controls loop playsinline preload="metadata" poster="./motion-previews/collage.jpg" src="./motion-previews/collage.mp4"></video>
+          <figcaption><strong>胶片横移</strong><small>横向画框切换，配合低饱和、暗角和轻颗粒。</small></figcaption>
+        </figure>
+      </section>
+    </main>
+  </body>
+</html>

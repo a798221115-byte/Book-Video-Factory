@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频号图书视频生产"
+  short_description: "TikHub抖音拆解、微信读书取证与分阶段视频制作"
+  default_prompt: "Use $produce-wechat-book-video to produce a gated WeChat book video with locked female narration by default, switching to male only when explicitly requested."

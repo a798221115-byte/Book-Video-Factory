@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>book-video-studio composition</title>
+    <style>
+      __FONT_FACE__
+      :root {
+        --book-frame-y: __BOOK_FRAME_Y__px;
+        --book-frame-h: __BOOK_FRAME_H__px;
+        --book-author-y: __BOOK_AUTHOR_Y__px;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        width: 1080px; height: 1920px;
+        overflow: hidden; background: #111319;
+        font-family: "HF CJK", Inter, Arial, sans-serif;
+      }
+      #main-composition { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #111319; }
+
+      /* 背景层：生成图片优先；没有图片时才使用原视频静音 cover */
+      #a-roll,
+      #image-roll,
+      .hf-slide {
+        position: absolute; top: 0; left: 0;
+        width: 1080px; height: 1920px;
+      }
+      #a-roll {
+        object-fit: cover;
+        transform: scale(1.08);
+        transform-origin: 50% 50%;
+      }
+      #image-roll { overflow: hidden; background: #111319; }
+      .hf-slide {
+        opacity: 0;
+        overflow: hidden;
+        transform-origin: 50% 50%;
+        will-change: transform, opacity;
+      }
+      .hf-slide::before {
+        content: "";
+        position: absolute;
+        inset: -44px;
+        background-image: var(--image);
+        background-position: center;
+        background-size: cover;
+        filter: blur(28px) brightness(.6) saturate(.88);
+        transform: scale(1.08);
+      }
+      .hf-slide img {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1080px;
+        height: 1920px;
+        object-fit: cover;
+        transform: translate(-50%, -50%) scale(1.02);
+        transform-origin: 50% 50%;
+      }
+      .style-book .hf-slide img,
+      .style-card .hf-slide img {
+        width: 920px;
+        height: 1120px;
+        object-fit: cover;
+        box-shadow: 0 18px 54px rgba(0,0,0,.34);
+      }
+      .style-book #image-roll { background: #050505; }
+      .style-book .hf-slide::before { display: none; }
+      .style-book .hf-slide img {
+        top: calc(var(--book-frame-y) + var(--book-frame-h) / 2);
+        width: 1080px;
+        height: var(--book-frame-h);
+        box-shadow: none;
+      }
+
+      /* 顶部标题层（常驻整片） */
+      .title-card {
+        position: absolute; top: 96px; left: 50%; transform: translateX(-50%);
+        max-width: 920px; padding: 18px 40px;
+        background: rgba(178, 90, 54, .92); /* 赤陶 accent */
+        color: #fff7ef; border-radius: 18px;
+        font-size: 52px; font-weight: 700; line-height: 1.25;
+        text-align: center; letter-spacing: .5px;
+        box-shadow: 0 8px 28px rgba(0,0,0,.28);
+        max-height: 188px; overflow: hidden;
+        z-index: 30;
+      }
+      .style-clean .title-card { background: rgba(181, 69, 53, .92); color: #fff7ef; }
+      .style-black .title-card { background: rgba(0, 0, 0, .88); color: #fff; border: 2px solid rgba(255,255,255,.18); }
+      .style-card .title-card { background: rgba(18, 31, 42, .9); color: #e2f1f8; }
+      .style-book .title-card {
+        top: 126px; max-width: 980px; max-height: 220px;
+        background: rgba(0, 0, 0, .9); color: #ffe135;
+        border: 3px solid rgba(255,225,53,.8);
+        font-size: 74px; line-height: 1.16;
+      }
+      .style-black #a-roll { filter: brightness(.78) contrast(1.18) saturate(.68); }
+      .style-card #a-roll { filter: brightness(.82) contrast(1.06) saturate(.82); }
+      .style-book #a-roll { filter: contrast(1.08) saturate(1.04); }
+
+      /* 字幕层（底部安全区上方）—— JS 按 cues 注入逐句 .cap，timeline 控显隐 */
+      #cap-layer { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+      .cap {
+        position: absolute; left: 50%; bottom: 360px; transform: translateX(-50%);
+        max-width: 960px; padding: 14px 34px;
+        background: rgba(0, 0, 0, .62); border-radius: 16px;
+        max-height: 180px; overflow: hidden;
+        opacity: 0; /* 初始隐藏，timeline 在时间窗内置 1 */
+      }
+      .cap span {
+        color: #fff; font-size: 56px; font-weight: 700; line-height: 1.3;
+        text-align: center; display: block;
+        text-shadow: 0 2px 8px rgba(0,0,0,.6);
+        white-space: pre-wrap; word-break: break-word;
+      }
+      .kw {
+        color: #ffe135;
+        text-shadow: 0 2px 8px rgba(0,0,0,.72), 0 0 12px rgba(255,225,53,.26);
+      }
+      .style-clean .cap { background: rgba(181, 69, 53, .78); }
+      .style-black .cap { background: rgba(0, 0, 0, .78); border: 1px solid rgba(255,255,255,.16); }
+      .style-card .cap { background: rgba(15, 28, 36, .74); }
+      .style-book .cap {
+        bottom: 560px; max-width: 980px;
+        background: rgba(0, 0, 0, .78);
+      }
+      .statement-card {
+        position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%);
+        width: 940px; padding: 18px 28px;
+        color: #f5f5f5; background: rgba(0, 0, 0, .58);
+        border-radius: 16px; font-size: 34px; font-weight: 600; line-height: 1.38;
+        text-align: center; white-space: pre-wrap; word-break: break-word;
+        text-shadow: 0 2px 8px rgba(0,0,0,.65);
+        max-height: 176px; overflow: hidden;
+        opacity: 0; z-index: 26;
+      }
+      .style-card .statement-card { background: rgba(18, 31, 42, .72); }
+      .style-book .statement-card {
+        bottom: 94px; color: #fff7c4;
+        border: 2px solid rgba(255,225,53,.45);
+        font-size: 31px; max-height: 190px;
+      }
+      .motion-quick:not(.style-book) .title-card { top: 76px; max-width: 960px; }
+      .motion-quick:not(.style-book) .cap { bottom: 300px; max-width: 1000px; }
+      .motion-calm:not(.style-book) .title-card { top: 116px; max-width: 880px; }
+      .motion-calm:not(.style-book) .cap { bottom: 420px; max-width: 900px; background: rgba(0, 0, 0, .56); }
+      .motion-collage:not(.style-book) .title-card { top: 108px; max-width: 860px; }
+      .motion-collage:not(.style-book) .cap { bottom: 330px; max-width: 900px; }
+      .style-book.motion-quick .title-card { top: 100px; }
+      .style-book.motion-quick .cap { bottom: 520px; }
+      .style-book.motion-calm .title-card { top: 150px; }
+      .style-book.motion-calm .cap { bottom: 590px; }
+      .style-book.motion-collage .cap { bottom: 540px; }
+      .hook-card,
+      .cta-card {
+        position: absolute; left: 50%; transform: translateX(-50%);
+        z-index: 38; opacity: 0; pointer-events: none;
+        width: 960px; padding: 28px 38px;
+        text-align: center; white-space: pre-wrap; word-break: break-word;
+        background: rgba(0,0,0,.76);
+        color: #fff; border-radius: 18px;
+        text-shadow: 0 3px 12px rgba(0,0,0,.7);
+        box-shadow: 0 14px 44px rgba(0,0,0,.32);
+      }
+      .hook-card {
+        top: 230px; font-size: 74px; font-weight: 800; line-height: 1.16;
+      }
+      .cta-card {
+        bottom: 230px; font-size: 48px; font-weight: 750; line-height: 1.24;
+      }
+      .style-clean .hook-card { background: rgba(181, 69, 53, .9); color: #fff7ef; }
+      .style-book .hook-card,
+      .style-book .cta-card {
+        color: #ffe135; border: 2px solid rgba(255,225,53,.42);
+      }
+      .style-book .hook-card {
+        top: 300px; width: 920px; font-size: 58px; line-height: 1.18;
+        background: rgba(0,0,0,.46); border-color: rgba(255,225,53,.28);
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="main-composition"
+      data-composition-id="main-video"
+      data-width="1080"
+      data-height="1920"
+      data-start="0"
+      data-duration="__VIDEO_DURATION__"
+      data-style="__STYLE__"
+      data-motion="__MOTION__"
+      data-variant-index="__VARIANT_INDEX__"
+      class="style-__STYLE__ motion-__MOTION__"
+    >
+      <!-- 背景：默认使用生成图片时间轴；无图片时才注入原视频 -->
+      __BACKGROUND_MARKUP__
+
+      <!-- 音频：TTS 真人配音（独立音轨） -->
+      <audio
+        id="tts-audio" class="clip"
+        src="__AUDIO_SRC__"
+        data-start="0" data-duration="__VIDEO_DURATION__" data-track-index="1" data-volume="1"
+      ></audio>
+
+      <!-- 标题层（常驻整片） -->
+      __TITLE_LAYER__
+      __HOOK_LAYER__
+
+      <!-- 声明层（知识卡片/图书卡片风格使用） -->
+      __STATEMENT_LAYER__
+      __CTA_LAYER__
+
+      <!-- 字幕层：JS 注入 -->
+      <div id="cap-layer" aria-hidden="true"></div>
+    </div>
+
+    <script id="cues-data" type="application/json">__CUES_JSON__</script>
+    <script id="background-data" type="application/json">__BACKGROUND_JSON__</script>
+    <script id="highlight-data" type="application/json">__HIGHLIGHT_TERMS__</script>
+    <script>
+      (function () {
+        var DURATION = Number("__VIDEO_DURATION__") || 0;
+        var BACKGROUND_TYPE = "__BACKGROUND_TYPE__";
+        var FADE = 0.12; // 字幕淡入淡出秒数
+        var root = document.getElementById("main-composition");
+        var aRoll = document.getElementById("a-roll");
+        var imageRoll = document.getElementById("image-roll");
+        var titleCard = document.querySelector(".title-card");
+        var statementCard = document.querySelector(".statement-card");
+        var hookCard = document.querySelector(".hook-card");
+        var ctaCard = document.querySelector(".cta-card");
+        var motion = (root && root.getAttribute("data-motion")) || "cinematic";
+        var variantIndex = Number((root && root.getAttribute("data-variant-index")) || "1") || 1;
+        var phase = Math.max(0, (variantIndex - 1) % 3);
+
+        var cues = [];
+        try { cues = JSON.parse(document.getElementById("cues-data").textContent || "[]"); }
+        catch (e) { cues = []; }
+
+        var bgSlides = [];
+        try { bgSlides = JSON.parse(document.getElementById("background-data").textContent || "[]"); }
+        catch (e) { bgSlides = []; }
+
+        var highlightTerms = [];
+        try { highlightTerms = JSON.parse(document.getElementById("highlight-data").textContent || "[]"); }
+        catch (e) { highlightTerms = []; }
+
+        function htmlEscape(value) {
+          return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        function regexEscape(value) {
+          return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }
+
+        function highlightHtml(value) {
+          var text = String(value == null ? "" : value);
+          var terms = (highlightTerms || []).filter(Boolean).sort(function (a, b) { return String(b).length - String(a).length; });
+          var numberPattern = "[零〇一二三四五六七八九十百千万两\\d]+(?:岁|年|个月|件事|个方法|个真相|%|％)?";
+          var patterns = terms.map(regexEscape).concat([numberPattern]);
+          var re = new RegExp("(" + patterns.join("|") + ")", "g");
+          var out = "";
+          var last = 0;
+          text.replace(re, function (match, _m, offset) {
+            out += htmlEscape(text.slice(last, offset));
+            out += '<span class="kw">' + htmlEscape(match) + "</span>";
+            last = offset + match.length;
+            return match;
+          });
+          out += htmlEscape(text.slice(last));
+          return out;
+        }
+
+        var layer = document.getElementById("cap-layer");
+        var els = cues.map(function (c, i) {
+          var d = document.createElement("div");
+          d.className = "cap";
+          d.id = "cap-" + i;
+          var s = document.createElement("span");
+          s.innerHTML = highlightHtml(c.text);
+          d.appendChild(s);
+          layer.appendChild(d);
+          return d;
+        });
+
+        function fitTextBlock(rootEl, textEl, minSize) {
+          if (!rootEl || !textEl) return;
+          var base = parseFloat(window.getComputedStyle(textEl).fontSize) || 48;
+          textEl.style.fontSize = base + "px";
+          var guard = 0;
+          while (
+            guard < 24 &&
+            base > minSize &&
+            (rootEl.scrollHeight > rootEl.clientHeight || rootEl.scrollWidth > rootEl.clientWidth)
+          ) {
+            base -= 2;
+            textEl.style.fontSize = base + "px";
+            guard += 1;
+          }
+        }
+
+        function fitStaticText() {
+          fitTextBlock(titleCard, titleCard, 34);
+          fitTextBlock(statementCard, statementCard, 24);
+          fitTextBlock(hookCard, hookCard, 42);
+          fitTextBlock(ctaCard, ctaCard, 28);
+          els.forEach(function (el) {
+            fitTextBlock(el, el.querySelector("span"), 38);
+          });
+        }
+
+        fitStaticText();
+
+        window.__timelines = window.__timelines || {};
+
+        function createTimeline(duration) {
+          var events = [];
+          var currentTime = 0;
+          var transformProps = { x: true, y: true, scale: true, rotation: true };
+
+          function cleanProps(props) {
+            var out = {};
+            props = props || {};
+            Object.keys(props).forEach(function (key) {
+              if (key !== "duration" && key !== "ease") out[key] = props[key];
+            });
+            return out;
+          }
+
+          function position(at) {
+            var n = Number(at);
+            return Number.isFinite(n) ? Math.max(0, n) : 0;
+          }
+
+          function durationOf(props) {
+            var n = Number((props || {}).duration);
+            return Number.isFinite(n) ? Math.max(0, n) : 0;
+          }
+
+          function ease(p, name) {
+            p = Math.max(0, Math.min(1, p));
+            if (name === "sine.inOut") return 0.5 - Math.cos(Math.PI * p) / 2;
+            if (name === "power1.out") return 1 - Math.pow(1 - p, 2);
+            return p;
+          }
+
+          function toNumber(value, fallback) {
+            var n = Number(value);
+            return Number.isFinite(n) ? n : fallback;
+          }
+
+          function defaultValue(target, prop) {
+            if (prop === "opacity") {
+              var raw = window.getComputedStyle(target).opacity;
+              return toNumber(raw, 1);
+            }
+            if (prop === "scale") return 1;
+            return 0;
+          }
+
+          function interpolate(from, to, p) {
+            var a = Number(from);
+            var b = Number(to);
+            if (Number.isFinite(a) && Number.isFinite(b)) return a + (b - a) * p;
+            return p >= 1 ? to : from;
+          }
+
+          function eventValue(event, prop, at) {
+            var hasFrom = event.from && Object.prototype.hasOwnProperty.call(event.from, prop);
+            var hasTo = event.to && Object.prototype.hasOwnProperty.call(event.to, prop);
+            if (!hasFrom && !hasTo) return undefined;
+            if (at < event.start) return hasFrom ? event.from[prop] : undefined;
+            if (event.duration <= 0) return hasTo ? event.to[prop] : event.from[prop];
+            var end = event.start + event.duration;
+            if (at >= end) return hasTo ? event.to[prop] : event.from[prop];
+            var from = hasFrom ? event.from[prop] : defaultValue(event.target, prop);
+            var to = hasTo ? event.to[prop] : from;
+            return interpolate(from, to, ease((at - event.start) / event.duration, event.ease));
+          }
+
+          function valueAt(target, prop, at) {
+            var value;
+            events.forEach(function (event) {
+              if (event.target !== target) return;
+              var next = eventValue(event, prop, at);
+              if (next !== undefined) value = next;
+            });
+            return value === undefined ? defaultValue(target, prop) : value;
+          }
+
+          function add(target, fromProps, toProps, at) {
+            events.push({
+              target: target,
+              from: fromProps,
+              to: cleanProps(toProps),
+              start: position(at),
+              duration: durationOf(toProps),
+              ease: (toProps || {}).ease || "none",
+            });
+            return api;
+          }
+
+          function applyTransform(target, state) {
+            var hasTransform = Object.keys(state).some(function (key) { return transformProps[key]; });
+            if (!hasTransform) return;
+
+            var x = toNumber(state.x, 0);
+            var y = toNumber(state.y, 0);
+            var scale = toNumber(state.scale, 1);
+            var rotation = toNumber(state.rotation, 0);
+
+            if (target.matches && target.matches(".hf-slide img")) {
+              target.style.transform = "translate(calc(-50% + " + x + "px), calc(-50% + " + y + "px)) scale(" + scale + ")";
+              return;
+            }
+            if (target.classList && (target.classList.contains("title-card") || target.classList.contains("statement-card") || target.classList.contains("cap") || target.classList.contains("hook-card") || target.classList.contains("cta-card"))) {
+              target.style.transform = "translate(-50%, " + y + "px)";
+              return;
+            }
+            target.style.transform = "translate(" + x + "px, " + y + "px) scale(" + scale + ") rotate(" + rotation + "deg)";
+          }
+
+          function applyProps(target, state) {
+            if (Object.prototype.hasOwnProperty.call(state, "opacity")) {
+              target.style.opacity = String(toNumber(state.opacity, 1));
+            }
+            applyTransform(target, state);
+          }
+
+          function apply(at) {
+            currentTime = Math.max(0, Math.min(duration, Number(at) || 0));
+            var states = [];
+            events.forEach(function (event) {
+              var state = states.find(function (item) { return item.target === event.target; });
+              if (!state) {
+                state = { target: event.target, props: {} };
+                states.push(state);
+              }
+              var keys = {};
+              Object.keys(event.from || {}).forEach(function (key) { keys[key] = true; });
+              Object.keys(event.to || {}).forEach(function (key) { keys[key] = true; });
+              Object.keys(keys).forEach(function (key) {
+                var value = eventValue(event, key, currentTime);
+                if (value !== undefined) state.props[key] = value;
+              });
+            });
+            states.forEach(function (state) { applyProps(state.target, state.props); });
+          }
+
+          var api = {
+            set: function (target, props, at) {
+              events.push({ target: target, from: null, to: cleanProps(props), start: position(at), duration: 0, ease: "none" });
+              return api;
+            },
+            fromTo: function (target, fromProps, toProps, at) {
+              return add(target, cleanProps(fromProps), toProps, at);
+            },
+            to: function (target, toProps, at) {
+              var start = position(at);
+              var from = {};
+              Object.keys(cleanProps(toProps)).forEach(function (key) {
+                from[key] = valueAt(target, key, start);
+              });
+              return add(target, from, toProps, start);
+            },
+            seek: function (at) { apply(at); return api; },
+            totalTime: function (at) {
+              if (arguments.length) { apply(at); return api; }
+              return currentTime;
+            },
+            time: function (at) {
+              if (arguments.length) { apply(at); return api; }
+              return currentTime;
+            },
+            duration: function () { return duration; },
+            play: function () { return api; },
+            pause: function () { return api; },
+            getChildren: function () { return []; },
+          };
+          return api;
+        }
+
+        var tl = createTimeline(DURATION);
+
+        if (imageRoll && bgSlides.length && DURATION > 0) {
+          bgSlides.forEach(function (slide, i) {
+            var d = document.createElement("div");
+            d.className = "hf-slide";
+            d.style.setProperty("--image", "url('" + slide.src + "')");
+            d.style.zIndex = String(1 + i);
+            var img = document.createElement("img");
+            img.src = slide.src;
+            d.appendChild(img);
+            imageRoll.appendChild(d);
+
+            var start = Math.max(0, Number(slide.start) || 0);
+            var end = Math.min(DURATION, Math.max(start + .2, Number(slide.end) || DURATION));
+            var localDur = Math.max(.2, end - start);
+            var enter = i === 0 ? 0 : Math.max(0, start - .28);
+            var phaseOffset = phase * 10 + i * 6;
+            var panX = motion === "quick" ? 34 : motion === "calm" ? 8 : motion === "collage" ? 22 : 18;
+            var panY = motion === "quick" ? 20 : motion === "calm" ? 6 : 12;
+
+            tl.set(d, { opacity: i === 0 ? 1 : 0 }, enter);
+            if (i > 0) {
+              tl.fromTo(d, { opacity: 0, y: 46 }, { opacity: 1, y: 0, duration: .28, ease: "power1.out" }, enter);
+            }
+            if (i < bgSlides.length - 1) {
+              tl.to(d, { opacity: 0, duration: .18, ease: "none" }, Math.max(start, end - .18));
+            }
+            tl.fromTo(img,
+              { x: -panX - phaseOffset, y: -panY + phase * 5, scale: 1.025 + phase * .006 },
+              { x: panX + phaseOffset, y: panY - phase * 5, scale: 1.075 + phase * .006, duration: localDur, ease: "sine.inOut" },
+              start
+            );
+          });
+        } else if (aRoll && DURATION > 0) {
+          if (motion === "quick") {
+            tl.fromTo(aRoll, { scale: 1.12, x: -54 - phase * 16, y: -32 + phase * 10 }, { scale: 1.18, x: 54 + phase * 16, y: 32 - phase * 8, duration: DURATION * .5, ease: "sine.inOut" }, 0);
+            tl.to(aRoll, { x: -38 + phase * 18, y: 46 - phase * 12, duration: DURATION * .5, ease: "sine.inOut" }, DURATION * .5);
+          } else if (motion === "calm") {
+            tl.fromTo(aRoll, { scale: 1.04 + phase * .015, x: 0, y: 0 }, { scale: 1.12 + phase * .015, x: phase * 10, y: -phase * 8, duration: DURATION, ease: "none" }, 0);
+          } else if (motion === "collage") {
+            tl.fromTo(aRoll, { scale: 1.1, rotation: -.35 - phase * .12, x: -28 - phase * 10, y: 22 + phase * 8 }, { scale: 1.16, rotation: .35 + phase * .12, x: 32 + phase * 10, y: -24 - phase * 8, duration: DURATION, ease: "sine.inOut" }, 0);
+          } else {
+            tl.fromTo(aRoll, { scale: 1.08 + phase * .01, x: -36 - phase * 14, y: -24 + phase * 8 }, { scale: 1.14 + phase * .01, x: 36 + phase * 14, y: 24 - phase * 8, duration: DURATION, ease: "sine.inOut" }, 0);
+          }
+        }
+        if (titleCard) {
+          tl.fromTo(titleCard, { opacity: 0, y: -22 }, { opacity: 1, y: 0, duration: .32, ease: "power1.out" }, .05);
+        }
+        if (hookCard) {
+          tl.fromTo(hookCard, { opacity: 0, y: 32 }, { opacity: 1, y: 0, duration: .22, ease: "power1.out" }, .08);
+          tl.to(hookCard, { opacity: 0, y: -18, duration: .22, ease: "none" }, Math.min(3.2, Math.max(.4, DURATION * .18)));
+        }
+        if (statementCard) {
+          tl.fromTo(statementCard, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: .28, ease: "power1.out" }, Math.max(.2, DURATION - 2.4));
+        }
+        if (ctaCard && DURATION > 4.5) {
+          tl.fromTo(ctaCard, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: .3, ease: "power1.out" }, Math.max(.2, DURATION - 4.2));
+        }
+
+        cues.forEach(function (c, i) {
+          var el = els[i];
+          var start = Math.max(0, Number(c.start) || 0);
+          var end = Math.min(DURATION || (Number(c.end) || start), Number(c.end) || start);
+          if (!(end > start)) end = start + 0.1;
+          // 淡入淡出，避免硬切；fromTo 在 seek 捕帧下可被精确求值
+          tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: FADE, ease: "none" }, start);
+          tl.to(el, { opacity: 0, duration: FADE, ease: "none" }, Math.max(start + FADE, end - FADE));
+        });
+
+        // 即便没有字幕，也要注册时间轴，否则渲染器会等待 45s 超时
+        window.__timelines["main-video"] = tl;
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.next*/
+data/
+.env
+.env.local
+*.log
+.DS_Store
+workers/index_tts2/checkpoints/
+# 本地 ASR 模型权重（1.5GB+，从 hf-mirror 下载，README 说明，不入库）
+models/
+*.bin
+tsconfig.tsbuildinfo
+next-env.d.ts

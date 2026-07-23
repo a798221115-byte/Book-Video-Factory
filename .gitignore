@@ -1,0 +1,40 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and build output
+node_modules/
+.next/
+.next*/
+dist/
+build/
+coverage/
+tsconfig.tsbuildinfo
+next-env.d.ts
+
+# Runtime state and generated media
+data/
+work/
+final/
+outputs/
+*.db
+*.db-shm
+*.db-wal
+*.log
+*.tmp
+__pycache__/
+*.pyc
+
+# Local models and bundled runtime binaries
+models/
+checkpoints/
+*.bin
+*.exe
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.lnk

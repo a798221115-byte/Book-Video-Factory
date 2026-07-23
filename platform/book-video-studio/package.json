@@ -1,0 +1,37 @@
+{
+  "name": "book-video-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:lan": "next dev -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start",
+    "start:lan": "next start -H 0.0.0.0",
+    "db:push": "drizzle-kit push",
+    "verify:tts-speed": "node scripts/verify-tts-speed.mjs",
+    "accept:tts-speed": "node scripts/accept-real-tts-speed.mjs",
+    "verify:image-briefs": "node scripts/verify-image-briefs.mjs",
+    "accept:toast-failures": "node scripts/accept-toast-failures.mjs",
+    "verify:render-variants": "node scripts/verify-render-variants.mjs",
+    "preview:motions": "node scripts/make-motion-effect-previews.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "drizzle-orm": "^0.38.3",
+    "hyperframes": "^0.7.15",
+    "nanoid": "^5.0.9",
+    "next": "^15.1.8",
+    "opencc-js": "^1.4.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.2",
+    "drizzle-kit": "^0.30.1",
+    "typescript": "^5.7.2"
+  }
+}

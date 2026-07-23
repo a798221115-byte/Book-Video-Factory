@@ -26,9 +26,9 @@ export const DEPS: Record<string, string[]> = {
 export const STAGES = [
   { id: "transcribe", label: "逐字稿修复", hint: "把原始转写修复成可读正文" },
   { id: "rewrite", label: "钩子与候选稿", hint: "提炼卖点并改成口播稿" },
+  { id: "book", label: "书籍与标题", hint: "确认书籍信息，再依次确认长标题和短标题" },
   { id: "tts", label: "音频生成", hint: "生成分段配音" },
   { id: "images", label: "AI 场景图", hint: "为文案生成分镜画面" },
-  { id: "book", label: "书籍信息", hint: "确认书名、作者和证据" },
   { id: "style", label: "成片风格与数量", hint: "选择背景、字幕和产出数量" },
   { id: "render", label: "成片输出", hint: "合成 final.mp4" },
   { id: "review", label: "日志 / 人工确认", hint: "检查异常并人工放行" },
@@ -79,7 +79,8 @@ export function summarizeStepError(error: unknown, maxLength = 180) {
 
 export function nextHint(id: string) {
   if (id === "transcribe") return "撰写钩子与候选稿";
-  if (id === "rewrite") return "生成音频与 AI 场景图";
+  if (id === "rewrite") return "确认书籍信息、长标题和短标题";
+  if (id === "book") return "生成音频与一张风格样图";
   if (id === "tts") return "对齐字幕，AI 场景图可同步生成";
   if (id === "images") return "对齐字幕并确认成片风格";
   if (id === "render") return "下载 final.mp4";

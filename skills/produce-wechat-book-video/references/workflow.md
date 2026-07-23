@@ -105,9 +105,24 @@ Use source wording sparingly. Never fabricate, silently paraphrase, or misattrib
 
 Save the draft as `script.txt`, sync `G02=待确认`, set the project to waiting for copy approval, and stop. Do not create a storyboard or image before explicit approval.
 
-## 5. Gate G03: storyboard and exactly one style sample
+## 4.1 Title sub-gates: long title, then short title
 
 Start only after explicit G02 approval.
+
+1. Read the original Douyin title from TikHub metadata.
+2. Use `dbs-xhs-title` as a formula matcher. Select 5–8 formulas across at least three psychological trigger categories.
+3. Generate exactly 10 WeChat Channels long titles. Imitate the source title's approximate length (normally within about ±20%), oral rhythm, emotional strength, and punctuation pattern, but do not copy its distinctive wording, examples, or sentence sequence.
+4. For every candidate, record the formula ID, trigger category, formula template, original proven example, and one-sentence recommendation reason.
+5. Save the candidates and source-title evidence to `titles.json`, present all 10, and stop for one explicit selection.
+6. Only after the long-title selection, generate exactly 10 short titles from the selected long title. Prefer 4–12 Chinese characters and cap at 16.
+7. Save the short candidates to `titles.json`, present all 10, and stop for one explicit selection.
+8. If long candidates are regenerated or the selected long title changes, clear short candidates and short-title approval.
+
+The workbench UI and the server-side image executor must both reject image generation until one long title and one short title are confirmed.
+
+## 5. Gate G03: storyboard and exactly one style sample
+
+Start only after explicit G02 approval and completion of both title sub-gates.
 
 Split the approved copy by semantic change. Target roughly 8–12 visual beats for one minute. Record:
 

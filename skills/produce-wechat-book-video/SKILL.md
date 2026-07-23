@@ -40,10 +40,12 @@ Enforce this exact sequence:
 4. `weread-skills` verifies the exact edition and fetches whole-book popular highlights.
 5. Present the transcript, diagnosis, and WeRead evidence as one source package; wait for explicit G01 approval.
 6. Fuse the approved abstract framework with approved WeRead evidence and original reflection to create derivative copy; wait for explicit G02 approval.
-7. Create exactly one representative 9:16 style sample; wait for explicit G03 approval.
-8. Generate the remaining images; inspect them and wait for explicit G04 approval.
-9. After all images are approved, create the default locked female narration, captions, review MP4, Jianying draft, validation report, and separate cover. Switch to the locked male variant only on an explicit user request.
-10. Wait for explicit combined G06 approval of the MP4, draft, and cover; then stop the default workflow.
+7. After G02 approval, use the TikHub Douyin title and `dbs-xhs-title` to generate exactly 10 traceable long-title candidates; wait for the user to select one.
+8. Only after a long title is selected, generate exactly 10 short-title candidates from that selected long title; wait for the user to select one.
+9. Only after both titles are confirmed, create exactly one representative 9:16 style sample; wait for explicit G03 approval.
+10. Generate the remaining images; inspect them and wait for explicit G04 approval.
+11. After all images are approved, create the default locked female narration, captions, review MP4, Jianying draft, validation report, and separate cover. Switch to the locked male variant only on an explicit user request.
+12. Wait for explicit combined G06 approval of the MP4, draft, and cover; then stop the default workflow.
 
 Never infer approval from a supplied title or link, Agent self-review, local files, downstream artifacts, or Feishu status.
 
@@ -113,6 +115,14 @@ Copy reusable media from `assets/`; never move originals.
 ## Image gates
 
 - Do not create a storyboard or any image before G02 copy approval.
+- After G02, block image generation until title selection is complete:
+  - match 5–8 `dbs-xhs-title` formulas spanning at least three trigger categories;
+  - generate exactly 10 long titles that imitate the Douyin source title's length, oral rhythm, emotional strength, and punctuation without copying distinctive wording;
+  - preserve formula ID, trigger, template, original proven example, and recommendation reason for every long-title candidate;
+  - stop for one explicit long-title selection;
+  - generate exactly 10 short titles from the selected long title only, normally 4–12 Chinese characters and never more than 16;
+  - stop for one explicit short-title selection;
+  - regenerating or changing the long title invalidates all short-title candidates and approval.
 - Generate exactly one style sample at G03.
 - Generate remaining images only after explicit style approval.
 - Keep generated backgrounds free of text; add title, author, column, and captions deterministically.

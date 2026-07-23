@@ -49,7 +49,7 @@ function formatRegeneratedAt(value: unknown) {
   return new Date(timestamp).toLocaleTimeString();
 }
 
-export default function ImageGenerationWorkspace({ images, imageStep, segmentCount = 0, videoCover, target, setTarget, mode, setMode, style, setStyle, quality, setQuality, busy, regeneratingImageId, canRun, act, saveTaskConfig, regenerateImage }: any) {
+export default function ImageGenerationWorkspace({ images, imageStep, segmentCount = 0, videoCover, target, setTarget, mode, setMode, style, setStyle, quality, setQuality, busy, regeneratingImageId, canRun, blockedReason = "", act, saveTaskConfig, regenerateImage }: any) {
   const [previewImage, setPreviewImage] = useState<any>(null);
   const [health, setHealth] = useState<any>(null);
   const [healthLoading, setHealthLoading] = useState(false);
@@ -109,7 +109,7 @@ export default function ImageGenerationWorkspace({ images, imageStep, segmentCou
   const disabledReason = isRunning
     ? "图片正在生成中"
     : !canRun
-      ? "需要先完成音频生成"
+      ? blockedReason || "需要先完成上游步骤"
       : busy
         ? "后台请求处理中"
         : "";

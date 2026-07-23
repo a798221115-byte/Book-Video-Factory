@@ -2161,6 +2161,200 @@ textarea.dashboard-input {
   min-height: 50px;
 }
 
+.title-stage-badge {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid #e6cda8;
+  border-radius: 999px;
+  background: #fff7e9;
+  color: #8b5d1f;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.title-stage-badge.complete {
+  border-color: #b8ddd0;
+  background: #eaf8f3;
+  color: #276a55;
+}
+
+.title-source-box,
+.selected-title-summary {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 13px 14px;
+  border: 1px solid #dcebe8;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .75);
+}
+
+.title-source-box span,
+.selected-title-summary span {
+  color: #7f766d;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.title-source-box strong,
+.selected-title-summary strong {
+  color: #2f2b26;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.title-source-box em {
+  color: #958b80;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.title-choice-stage {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid #dcebe8;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .58);
+}
+
+.title-choice-stage.locked {
+  background: rgba(244, 244, 241, .72);
+}
+
+.title-stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 13px;
+}
+
+.title-stage-head span {
+  color: #20826a;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+
+.title-stage-head h4 {
+  margin: 3px 0 0;
+  color: #3a342e;
+  font-size: 15px;
+}
+
+.title-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.title-candidate-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e7ddd0;
+  border-radius: 12px;
+  background: #fffdfa;
+}
+
+.title-candidate-card.selected {
+  border-color: #49a78e;
+  box-shadow: 0 0 0 2px rgba(73, 167, 142, .12);
+}
+
+.title-candidate-main {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2f2b26;
+  text-align: left;
+  cursor: pointer;
+}
+
+.title-candidate-main span,
+.short-title-choice span {
+  color: #a6937c;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.title-candidate-main strong {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.title-formula-meta {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  background: #f4f8f6;
+  color: #6f6860;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.title-formula-meta b {
+  color: #28755f;
+}
+
+.title-formula-meta p {
+  margin: 2px 0 0;
+}
+
+.title-empty-state {
+  padding: 18px;
+  border: 1px dashed #d9cec0;
+  border-radius: 10px;
+  color: #81776c;
+  font-size: 13px;
+  text-align: center;
+}
+
+.short-title-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.short-title-choice {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 10px 12px;
+  border: 1px solid #e7ddd0;
+  border-radius: 10px;
+  background: #fffdfa;
+  color: #302b26;
+  text-align: left;
+  cursor: pointer;
+}
+
+.short-title-choice.selected {
+  border-color: #49a78e;
+  background: #edf8f4;
+}
+
+.short-title-choice em {
+  color: #27806a;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.title-provider-line {
+  margin: 11px 2px 0;
+  color: #877d72;
+  font-size: 11px;
+}
+
 .hashtag-panel {
   margin-top: 16px;
   padding-top: 14px;
@@ -3606,6 +3800,8 @@ textarea.dashboard-input {
     grid-template-columns: 1fr;
   }
   .title-columns,
+  .title-candidate-grid,
+  .short-title-grid,
   .book-form-card,
   .image-control-grid,
   .image-health-grid,
@@ -3683,6 +3879,7 @@ textarea.dashboard-input {
     font-size: 26px;
   }
   .title-panel-head,
+  .title-stage-head,
   .hashtag-panel-head,
   .image-head,
   .video-cover-head,

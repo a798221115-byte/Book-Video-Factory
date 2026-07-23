@@ -143,3 +143,14 @@ Run an overlap audit before G02:
 - verify every direct quotation against `script_sources.md`.
 
 Save the result as `script.txt`, sync G02 to waiting for confirmation, and stop. Do not create a storyboard or image before explicit approval.
+
+After G02 approval, run the title sub-gates before any storyboard or image work:
+
+- read the TikHub Douyin title;
+- use `dbs-xhs-title` to match 5–8 formulas across at least three trigger categories;
+- generate and present exactly 10 traceable long-title candidates;
+- stop until the user selects one long title;
+- generate exactly 10 short-title candidates only from that selected long title;
+- stop until the user selects one short title;
+- persist the full audit trail in `titles.json`;
+- invalidate short-title state whenever the long title is regenerated or changed.

@@ -9,6 +9,7 @@ import {
   taskDir,
   updateTask,
 } from "./pipeline/repo";
+import { assertTitleWorkflowComplete } from "./titleWorkflow";
 
 const FALLBACK_REMAINING_IMAGE_JOBS = [
   {
@@ -109,6 +110,7 @@ function loadStoryboardImageJobs(taskId: string): StoryboardImageJob[] {
 }
 
 export function startRemainingImageQueue(taskId: string) {
+  assertTitleWorkflowComplete(taskId);
   const artifacts = getArtifacts(taskId);
   const existing = artifacts.find(
     (item) => item.stepName === "storyboard" && item.kind === "remaining_image_manifest",

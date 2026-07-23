@@ -507,7 +507,17 @@ export default function TaskView({ taskId }: { taskId: string }) {
   const { task, steps, artifacts } = data;
   const stepMap = new Map<string, any>(steps.map((s: any) => [s.name, s]));
   const artifactsByStep = (name: string) => artifacts.filter((a: any) => a.stepName === name);
-  const isReady = (name: string) => (DEPS[name] || []).every((d) => stepMap.get(d)?.status === "done");
+  const bookArt = artifacts.find((a: any) => a.stepName === "rewrite" && a.kind === "json");
+  const book = parseJson(bookArt?.meta);
+  const titleWorkflowComplete = (
+    book.title_stage === "complete" &&
+    Boolean(String(book.selected_long_title || "").trim()) &&
+    Boolean(String(book.selected_short_title || "").trim())
+  );
+  const isReady = (name: string) => (
+    (DEPS[name] || []).every((d) => stepMap.get(d)?.status === "done") &&
+    (name !== "images" || titleWorkflowComplete)
+  );
   const extractMeta = parseJson(artifacts.find((a: any) => a.stepName === "extract" && a.kind === "json")?.meta);
   const title = task.title || extractMeta.title || task.sourceUrl;
   const author = task.author || extractMeta.author || "-";
@@ -518,6 +528,10 @@ export default function TaskView({ taskId }: { taskId: string }) {
   const renderError = renderStep?.status === "failed" ? summarizeStepError(renderStep.error) : "";
   const getStageStatus = (stageId: string) => {
     if (stageId === "review") return "pending";
+    if (stageId === "book") {
+      if (stepMap.get("rewrite")?.status !== "done") return "pending";
+      return titleWorkflowComplete ? "done" : "running";
+    }
     if (stageId === "style") {
       if (["running", "done", "failed"].includes(renderStep?.status || "")) return "done";
       return isReady("render") ? "running" : "pending";
@@ -560,8 +574,6 @@ export default function TaskView({ taskId }: { taskId: string }) {
   const rewriteSegmentsArt = artifacts.find((a: any) => a.stepName === "rewrite" && a.kind === "segments");
   const rewriteSegmentsMeta = parseJson(rewriteSegmentsArt?.meta);
   const rewriteSegmentCount = Array.isArray(rewriteSegmentsMeta.segments) ? rewriteSegmentsMeta.segments.length : 0;
-  const bookArt = artifacts.find((a: any) => a.stepName === "rewrite" && a.kind === "json");
-  const book = parseJson(bookArt?.meta);
   const sourceCoverUrl = book.cover_url || extractMeta.coverUrl || extractMeta.cover_url || "";
   const generatedCovers = generatedCoverCandidates(task.bookTitle || book.book_title || bookDraft.bookTitle);
   const ttsArt = artifacts.find((a: any) => a.stepName === "tts" && a.kind === "audio");
@@ -706,6 +718,7 @@ export default function TaskView({ taskId }: { taskId: string }) {
           saveTaskConfig={saveTaskConfig}
           sourceCoverUrl={sourceCoverUrl}
           generatedCovers={generatedCovers}
+          reload={load}
         />
 
         <VideoCoverWorkspace
@@ -735,6 +748,7 @@ export default function TaskView({ taskId }: { taskId: string }) {
           busy={busy}
           regeneratingImageId={regeneratingImageId}
           canRun={isReady("images")}
+          blockedReason={!titleWorkflowComplete ? "请先确认 1 个长标题和 1 个短标题" : ""}
           act={act}
           saveTaskConfig={saveTaskConfig}
           regenerateImage={regenerateImage}

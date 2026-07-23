@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import TitleSelectionPanel from "../task-view/TitleSelectionPanel";
 
 type Step = {
   name: string;
@@ -179,6 +180,15 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   );
   const flowAuditArtifact = artifacts.find(
     (item) => item.stepName === "rewrite" && item.kind === "dbs_flow_audit",
+  );
+  const bookMetaArtifact = artifacts.find(
+    (item) => item.stepName === "rewrite" && item.kind === "json",
+  );
+  const bookMeta = parseJson(bookMetaArtifact?.meta);
+  const titleWorkflowComplete = (
+    bookMeta.title_stage === "complete" &&
+    Boolean(String(bookMeta.selected_long_title || "").trim()) &&
+    Boolean(String(bookMeta.selected_short_title || "").trim())
   );
   const styleSampleArtifact = artifacts.find(
     (item) => item.stepName === "storyboard" && item.kind === "style_sample",
@@ -424,7 +434,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "文案确认失败");
-      setMessage("文案已确认并写入 script.txt。下一步只允许生成一张风格样图。");
+      setMessage("文案已确认并写入 script.txt。下一步先选择长标题，再选择短标题。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -845,9 +855,9 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   disabled={busy || !waitingForScript || !candidateScript.trim()}
                   onClick={confirmScript}
                 >
-                  确认文案并进入风格样图
+                  确认文案并进入标题选择
                 </button>
-                <small>确认后才写入正式 script.txt；下一步仍只能先生成一张 9:16 风格样图。</small>
+                <small>确认后才写入正式 script.txt；下一步必须先确认 1 个长标题和 1 个短标题。</small>
               </article>
 
               <article className="intake-dbs-output">
@@ -863,13 +873,26 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           {readyForStyleSample ? (
             <div className="intake-next-gate">
               <strong>文案已确认</strong>
-              <span>当前停在 G03 风格样图门：只能生成一张代表性样图，等待你再次确认。</span>
+              <span>{titleWorkflowComplete ? "长短标题已确认，当前停在 G03 风格样图门。" : "当前停在标题选择门：先确认长标题，再确认短标题。"}</span>
             </div>
           ) : null}
         </section>
       ) : null}
 
-      {(readyForStyleSample || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || readyForPostProduction) ? (
+      {readyForStyleSample ? (
+        <section className="intake-title-selection-workspace">
+          <div className="intake-section-heading">
+            <div>
+              <span className="intake-kicker">G02.1 / G02.2 标题确认门</span>
+              <h2>先选长标题，再选短标题</h2>
+            </div>
+            <span className="intake-dbs-version">dbs-xhs-title</span>
+          </div>
+          <TitleSelectionPanel task={data.task} book={bookMeta} busy={busy} reload={load} />
+        </section>
+      ) : null}
+
+      {((readyForStyleSample && titleWorkflowComplete) || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || readyForPostProduction) ? (
         <section className="intake-style-sample-workspace">
           <div className="intake-section-heading">
             <div>
@@ -979,6 +1002,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           )}
         </section>
       ) : null}
+
     </main>
   );
 }

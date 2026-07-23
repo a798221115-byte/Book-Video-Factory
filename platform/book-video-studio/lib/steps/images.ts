@@ -10,6 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { buildFallbackImageBriefs, expandImageBriefs, selectQualityImageBriefs } from "./imageBriefs";
 import { parseSegmentArtifactMeta } from "./scriptSegments";
+import { assertTitleWorkflowComplete } from "../titleWorkflow";
 
 const execFileP = promisify(execFile);
 const CROP_PY = path.resolve(process.cwd(), "workers/image_grid/crop_grid.py");
@@ -210,6 +211,7 @@ function readImageConfig(arts: ReturnType<typeof getArtifacts>) {
 export async function runImages(taskId: string) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
+  assertTitleWorkflowComplete(taskId);
   const initialArts = getArtifacts(taskId);
   const imageConfig = readImageConfig(initialArts);
   const resumeEnabled = imageConfig.resume !== false;

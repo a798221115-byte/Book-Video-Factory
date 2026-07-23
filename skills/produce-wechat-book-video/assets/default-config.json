@@ -30,6 +30,20 @@
     }
   },
   "requireVoiceIntroVariantMatch": true,
+  "titleSelection": {
+    "source": "TikHub Douyin title",
+    "formulaSkill": "dbs-xhs-title",
+    "formulaMatchCount": [5, 8],
+    "minimumTriggerCategories": 3,
+    "longCandidateCount": 10,
+    "targetSourceLengthRatio": [0.8, 1.2],
+    "requireLongSelectionBeforeShortGeneration": true,
+    "shortCandidateCount": 10,
+    "shortPreferredChineseCharacters": [4, 12],
+    "shortMaximumCharacters": 16,
+    "requireBothSelectionsBeforeImages": true,
+    "artifact": "titles.json"
+  },
   "backgroundMusic": "固定/背景音乐.mp3",
   "voicePreset": "assets/voice-presets/female-book-narrator-locked-v1.json",
   "voicePresetDefaultVariant": "female",

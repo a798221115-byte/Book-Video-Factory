@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { copyTextToClipboard } from "./clipboard";
+import TitleSelectionPanel from "./TitleSelectionPanel";
 
 const COVER_STYLE_OPTIONS = [
   { id: "celestial", label: "灵性星光" },
@@ -10,56 +10,12 @@ const COVER_STYLE_OPTIONS = [
   { id: "abstract", label: "抽象几何" },
 ];
 
-export default function BookIdentityWorkspace({ task, book, draft, setDraft, scriptText, titleSeed, setTitleSeed, busy, canIdentify, act, saveBookInfo, rewriteConfig, saveTaskConfig, sourceCoverUrl = "", generatedCovers = [] }: any) {
-  const fallbackVideoTitles = useMemo(
-    () => buildVideoTitles(draft.bookTitle || book.book_title || task.title || "这本书", scriptText, titleSeed),
-    [book.book_title, draft.bookTitle, scriptText, task.title, titleSeed],
-  );
-  const fallbackShortTitles = useMemo(
-    () => buildShortTitles(draft.bookTitle || book.book_title || task.title || "好书", scriptText, titleSeed),
-    [book.book_title, draft.bookTitle, scriptText, task.title, titleSeed],
-  );
-  const fallbackHashtags = useMemo(
-    () => buildHashtags(draft.bookTitle || book.book_title || task.title || "这本书", scriptText, titleSeed),
-    [book.book_title, draft.bookTitle, scriptText, task.title, titleSeed],
-  );
-  const savedVideoTitleValues = Array.isArray(book.video_titles) ? book.video_titles.filter(Boolean) : [];
-  const savedVideoTitles = uniqueTitles(savedVideoTitleValues.map(stripHashtags));
-  const savedShortTitles = Array.isArray(book.short_titles) ? book.short_titles.filter(Boolean) : [];
-  const savedHashtags = uniqueHashtags([
-    ...(Array.isArray(book.hashtags) ? book.hashtags : []),
-    ...extractHashtags(savedVideoTitleValues),
-  ]);
-  const savedTitlesKey = `${savedVideoTitleValues.join("\n")}::${savedShortTitles.join("\n")}::${savedHashtags.join(" ")}`;
-  const savedTitleProvider = String(book.title_provider || "").trim();
-  const savedTitleGeneratedAt = Number(book.title_generated_at || 0);
-  const [titleState, setTitleState] = useState({
-    videoTitles: savedVideoTitles.length ? savedVideoTitles : fallbackVideoTitles,
-    shortTitles: savedShortTitles.length ? savedShortTitles : fallbackShortTitles,
-    hashtags: savedHashtags.length ? savedHashtags : fallbackHashtags,
-    provider: savedTitleProvider || (savedVideoTitles.length || savedShortTitles.length || savedHashtags.length ? "saved" : "local"),
-    generatedAt: savedTitleGeneratedAt || Number(book.saved_at || 0) || Date.now(),
-    warning: "",
-  });
-  const [generatingTitles, setGeneratingTitles] = useState(false);
+export default function BookIdentityWorkspace({ task, book, draft, setDraft, busy, canIdentify, act, saveBookInfo, rewriteConfig, saveTaskConfig, sourceCoverUrl = "", generatedCovers = [], reload }: any) {
   const [coverStyle, setCoverStyle] = useState("celestial");
   const [generatingCover, setGeneratingCover] = useState(false);
   const [coverError, setCoverError] = useState("");
   const [localGeneratedCovers, setLocalGeneratedCovers] = useState<any[]>([]);
   const [previewCover, setPreviewCover] = useState<any>(null);
-  const [autoTitleTaskId, setAutoTitleTaskId] = useState("");
-  const [autoTitleAttempted, setAutoTitleAttempted] = useState(false);
-
-  useEffect(() => {
-    setTitleState({
-      videoTitles: savedVideoTitles.length ? savedVideoTitles : fallbackVideoTitles,
-      shortTitles: savedShortTitles.length ? savedShortTitles : fallbackShortTitles,
-      hashtags: savedHashtags.length ? savedHashtags : fallbackHashtags,
-      provider: savedTitleProvider || (savedVideoTitles.length || savedShortTitles.length || savedHashtags.length ? "saved" : "local"),
-      generatedAt: savedTitleGeneratedAt || Number(book.saved_at || 0) || Date.now(),
-      warning: "",
-    });
-  }, [book.saved_at, fallbackHashtags, fallbackShortTitles, fallbackVideoTitles, savedTitleGeneratedAt, savedTitleProvider, savedTitlesKey]);
 
   useEffect(() => {
     if (!previewCover) return;
@@ -77,47 +33,6 @@ export default function BookIdentityWorkspace({ task, book, draft, setDraft, scr
     () => mergeCoverCandidates(localGeneratedCovers, book.cover_candidates, generatedCovers),
     [book.cover_candidates, generatedCovers, localGeneratedCovers],
   );
-  const copy = (text: string) => { copyTextToClipboard(text); };
-  const copyAllHashtags = () => { copy(titleState.hashtags.join(" ")); };
-  const hasSavedAiTitles = Boolean(savedTitleProvider || savedTitleGeneratedAt);
-  const generateTitles = async () => {
-    if (generatingTitles) return;
-    setGeneratingTitles(true);
-    try {
-      const resp = await fetch(`/api/tasks/${task.id}/titles`, { method: "POST" });
-      const payload = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(String(payload?.error || `${resp.status} ${resp.statusText}`));
-      setTitleState({
-        videoTitles: Array.isArray(payload.videoTitles) && payload.videoTitles.length ? uniqueTitles(payload.videoTitles.map(stripHashtags)) : fallbackVideoTitles,
-        shortTitles: Array.isArray(payload.shortTitles) && payload.shortTitles.length ? payload.shortTitles : fallbackShortTitles,
-        hashtags: Array.isArray(payload.hashtags) && payload.hashtags.length ? uniqueHashtags(payload.hashtags) : fallbackHashtags,
-        provider: payload.ai === false ? "local" : payload.provider || "ai",
-        generatedAt: Number(payload.generatedAt || Date.now()),
-        warning: payload.ai === false
-          ? `AI 标题通道失败，当前为本地兜底：${String(payload.warning || "").trim()}`
-          : String(payload.warning || ""),
-      });
-    } catch (e: any) {
-      setTitleSeed((n: number) => n + 1);
-      setTitleState({
-        videoTitles: fallbackVideoTitles,
-        shortTitles: fallbackShortTitles,
-        hashtags: fallbackHashtags,
-        provider: "local",
-        generatedAt: Date.now(),
-        warning: String(e?.message || e),
-      });
-    } finally {
-      setGeneratingTitles(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!task?.id || autoTitleTaskId === task.id || hasSavedAiTitles) return;
-    setAutoTitleAttempted(true);
-    setAutoTitleTaskId(task.id);
-    generateTitles();
-  }, [autoTitleTaskId, hasSavedAiTitles, task?.id]);
   const identifyBook = async () => {
     const notes = typeof rewriteConfig?.notes === "string" ? rewriteConfig.notes : "";
     if (!(await saveTaskConfig("rewrite", { notes, rewriteNotes: notes }, "保存改写要求"))) return;
@@ -154,10 +69,10 @@ export default function BookIdentityWorkspace({ task, book, draft, setDraft, scr
   return (
     <section className="book-workspace">
       <div className="stage-banner">
-        <span>STEP 05</span>
-        <h2>书籍信息</h2>
-        <p>确认书名、作者、封面图，用于成片片尾水印与视频号标题。</p>
-        <strong>完成后 · 选择成片风格</strong>
+        <span>STEP 03</span>
+        <h2>书籍与标题</h2>
+        <p>确认书名、作者、封面图，再依次确认视频号长标题和短标题。</p>
+        <strong>完成后 · 生成配音与风格样图</strong>
       </div>
 
       <div className="section-head book-head">
@@ -174,9 +89,6 @@ export default function BookIdentityWorkspace({ task, book, draft, setDraft, scr
               bookTitle: draft.bookTitle,
               bookAuthor: draft.bookAuthor,
               coverUrl: draft.coverUrl,
-              videoTitles: titleState.videoTitles,
-              shortTitles: titleState.shortTitles,
-              hashtags: titleState.hashtags,
             })}
           >
             保存书籍信息
@@ -335,54 +247,7 @@ export default function BookIdentityWorkspace({ task, book, draft, setDraft, scr
         </div>
       </div>
 
-      <div className="title-card-panel">
-        <div className="title-panel-head">
-          <div>
-            <h3>视频号标题</h3>
-            <p>
-              最近生成：{new Date(titleState.generatedAt).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}。
-              {generatingTitles ? "AI 标题生成中。" : titleState.provider === "local" ? (autoTitleAttempted ? "AI 未成功返回，当前为本地兜底标题。" : "当前为本地兜底标题。") : `来源：${titleState.provider}。`}
-              已按推荐度降序排列，点击任意卡片即可复制。
-            </p>
-            {titleState.warning && <p>AI 标题生成失败，已使用兜底：{titleState.warning}</p>}
-          </div>
-          <button className="btn btn-ghost" disabled={busy || generatingTitles} onClick={generateTitles}>
-            {generatingTitles ? "AI 生成中..." : hasSavedAiTitles || titleState.provider !== "local" ? "重新生成视频号标题" : "AI 生成视频号标题"}
-          </button>
-        </div>
-        <div className="title-columns">
-          <div>
-            <h4>长标题 · 不含话题</h4>
-            <div className="title-list">
-              {titleState.videoTitles.map((t: string, i: number) => (
-                <button key={i} onClick={() => copy(t)}>{t}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h4>短标题 · 封面文案</h4>
-            <div className="title-list compact">
-              {titleState.shortTitles.map((t: string, i: number) => (
-                <button key={i} onClick={() => copy(t)}>{t}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="hashtag-panel">
-          <div className="hashtag-panel-head">
-            <h4>话题标签 · 单独复制</h4>
-            <button className="btn btn-ghost" onClick={copyAllHashtags}>复制全部话题</button>
-          </div>
-          <button className="hashtag-copy-box" onClick={copyAllHashtags}>
-            {titleState.hashtags.join(" ")}
-          </button>
-          <div className="hashtag-list">
-            {titleState.hashtags.map((tag: string, i: number) => (
-              <button key={`${tag}-${i}`} onClick={() => copy(tag)}>{tag}</button>
-            ))}
-          </div>
-        </div>
-      </div>
+      <TitleSelectionPanel task={task} book={book} busy={busy} reload={reload} />
     </section>
   );
 }

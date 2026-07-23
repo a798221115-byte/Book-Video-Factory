@@ -12,6 +12,7 @@ import {
   updateTask,
 } from "@/lib/pipeline/repo";
 import { startRemainingImageQueue } from "@/lib/storyboardGeneration";
+import { assertTitleWorkflowComplete } from "@/lib/titleWorkflow";
 
 function fileSha256(filePath: string) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
@@ -25,6 +26,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const action = String(body.action || "");
 
   if (action === "register") {
+    try {
+      assertTitleWorkflowComplete(id);
+    } catch (error: any) {
+      return NextResponse.json({ error: String(error?.message || error) }, { status: 409 });
+    }
     if (!["ready_for_style_sample", "waiting_style_confirmation"].includes(task.status)) {
       return NextResponse.json({ error: "当前阶段不能登记风格样图" }, { status: 409 });
     }

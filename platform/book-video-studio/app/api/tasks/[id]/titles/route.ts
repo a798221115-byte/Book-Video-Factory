@@ -1,298 +1,335 @@
 import { NextResponse } from "next/server";
-import { getArtifacts, getTask, patchArtifact, saveArtifact } from "@/lib/pipeline/repo";
+import fs from "node:fs";
+import path from "node:path";
+import { getArtifacts, getTask, patchArtifact, saveArtifact, taskDir, updateTask } from "@/lib/pipeline/repo";
 import { getLLM } from "@/lib/providers/llm";
+import type { TitleCandidate } from "@/lib/titleWorkflow";
 
-type TitlePayload = {
-  videoTitles: string[];
-  shortTitles: string[];
-  hashtags: string[];
-  provider: string;
-  generatedAt: number;
-  ai?: boolean;
-};
+const FORMULAS = [
+  { id: 1, trigger: "认知冲突", template: "为什么 [每个人都觉得很好的事] 其实对你有害？", example: "为什么喝牛奶其实对你一点也不好？" },
+  { id: 7, trigger: "好奇缺口", template: "[一群人] 不会告诉你的建议", example: "会赚钱的博主不会告诉你的建议" },
+  { id: 12, trigger: "好奇缺口", template: "看完这个，你的 [想法] 会不再相同", example: "看完这个，你的思维模式会不再相同" },
+  { id: 14, trigger: "损失规避", template: "[不想要的结果] 的最根本原因", example: "减肥不成功的最根本原因" },
+  { id: 23, trigger: "身份代入", template: "给 [一群人] 的一个忠告", example: "给 30+ 正经历迷茫的创业者们的一段话" },
+  { id: 42, trigger: "反转叙事", template: "从 [经历] 中学到的最重要的教训", example: "从年入 7 位数到公司破产，我学到的最重要的教训" },
+  { id: 54, trigger: "争议挑衅", template: "停止 [行动]！！开始 [行动]！！", example: "停止学习！！开始实践！！" },
+  { id: 56, trigger: "场景条件", template: "如果你 [抗拒] [抗拒] [抗拒]，如何解决 [问题]", example: "如果你没有经验，没有团队，没有专业技能，如何在充满噪音的互联网上出彩？" },
+] as const;
 
-const RISKY_TITLE_PATTERN = /绝症|重病|癌|肿瘤|恶性|病变|医生说|只剩|剩下|活到.?[\d一二三四五六七八九十百]+岁|多活|寿命|缩小\d|缩小了|康复|痊愈|治愈|自愈|重生|神迹|奇迹好转|逆天改命|暴富/;
-
-function cleanLine(value: unknown, max = 58) {
-  return String(value || "")
-    .replace(/\s+/g, " ")
-    .replace(/^[-\d.、\s]+/, "")
-    .trim()
-    .slice(0, max);
-}
-
-function asList(value: unknown) {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") return value.split(/[\n,，、\s]+/).filter(Boolean);
-  return [];
-}
-
-function stripHashtags(value: string) {
-  return value
-    .replace(/[#＃][\p{L}\p{N}_\u4e00-\u9fff-]+/gu, "")
-    .replace(/\s+/g, " ")
-    .replace(/[，,、\s]+$/g, "")
-    .trim();
-}
-
-function uniqueTitles(values: unknown[], max: number, maxLen: number, rejectRisky = true) {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of values) {
-    const title = stripHashtags(cleanLine(value, maxLen));
-    if (rejectRisky && RISKY_TITLE_PATTERN.test(title)) continue;
-    const key = title.replace(/[《》#＃\s，。,.!！?？、]/g, "");
-    if (!title || seen.has(key)) continue;
-    seen.add(key);
-    out.push(title);
-    if (out.length >= max) break;
-  }
-  return out;
-}
-
-function cleanHashtag(value: unknown) {
-  const raw = String(value || "")
-    .replace(/\s+/g, "")
-    .replace(/^[-\d.、]+/, "")
-    .trim();
-  const text = raw.replace(/^[#＃]+/, "").replace(/[^\p{L}\p{N}_\u4e00-\u9fff]/gu, "").slice(0, 16);
-  if (!text || RISKY_TITLE_PATTERN.test(text)) return "";
-  return `#${text}`;
-}
-
-function hashtagsFromTitles(values: unknown[]) {
-  const out: string[] = [];
-  for (const value of values) {
-    const matches = String(value || "").match(/[#＃][\p{L}\p{N}_\u4e00-\u9fff-]+/gu) || [];
-    out.push(...matches);
-  }
-  return out;
-}
-
-function uniqueHashtags(values: unknown[], max: number) {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of values) {
-    const tag = cleanHashtag(value);
-    if (!tag) continue;
-    const key = tag.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(tag);
-    if (out.length >= max) break;
-  }
-  return out;
-}
-
-function fillTitles(primary: string[], fallback: string[], max: number, maxLen: number) {
-  return uniqueTitles([...primary, ...fallback], max, maxLen, false);
-}
-
-function fillHashtags(primary: string[], fallback: string[], max: number) {
-  return uniqueHashtags([...primary, ...fallback], max);
-}
-
-function fallbackTitles(input: { bookTitle: string; scriptText: string }): Omit<TitlePayload, "provider" | "generatedAt"> {
-  const book = input.bookTitle.replace(/[《》]/g, "").trim() || "这本书";
-  const text = input.scriptText;
-  const topic = /健康|身体|睡眠|饮食|衰老|疾病|疼痛/.test(text)
-    ? "健康"
-    : /财富|钱|收入|资产|债务/.test(text)
-      ? "认知"
-      : /婚姻|家庭|父母|孩子|关系/.test(text)
-        ? "关系"
-        : "成长";
-  return {
-    videoTitles: [
-      `读《${book}》才懂，真正改变生活的不是鸡血，而是每天的选择`,
-      `这本《${book}》适合状态低谷时看，很多问题会突然想明白`,
-      `如果你最近总觉得卡住了，可以认真读一遍《${book}》`,
-      `《${book}》提醒我的一件事：别把长期问题拖到失控才处理`,
-      `把《${book}》读完后，我更确定普通人最该调整的是生活顺序`,
-      `这不是一本让人热血的书，而是一本让人慢慢稳定下来的书`,
-    ],
-    shortTitles: [
-      `《${book}》`,
-      `先把生活顺序理清`,
-      `状态低谷时读这本`,
-      `别把问题拖到失控`,
-      `普通人也能慢慢变稳`,
-      `这本书值得重读`,
-    ],
-    hashtags: [
-      "#读书",
-      "#好书推荐",
-      "#图书分享",
-      "#读书笔记",
-      "#深度好书",
-      "#书单",
-      "#每日读书",
-      "#自我提升",
-      "#认知成长",
-      "#成长",
-      `#${topic}`,
-      "#人生感悟",
-      "#生活方式",
-      "#情绪价值",
-      "#个人成长",
-      "#知识分享",
-      "#视频号运营",
-      "#短视频文案",
-      "#中年成长",
-      "#普通人的成长",
-      "#女性成长",
-      "#男性成长",
-      "#亲子教育",
-      "#家庭关系",
-      "#情绪管理",
-      "#心理成长",
-      "#长期主义",
-      "#普通人逆袭",
-      "#成长思维",
-      "#阅读分享",
-      "#书摘",
-      "#每天一本书",
-      `#${book.slice(0, 12)}`,
-    ],
-  };
-}
-
-function parseJsonObject(raw: string) {
+function parseJson(raw: string) {
   const text = raw.trim();
-  try { return JSON.parse(text); } catch { /* try fenced or embedded json */ }
+  try { return JSON.parse(text); } catch {}
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
   if (fenced) {
-    try { return JSON.parse(fenced); } catch { /* ignore */ }
+    try { return JSON.parse(fenced); } catch {}
   }
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start >= 0 && end > start) {
-    try { return JSON.parse(text.slice(start, end + 1)); } catch { /* ignore */ }
+    try { return JSON.parse(text.slice(start, end + 1)); } catch {}
   }
-  return null;
+  return {};
 }
 
-function buildPrompt(input: {
-  bookTitle: string;
-  bookAuthor: string;
-  sourceTitle: string;
-  scriptText: string;
-}) {
-  const script = input.scriptText.replace(/\s+/g, " ").slice(0, 3600);
-  return {
-    system: `你是视频号图书短视频的标题策划。请根据书名、原视频标题和口播稿，生成不像模板、适合点击和转发的中文标题。
-
-要求：
-- 输出严格 JSON：{"video_titles":["..."],"short_titles":["..."],"hashtags":["..."]}。
-- video_titles 生成 8 条，适合视频号发布，但不要包含 #话题。
-- short_titles 生成 6 条，适合封面大字，2-12 个中文字符为主。
-- hashtags 生成 18-28 个，必须单独列出，每个都以 # 开头，包含图书/读书/成长/情绪/生活方式/账号定位/这条内容具体卖点等方向。
-- 标题要基于这条口播的具体卖点，不要只套“读完才明白/这本书讲透/越早读越受益”等固定句式。
-- 不要夸大疗效，不要承诺治愈、康复、暴富、逆天改命。
-- 避免把严重疾病、肿瘤、绝症、重病、医生诊断、寿命数字、病情改善比例、重生等词写进标题；这类内容应转译成“低谷、状态、内心对话、长期选择、生活秩序”等安全表达。
-- 不要出现党政、医疗诊断、绝对化保证。
-- 长标题尽量有不同结构：提问、反常识、场景痛点、读后收获、行动提醒、金句改写。
-- 保留书名时使用《书名》，不要编造作者或不存在的事实。
-- 只输出 json，不要 markdown。`,
-    user: `书名：${input.bookTitle || "未知"}
-作者：${input.bookAuthor || "未知"}
-原视频标题：${input.sourceTitle || ""}
-
-口播稿摘录：
-${script}`,
-  };
+function readMeta(taskId: string) {
+  const artifact = getArtifacts(taskId).find((item) => item.stepName === "rewrite" && item.kind === "json");
+  if (!artifact?.meta) return {};
+  try { return JSON.parse(artifact.meta); } catch { return {}; }
 }
 
-function saveTitlePayload(taskId: string, currentMeta: any, payload: TitlePayload) {
-  const meta = {
-    ...currentMeta,
-    video_titles: payload.videoTitles,
-    short_titles: payload.shortTitles,
-    hashtags: payload.hashtags,
-    title_provider: payload.provider,
-    title_generated_at: payload.generatedAt,
-    saved_at: currentMeta.saved_at || payload.generatedAt,
-  };
-  const existing = getArtifacts(taskId).find((a) => a.stepName === "rewrite" && a.kind === "json");
-  if (existing) {
-    patchArtifact(existing.id, {
-      label: existing.label || "书籍信息",
-      meta: JSON.stringify(meta),
-    });
+function writeMeta(taskId: string, meta: Record<string, any>) {
+  const artifact = getArtifacts(taskId).find((item) => item.stepName === "rewrite" && item.kind === "json");
+  if (artifact) {
+    patchArtifact(artifact.id, { label: artifact.label || "书籍信息", meta: JSON.stringify(meta) });
   } else {
-    saveArtifact({
-      taskId,
-      stepName: "rewrite",
-      kind: "json",
-      label: "书籍信息",
-      meta,
-    });
+    saveArtifact({ taskId, stepName: "rewrite", kind: "json", label: "书籍信息", meta });
   }
+  fs.writeFileSync(path.join(taskDir(taskId), "titles.json"), JSON.stringify({
+    sourceTitle: meta.title_source_title || "",
+    sourceLength: meta.title_source_length || 0,
+    formulaSkill: meta.title_skill || "dbs-xhs-title",
+    stage: meta.title_stage || "idle",
+    longCandidates: meta.long_title_candidates || [],
+    selectedLongTitle: meta.selected_long_title || "",
+    shortCandidates: meta.short_title_candidates || [],
+    selectedShortTitle: meta.selected_short_title || "",
+    hashtags: meta.hashtags || [],
+    updatedAt: Date.now(),
+  }, null, 2), "utf8");
+  const gateByStage: Record<string, string> = {
+    long_pending: "LONG_TITLE_CONFIRMATION",
+    long_confirmed: "SHORT_TITLE_GENERATION",
+    short_pending: "SHORT_TITLE_CONFIRMATION",
+    complete: "STYLE_SAMPLE_CONFIRMATION",
+  };
+  if (gateByStage[meta.title_stage]) updateTask(taskId, { currentGate: gateByStage[meta.title_stage] });
 }
 
-export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+function cleanTitle(value: unknown, maxLength: number) {
+  return String(value || "")
+    .replace(/[#＃][\p{L}\p{N}_\u4e00-\u9fff-]+/gu, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[-\d.、\s]+/, "")
+    .replace(/[，,、\s]+$/g, "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function uniqueCandidates(values: unknown, max: number, maxLength: number): TitleCandidate[] {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const result: TitleCandidate[] = [];
+  for (const [index, raw] of values.entries()) {
+    const item = typeof raw === "string" ? { text: raw } : (raw || {});
+    const text = cleanTitle((item as any).text || (item as any).title, maxLength);
+    const key = text.replace(/[《》\s，。,.!！?？、]/g, "");
+    if (!text || seen.has(key)) continue;
+    seen.add(key);
+    const formulaId = Number((item as any).formula_id || (item as any).formulaId || 0);
+    const formula = FORMULAS.find((entry) => entry.id === formulaId);
+    result.push({
+      id: String((item as any).id || `${formulaId || "short"}-${index + 1}`),
+      text,
+      ...(formula ? {
+        formulaId: formula.id,
+        trigger: formula.trigger,
+        formulaTemplate: formula.template,
+        originalExample: formula.example,
+        reason: cleanTitle((item as any).reason, 120),
+      } : {}),
+    });
+    if (result.length >= max) break;
+  }
+  return result;
+}
+
+function longFallback(sourceTitle: string, bookTitle: string): TitleCandidate[] {
+  const source = cleanTitle(sourceTitle, 72) || `读完《${bookTitle || "这本书"}》，才明白真正重要的是什么`;
+  const topic = bookTitle ? `《${bookTitle.replace(/[《》]/g, "")}》` : "这本书";
+  const texts = [
+    `为什么人人都认同的生活方式，反而可能让你忽略真正重要的事？${topic}给出了答案`,
+    `真正活得明白的人，不会告诉你的一个忠告：先分清什么才值得在意`,
+    `看完${topic}，你对这件事的理解会不再相同`,
+    `很多问题反复出现的最根本原因，不是不努力，而是没有看清关键`,
+    `给正处在人生低谷的人一个忠告：别急着证明，先把自己活明白`,
+    `给总被现实困住的人一句话：改变往往从重新理解问题开始`,
+    `从反复内耗到看清方向，我学到的最重要一课`,
+    `停止盲目消耗，开始把力气用在真正重要的地方`,
+    `如果你没方向、没答案、也不确定下一步，如何重新找回自己的节奏？`,
+    source,
+  ];
+  const ids = [1, 7, 12, 14, 23, 23, 42, 54, 56, 12];
+  return texts.map((text, index) => {
+    const formula = FORMULAS.find((item) => item.id === ids[index])!;
+    return {
+      id: `fallback-long-${index + 1}`,
+      text: cleanTitle(text, 86),
+      formulaId: formula.id,
+      trigger: formula.trigger,
+      formulaTemplate: formula.template,
+      originalExample: formula.example,
+      reason: "保留抖音原标题的情绪力度与口语节奏，同时改用可追溯的 DBS 公式重建表达。",
+    };
+  });
+}
+
+function shortFallback(longTitle: string) {
+  const pool = [
+    "这句话值得收藏", "别再忽略关键", "真正重要的选择", "先把自己活明白", "重新理解人生",
+    "答案藏在书里", "越早明白越好", "把生活排个序", "读完豁然开朗", "看清问题本质",
+  ];
+  const keyword = cleanTitle(longTitle, 12).replace(/[，。！？,.!?]/g, "");
+  if (keyword.length >= 4 && keyword.length <= 12 && !pool.includes(keyword)) pool[9] = keyword;
+  return pool.map((text, index) => ({ id: `fallback-short-${index + 1}`, text }));
+}
+
+function uniqueHashtags(values: unknown, bookTitle: string) {
+  const source = Array.isArray(values) ? values : [];
+  const pool = [...source, "#读书", "#好书推荐", "#人生感悟", "#认知成长", "#自我提升", "#文字的力量", bookTitle ? `#${bookTitle.replace(/[《》#＃\s]/g, "").slice(0, 12)}` : ""];
+  const seen = new Set<string>();
+  return pool.map((item) => {
+    const clean = String(item || "").replace(/\s+/g, "").replace(/^[#＃]+/, "").replace(/[^\p{L}\p{N}_\u4e00-\u9fff]/gu, "").slice(0, 16);
+    return clean ? `#${clean}` : "";
+  }).filter((item) => item && !seen.has(item) && seen.add(item)).slice(0, 24);
+}
+
+function response(meta: Record<string, any>, extra: Record<string, any> = {}) {
+  return {
+    ok: true,
+    longCandidates: meta.long_title_candidates || [],
+    shortCandidates: meta.short_title_candidates || [],
+    selectedLongTitle: meta.selected_long_title || "",
+    selectedShortTitle: meta.selected_short_title || "",
+    stage: meta.title_stage || "idle",
+    provider: meta.title_provider || "",
+    hashtags: meta.hashtags || [],
+    ...extra,
+  };
+}
+
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const task = getTask(id);
   if (!task) return NextResponse.json({ error: "not found" }, { status: 404 });
-
-  const arts = getArtifacts(id);
-  const bookMeta = (() => {
-    const raw = arts.find((a) => a.stepName === "rewrite" && a.kind === "json")?.meta;
-    if (!raw) return {} as any;
-    try { return JSON.parse(raw); } catch { return {} as any; }
-  })();
+  const body = await req.json().catch(() => ({}));
+  const action = String(body.action || "generate_long");
+  const meta = readMeta(id) as Record<string, any>;
+  const artifacts = getArtifacts(id);
   const scriptText =
-    arts.find((a) => a.stepName === "rewrite" && a.kind === "rewrite")?.content ||
-    arts.find((a) => a.stepName === "transcribe" && a.kind === "cleaned")?.content ||
-    task.title ||
+    artifacts.find((item) => item.stepName === "rewrite" && item.kind === "rewrite")?.content ||
+    artifacts.find((item) => item.stepName === "transcribe" && item.kind === "cleaned")?.content ||
     "";
-  const bookTitle = task.bookTitle || bookMeta.book_title || "";
-  const bookAuthor = task.bookAuthor || bookMeta.book_author || "";
-  const fallback = fallbackTitles({ bookTitle: bookTitle || task.title || "这本书", scriptText });
+  const bookTitle = String(task.bookTitle || meta.book_title || "");
+  const bookAuthor = String(task.bookAuthor || meta.book_author || "");
+  const sourceTitle = String(task.title || "");
   const llm = getLLM();
 
+  if (action === "select_long") {
+    const title = cleanTitle(body.title, 86);
+    const candidates = uniqueCandidates(meta.long_title_candidates, 10, 86);
+    if (!candidates.some((item) => item.text === title)) {
+      return NextResponse.json({ error: "所选长标题不在当前候选列表中，请重新选择" }, { status: 400 });
+    }
+    const next = {
+      ...meta,
+      selected_long_title: title,
+      selected_short_title: "",
+      short_title_candidates: [],
+      short_titles: [],
+      title_stage: "long_confirmed",
+      title_long_confirmed_at: Date.now(),
+    };
+    writeMeta(id, next);
+    return NextResponse.json(response(next));
+  }
+
+  if (action === "select_short") {
+    if (!String(meta.selected_long_title || "").trim()) {
+      return NextResponse.json({ error: "请先确认长标题" }, { status: 409 });
+    }
+    const title = cleanTitle(body.title, 16);
+    const candidates = uniqueCandidates(meta.short_title_candidates, 10, 16);
+    if (!candidates.some((item) => item.text === title)) {
+      return NextResponse.json({ error: "所选短标题不在当前候选列表中，请重新选择" }, { status: 400 });
+    }
+    const next = {
+      ...meta,
+      selected_short_title: title,
+      title_stage: "complete",
+      title_short_confirmed_at: Date.now(),
+      title_completed_at: Date.now(),
+    };
+    writeMeta(id, next);
+    return NextResponse.json(response(next));
+  }
+
+  if (action === "generate_short") {
+    const selectedLong = String(meta.selected_long_title || "").trim();
+    if (!selectedLong) return NextResponse.json({ error: "请先确认一个长标题，再生成短标题" }, { status: 409 });
+    try {
+      const raw = await llm.chat({
+        system: `你是视频号图书短视频的短标题编辑。只基于用户已经确认的长标题，生成 10 个不同的中文短标题。
+要求：每条 4-12 个中文字符为主，最长不超过 16 个字符；保留长标题的核心冲突或情绪；适合封面大字；不添加书名号、话题、标点堆叠；不编造事实；输出严格 JSON：{"short_titles":[{"text":"..."}]}。必须恰好 10 条。`,
+        user: `已确认长标题：${selectedLong}\n书名：${bookTitle || "未知"}\n请生成 10 个短标题。`,
+        temperature: 0.8,
+        json: true,
+      });
+      const generated = uniqueCandidates(parseJson(raw).short_titles, 10, 16);
+      const candidates = uniqueCandidates([...generated, ...shortFallback(selectedLong)], 10, 16);
+      const next = {
+        ...meta,
+        short_title_candidates: candidates,
+        short_titles: candidates.map((item) => item.text),
+        selected_short_title: "",
+        title_stage: "short_pending",
+        title_provider: llm.name,
+        title_short_generated_at: Date.now(),
+      };
+      writeMeta(id, next);
+      return NextResponse.json(response(next));
+    } catch (error: any) {
+      const candidates = shortFallback(selectedLong);
+      const next = {
+        ...meta,
+        short_title_candidates: candidates,
+        short_titles: candidates.map((item) => item.text),
+        selected_short_title: "",
+        title_stage: "short_pending",
+        title_provider: `fallback:${llm.name}`,
+        title_short_generated_at: Date.now(),
+      };
+      writeMeta(id, next);
+      return NextResponse.json(response(next, { warning: `AI 短标题生成失败，已使用本地兜底：${String(error?.message || error).slice(0, 180)}` }));
+    }
+  }
+
+  if (action !== "generate_long") return NextResponse.json({ error: "未知标题操作" }, { status: 400 });
+
+  const sourceLength = cleanTitle(sourceTitle, 86).length;
+  const minLength = Math.max(12, Math.floor(sourceLength * 0.8));
+  const maxLength = Math.min(86, Math.max(28, Math.ceil(sourceLength * 1.2)));
+  const formulaText = FORMULAS.map((item) => `#${item.id}｜${item.trigger}｜${item.template}｜原始爆款：${item.example}`).join("\n");
   try {
-    const prompt = buildPrompt({
-      bookTitle,
-      bookAuthor,
-      sourceTitle: task.title || "",
-      scriptText,
-    });
     const raw = await llm.chat({
-      system: prompt.system,
-      user: prompt.user,
+      system: `你是 dbs-xhs-title 公式匹配器，负责为视频号图书短视频生成长标题，不是自由标题生成器。
+必须从给定公式中选择 5-8 个最合适的公式，覆盖至少 3 类心理触发器；生成恰好 10 个标题，每个标题必须可追溯到公式编号，不得改变公式的底层逻辑。
+标题要仿写抖音原标题的长度、口语节奏、情绪强度和标点方式，但不得照抄独特措辞或句序。优先制造好奇缺口、真实痛点和张力，不夸大疗效，不承诺暴富，不编造书中原句。
+输出严格 JSON：{"long_titles":[{"text":"...","formula_id":12,"reason":"为什么这个公式适合本条内容"}],"hashtags":["#读书"]}。只输出 JSON。
+
+可用公式：
+${formulaText}`,
+      user: `抖音原标题：${sourceTitle || "未提供"}
+原标题字符数：${sourceLength || "未知"}
+建议标题长度：${sourceLength ? `${minLength}-${maxLength} 字符，尽量贴近原长度` : "18-46 字符"}
+书名：${bookTitle || "未知"}
+作者：${bookAuthor || "未知"}
+口播稿摘要：${scriptText.replace(/\s+/g, " ").slice(0, 2600)}
+
+请先在内部完成公式匹配，再输出 10 个长标题方案。`,
       temperature: 0.9,
       json: true,
     });
-    const json = parseJsonObject(raw) || {};
-    const rawVideoTitles = asList(json.video_titles || json.videoTitles);
-    const rawShortTitles = asList(json.short_titles || json.shortTitles);
-    const rawHashtags = asList(json.hashtags || json.hashTags || json.topics);
-    const videoTitles = uniqueTitles(rawVideoTitles, 8, 86);
-    const shortTitles = uniqueTitles(rawShortTitles, 6, 18);
-    const hashtags = uniqueHashtags([
-      ...rawHashtags,
-      ...hashtagsFromTitles(rawVideoTitles),
-    ], 28);
-    const payload = {
-      ok: true,
-      ai: true,
-      videoTitles: fillTitles(videoTitles, fallback.videoTitles, 8, 86),
-      shortTitles: fillTitles(shortTitles, fallback.shortTitles, 6, 18),
-      hashtags: fillHashtags(hashtags, fallback.hashtags, 28),
-      provider: llm.name,
-      generatedAt: Date.now(),
-    } satisfies TitlePayload & { ok: true };
-    saveTitlePayload(id, bookMeta, payload);
-    return NextResponse.json(payload);
-  } catch (e: any) {
-    return NextResponse.json({
-      ok: true,
-      ai: false,
-      ...fallback,
-      provider: `fallback:${llm.name}`,
-      generatedAt: Date.now(),
-      warning: String(e?.message || e).slice(0, 240),
-    });
+    const json = parseJson(raw);
+    const generated = uniqueCandidates(json.long_titles, 10, 86).filter((item) => item.formulaId);
+    const candidates = uniqueCandidates([...generated, ...longFallback(sourceTitle, bookTitle)], 10, 86);
+    const hashtags = uniqueHashtags(json.hashtags, bookTitle);
+    const next = {
+      ...meta,
+      long_title_candidates: candidates,
+      video_titles: candidates.map((item) => item.text),
+      selected_long_title: "",
+      short_title_candidates: [],
+      short_titles: [],
+      selected_short_title: "",
+      hashtags,
+      title_stage: "long_pending",
+      title_provider: llm.name,
+      title_generated_at: Date.now(),
+      title_source_title: sourceTitle,
+      title_source_length: sourceLength,
+      title_skill: "dbs-xhs-title",
+    };
+    writeMeta(id, next);
+    return NextResponse.json(response(next));
+  } catch (error: any) {
+    const candidates = longFallback(sourceTitle, bookTitle);
+    const next = {
+      ...meta,
+      long_title_candidates: candidates,
+      video_titles: candidates.map((item) => item.text),
+      selected_long_title: "",
+      short_title_candidates: [],
+      short_titles: [],
+      selected_short_title: "",
+      hashtags: uniqueHashtags([], bookTitle),
+      title_stage: "long_pending",
+      title_provider: `fallback:${llm.name}`,
+      title_generated_at: Date.now(),
+      title_source_title: sourceTitle,
+      title_source_length: sourceLength,
+      title_skill: "dbs-xhs-title",
+    };
+    writeMeta(id, next);
+    return NextResponse.json(response(next, { warning: `AI 长标题生成失败，已使用 DBS 公式兜底：${String(error?.message || error).slice(0, 180)}` }));
   }
 }

@@ -805,6 +805,35 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
+  const startPostProduction = async () => {
+    if (demoMode) {
+      setMessage("演示任务不会启动真实后期制作。");
+      return;
+    }
+    setBusy(true);
+    setMessage("正在启动女声配音、字幕和成片渲染……");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/post-production`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          retry: Boolean(
+            data?.task.status === "generating_voice" &&
+            data.steps.some((step) => step.name === "tts" && step.status === "failed"),
+          ),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "后期制作启动失败");
+      setMessage("后期制作已启动，工作台会持续回传配音、字幕和成片进度。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!data) {
     return <main className="intake-detail-shell"><div className="intake-loading">正在读取任务…</div></main>;
   }
@@ -821,9 +850,22 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const generatingImageRevision = data.task.status === "generating_image_revision";
   const waitingForImagesConfirmation = data.task.status === "waiting_images_confirmation";
   const readyForPostProduction = data.task.status === "ready_for_post_production";
+  const generatingVoice = data.task.status === "generating_voice";
+  const waitingVoiceConfirmation = data.task.status === "waiting_voice_confirmation";
+  const generatingSubtitles = data.task.status === "generating_subtitles";
+  const renderingVideo = data.task.status === "rendering_video";
+  const voiceFailed = data.task.status === "voice_failed";
+  const postProductionFailed = data.task.status === "post_production_failed";
+  const staleVoice = generatingVoice && data.steps.some(
+    (step) => step.name === "tts" && step.status === "failed",
+  );
   const waitingForRenderReview = data.task.status === "waiting_render_review";
   const productionComplete = data.task.status === "done";
   const postProductionReached = readyForPostProduction || waitingForRenderReview || productionComplete;
+  const postProductionStageReached = postProductionReached || generatingVoice || waitingVoiceConfirmation || generatingSubtitles || renderingVideo || voiceFailed || postProductionFailed;
+  const reviewVideoArtifact = data.artifacts.find(
+    (item) => item.stepName === "render" && ["review_video", "video"].includes(item.kind) && item.path,
+  );
   const evidenceStageReached =
     readyForWeread ||
     highlightsConfirmed ||
@@ -834,7 +876,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     readyForRemainingImages ||
     generatingRemainingImages ||
     waitingForImagesConfirmation ||
-    postProductionReached;
+    postProductionStageReached;
   const evidenceLocked =
     evidenceStageReached &&
     !readyForWeread &&
@@ -853,12 +895,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     generatingRemainingImages ||
     generatingImageRevision ||
     waitingForImagesConfirmation ||
-    postProductionReached;
+    postProductionStageReached;
   const currentStageLabel = waitingForRenderReview
     ? "G06 联合审核"
     : generatingImageRevision
       ? "G04 单张图片修改"
-    : postProductionReached
+    : postProductionStageReached
       ? "G05 配音后期"
       : remainingImagesStageReached
         ? "G04 全部分镜"
@@ -875,6 +917,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         ? "等待成片审核"
         : generatingImageRevision
           ? "图片修改生成中"
+          : generatingVoice
+            ? "女声配音生成中"
+            : generatingSubtitles
+              ? "字幕生成中"
+              : renderingVideo
+                ? "成片渲染中"
+                : readyForPostProduction
+                  ? "等待启动后期"
+                  : voiceFailed || postProductionFailed
+                    ? "后期制作失败"
         : productionComplete
           ? "已完成"
           : evidenceStageReached
@@ -1595,6 +1647,73 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               </button>
             </div>
           )}
+        </section>
+      ) : null}
+
+      {postProductionStageReached ? (
+        <section className="intake-style-sample-workspace" aria-label="G05 配音后期">
+          <div className="intake-section-heading">
+            <div>
+              <span className="intake-kicker">G05 配音后期</span>
+              <h2>配音、字幕与成片</h2>
+            </div>
+            <span className="intake-dbs-version">female-book-narrator-locked-v1</span>
+          </div>
+          {(() => {
+            const ttsStep = data.steps.find((step) => step.name === "tts");
+            const subtitleStep = data.steps.find((step) => step.name === "subtitle");
+            const renderStep = data.steps.find((step) => step.name === "render");
+            const ttsProgress = Number(ttsStep?.progress || 0);
+            const subtitleProgress = Number(subtitleStep?.progress || 0);
+            const renderProgress = Number(renderStep?.progress || 0);
+            const progress = Math.round((ttsProgress * 0.35 + subtitleProgress * 0.25 + renderProgress * 0.4) * 100);
+            const running = generatingVoice || generatingSubtitles || renderingVideo;
+            const failed = voiceFailed || postProductionFailed || staleVoice;
+            const status = waitingForRenderReview
+              ? "成片已生成，等待 G06 审核"
+              : productionComplete
+                ? "后期制作已完成"
+                : failed
+                  ? "后期制作失败，可重试"
+                  : readyForPostProduction
+                    ? "图片已确认，等待启动后期"
+                    : waitingVoiceConfirmation
+                      ? "等待确认配音"
+                      : running
+                        ? "后期制作进行中"
+                        : "等待后期制作";
+            return (
+              <div className="intake-codex-job">
+                <div className="intake-codex-job-head">
+                  <div>
+                    <span className={`intake-codex-state ${failed ? "failed" : waitingForRenderReview || productionComplete ? "succeeded" : running ? "running" : "queued"}`}>
+                      {status}
+                    </span>
+                    <strong>{failed ? (ttsStep?.error || renderStep?.error || "请点击重试") : "工作台会在每个阶段完成后自动更新这里"}</strong>
+                  </div>
+                  {(readyForPostProduction || failed) ? (
+                    <button type="button" className="intake-confirm-action" disabled={busy} onClick={startPostProduction}>
+                      {failed ? "重试后期制作" : "开始配音与后期"}
+                    </button>
+                  ) : null}
+                  {reviewVideoArtifact?.path ? (
+                    <a className="intake-confirm-action" href={fileUrl(reviewVideoArtifact.path)} target="_blank" rel="noreferrer">
+                      打开成片审核
+                    </a>
+                  ) : null}
+                </div>
+                <div className="intake-image-progress" aria-label="G05 后期制作进度">
+                  <span style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+                </div>
+                <div className="intake-codex-job-meta">
+                  <span>配音：{statusLabel(ttsStep?.status || "pending")}</span>
+                  <span>字幕：{statusLabel(subtitleStep?.status || "pending")}</span>
+                  <span>成片：{statusLabel(renderStep?.status || "pending")}</span>
+                  <span>整体进度：{Math.max(0, Math.min(100, progress))}%</span>
+                </div>
+              </div>
+            );
+          })()}
         </section>
       ) : null}
 

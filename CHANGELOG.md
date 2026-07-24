@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.10.0 - 2026-07-24
+
+- Add the G05 post-production workspace with female narration, subtitle, render progress, review-video link, and stale-job retry recovery after worker restarts.
+
 ## 1.9.0 - 2026-07-24
 
 - Add a safe G03 style-sample replacement flow that preserves previous G04 assets and regenerates versioned storyboard images.

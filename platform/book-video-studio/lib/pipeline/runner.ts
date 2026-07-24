@@ -38,7 +38,32 @@ async function waitForStepToSettle(taskId: string, name: StepName) {
 // 复位"僵尸"步骤：DB 标记 running，但本进程内存锁里没有 → 是上次进程崩溃/重启的残留。
 // 在读取状态时调用，避免 UI 永远转圈、且无法重跑。
 export function reapZombieSteps(taskId: string): void {
+  const narrationJobs: Set<string> | undefined = (globalThis as any).__lockedFemaleNarrationJobs;
+  const task = getTask(taskId);
   for (const s of getSteps(taskId)) {
+    if (s.name === "tts" && narrationJobs?.has(taskId)) continue;
+    if (
+      s.name === "tts" &&
+      task?.status === "generating_voice" &&
+      s.startedAt &&
+      Date.now() - s.startedAt < 2 * 60 * 60 * 1000
+    ) {
+      if (s.status === "failed") {
+        setStepStatus(taskId, "tts", { status: "running", error: "" });
+      }
+      continue;
+    }
+    if (
+      ((s.name === "subtitle" && task?.status === "generating_subtitles") ||
+        (s.name === "render" && task?.status === "rendering_video")) &&
+      s.startedAt &&
+      Date.now() - s.startedAt < 2 * 60 * 60 * 1000
+    ) {
+      if (s.status === "failed") {
+        setStepStatus(taskId, s.name as StepName, { status: "running", error: "" });
+      }
+      continue;
+    }
     if (s.status === "running" && !running.has(`${taskId}:${s.name}`)) {
       setStepStatus(taskId, s.name as StepName, {
         status: "failed", error: "服务重启导致中断，请重跑该步骤", finishedAt: Date.now(),

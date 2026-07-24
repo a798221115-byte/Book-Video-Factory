@@ -24,6 +24,18 @@ const statusCopy: Record<string, { label: string; tone: string }> = {
   running: { label: "正在分析", tone: "run" },
   waiting_confirmation: { label: "待确认图书", tone: "wait" },
   ready_for_weread: { label: "可查热门划线", tone: "ready" },
+  highlights_confirmed: { label: "准备生成文案", tone: "run" },
+  waiting_script_confirmation: { label: "待确认文案", tone: "wait" },
+  ready_for_style_sample: { label: "待生成 G03 样图", tone: "ready" },
+  generating_style_sample: { label: "G03 样图生成中", tone: "run" },
+  waiting_style_confirmation: { label: "待确认 G03 风格", tone: "wait" },
+  ready_for_remaining_images: { label: "待生成 G04 分镜", tone: "ready" },
+  generating_remaining_images: { label: "G04 分镜生成中", tone: "run" },
+  generating_image_revision: { label: "单张图片修改中", tone: "run" },
+  waiting_images_confirmation: { label: "待审核 G04 分镜", tone: "wait" },
+  ready_for_post_production: { label: "待进入后期", tone: "ready" },
+  waiting_render_review: { label: "待审核成片", tone: "wait" },
+  done: { label: "已完成", tone: "ready" },
   failed: { label: "需要处理", tone: "error" },
 };
 
@@ -58,6 +70,10 @@ function durationLabel(value: unknown) {
 function gateLabel(task: TaskRow) {
   if (task.status === "ready_for_weread") return "G01 热门划线";
   if (task.status === "waiting_confirmation") return "确认书名作者";
+  if (["highlights_confirmed", "waiting_script_confirmation"].includes(task.status)) return "G02 原创口播";
+  if (["ready_for_style_sample", "generating_style_sample", "waiting_style_confirmation"].includes(task.status)) return "G03 风格样图";
+  if (["ready_for_remaining_images", "generating_remaining_images", "generating_image_revision", "waiting_images_confirmation"].includes(task.status)) return "G04 分镜审核";
+  if (["ready_for_post_production", "waiting_render_review", "done"].includes(task.status)) return "G05/G06 后期审核";
   if (task.status === "failed") return "处理异常";
   return "抖音采集分析";
 }

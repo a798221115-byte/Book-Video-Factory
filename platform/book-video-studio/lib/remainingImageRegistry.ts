@@ -19,7 +19,14 @@ function fileSha256(filePath: string) {
 
 export function registerRemainingImageFile(
   taskId: string,
-  input: { sceneJobId: string; imageFileName?: string; codexJobId?: string },
+  input: {
+    sceneJobId: string;
+    imageFileName?: string;
+    codexJobId?: string;
+    revision?: number;
+    feedback?: string;
+    preserveTaskStatus?: boolean;
+  },
 ) {
   if (!getTask(taskId)) throw new Error("任务不存在");
   const manifestArtifact = getArtifacts(taskId).find(
@@ -48,6 +55,8 @@ export function registerRemainingImageFile(
     jobId: sceneJobId,
     codexJobId: input.codexJobId || null,
     generatedBy: "codex-sdk-imagegen",
+    revision: Number(input.revision || 1),
+    feedback: String(input.feedback || ""),
     sha256,
     registeredAt: Date.now(),
   };
@@ -82,9 +91,11 @@ export function registerRemainingImageFile(
     finishedAt: allDone ? Date.now() : undefined,
     error: "",
   });
-  updateTask(taskId, {
-    status: allDone ? "waiting_images_confirmation" : "generating_remaining_images",
-    currentGate: allDone ? "ALL_IMAGES_CONFIRMATION" : "REMAINING_IMAGES_GENERATING",
-  });
+  if (!input.preserveTaskStatus) {
+    updateTask(taskId, {
+      status: allDone ? "waiting_images_confirmation" : "generating_remaining_images",
+      currentGate: allDone ? "ALL_IMAGES_CONFIRMATION" : "REMAINING_IMAGES_GENERATING",
+    });
+  }
   return { completed, total: manifest.jobs.length, allDone, path: storedPath };
 }

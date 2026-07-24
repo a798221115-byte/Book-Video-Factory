@@ -130,6 +130,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const [selectedHighlightIds, setSelectedHighlightIds] = useState<string[]>([]);
   const [copyDirection, setCopyDirection] = useState("");
   const [styleFeedback, setStyleFeedback] = useState("");
+  const [imageFeedback, setImageFeedback] = useState<Record<string, string>>({});
   const [candidateScript, setCandidateScript] = useState("");
   const [bookSourceFile, setBookSourceFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -153,6 +154,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       data.task.status === "running" ||
       data.task.status === "generating_style_sample" ||
       data.task.status === "generating_remaining_images" ||
+      data.task.status === "generating_image_revision" ||
       data.steps.some((step) => step.status === "running");
     if (!active) return;
     const timer = window.setInterval(() => load().catch(() => {}), 1800);
@@ -210,6 +212,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     (item) => parseJson(item.meta).jobType === "style_sample",
   );
   const codexStyleSampleJob = parseJson(codexStyleSampleJobArtifact?.meta);
+  const codexImageRevisionJobArtifacts = codexJobArtifacts.filter(
+    (item) => parseJson(item.meta).jobType === "image_revision",
+  );
+  const imageRevisionJobsByScene = new Map<string, any>();
+  for (const artifact of codexImageRevisionJobArtifacts) {
+    const meta = parseJson(artifact.meta);
+    if (meta.sceneJobId && !imageRevisionJobsByScene.has(String(meta.sceneJobId))) {
+      imageRevisionJobsByScene.set(String(meta.sceneJobId), { artifact, ...meta });
+    }
+  }
   const codexRemainingImagesJobArtifact = codexJobArtifacts.find(
     (item) => parseJson(item.meta).jobType === "remaining_images",
   );
@@ -662,6 +674,78 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
+  const syncStyleSample = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("正在检查并同步 Codex 当前 G03 样图…");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/style-sample`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "G03 样图同步失败");
+      setMessage(payload.message || "已同步 Codex 当前 G03 样图。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reviseStoryboardImage = async (sceneJobId: string) => {
+    const feedback = String(imageFeedback[sceneJobId] || "").trim();
+    if (!feedback) {
+      setMessage("请先填写这张分镜图片需要修改的地方。");
+      return;
+    }
+    if (demoMode) {
+      setMessage("演示任务不会重新生成真实分镜图片。");
+      return;
+    }
+    setBusy(true);
+    setMessage(`已提交 ${sceneJobId} 的修改意见，正在创建 Codex 单张图片任务…`);
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/remaining-images`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revise", sceneJobId, feedback }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "单张分镜修改任务创建失败");
+      setImageFeedback((current) => ({ ...current, [sceneJobId]: "" }));
+      setMessage(`已创建 ${sceneJobId} 的 Codex 修改任务，工作台会持续回传进度。`);
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const syncStoryboardImages = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("正在检查 Codex 是否直接更新了分镜图片…");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/remaining-images`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Codex 图片同步失败");
+      setMessage(payload.message || "已同步 Codex 图片。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startRemainingImages = async () => {
     if (demoMode) return;
     setBusy(true);
@@ -734,6 +818,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const waitingForStyleConfirmation = data.task.status === "waiting_style_confirmation";
   const readyForRemainingImages = data.task.status === "ready_for_remaining_images";
   const generatingRemainingImages = data.task.status === "generating_remaining_images";
+  const generatingImageRevision = data.task.status === "generating_image_revision";
   const waitingForImagesConfirmation = data.task.status === "waiting_images_confirmation";
   const readyForPostProduction = data.task.status === "ready_for_post_production";
   const waitingForRenderReview = data.task.status === "waiting_render_review";
@@ -766,10 +851,13 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const remainingImagesStageReached =
     readyForRemainingImages ||
     generatingRemainingImages ||
+    generatingImageRevision ||
     waitingForImagesConfirmation ||
     postProductionReached;
   const currentStageLabel = waitingForRenderReview
     ? "G06 联合审核"
+    : generatingImageRevision
+      ? "G04 单张图片修改"
     : postProductionReached
       ? "G05 配音后期"
       : remainingImagesStageReached
@@ -785,6 +873,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ? "可查热门划线"
       : waitingForRenderReview
         ? "等待成片审核"
+        : generatingImageRevision
+          ? "图片修改生成中"
         : productionComplete
           ? "已完成"
           : evidenceStageReached
@@ -1274,6 +1364,14 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                     >
                       按意见重新生成样图
                     </button>
+                    <button
+                      type="button"
+                      className="intake-secondary-action"
+                      disabled={busy}
+                      onClick={syncStyleSample}
+                    >
+                      同步 Codex 当前样图
+                    </button>
                   </div>
                 ) : null}
                 <button
@@ -1344,16 +1442,26 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      {(readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || postProductionReached) ? (
+      {(readyForRemainingImages || generatingRemainingImages || generatingImageRevision || waitingForImagesConfirmation || postProductionReached) ? (
         <section className="intake-remaining-images-workspace">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G04 全部分镜审核门</span>
               <h2>Codex 剩余分镜图片</h2>
             </div>
-            <span className="intake-dbs-version">
-              {remainingImageJobs.length ? `${completedRemainingImages}/${remainingImageJobs.length} 已完成` : "等待启动"}
-            </span>
+            <div className="intake-section-heading-actions">
+              <button
+                type="button"
+                className="intake-secondary-action"
+                disabled={busy || generatingImageRevision}
+                onClick={syncStoryboardImages}
+              >
+                同步 Codex 最新图片
+              </button>
+              <span className="intake-dbs-version">
+                {remainingImageJobs.length ? `${completedRemainingImages}/${remainingImageJobs.length} 已完成` : "等待启动"}
+              </span>
+            </div>
           </div>
 
           {remainingImageJobs.length ? (
@@ -1405,22 +1513,61 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <span style={{ width: `${Math.round((completedRemainingImages / remainingImageJobs.length) * 100)}%` }} />
               </div>
               <div className="intake-remaining-image-grid">
-                {remainingImageJobs.map((job: any) => (
-                  <figure className={job.status === "done" ? "done" : "pending"} key={job.id}>
-                    {job.imagePath ? (
-                      <img src={fileUrl(job.imagePath)} alt={`${job.id} ${job.label}`} />
-                    ) : (
-                      <div className="intake-image-placeholder">
-                        <strong>{job.id}</strong>
-                        <span>{job.status === "failed" ? job.error || "生成失败" : "等待 Codex 生图"}</span>
-                      </div>
-                    )}
-                    <figcaption>
-                      <strong>{job.id} · {job.label}</strong>
-                      <span>{job.status === "done" ? "已生成并回写" : "队列中"}</span>
-                    </figcaption>
-                  </figure>
-                ))}
+                {remainingImageJobs.map((job: any) => {
+                  const sceneJobId = String(job.id || "");
+                  const revisionJob = imageRevisionJobsByScene.get(sceneJobId);
+                  const revisionStatus = String(revisionJob?.status || "");
+                  const revisionBusy = ["queued", "starting", "running"].includes(revisionStatus);
+                  const canRevise = waitingForImagesConfirmation || readyForPostProduction || waitingForRenderReview;
+                  return (
+                    <figure className={job.status === "done" ? "done" : "pending"} key={job.id}>
+                      {job.imagePath ? (
+                        <img src={fileUrl(job.imagePath)} alt={`${job.id} ${job.label}`} />
+                      ) : (
+                        <div className="intake-image-placeholder">
+                          <strong>{job.id}</strong>
+                          <span>{job.status === "failed" ? job.error || "生成失败" : "等待 Codex 生图"}</span>
+                        </div>
+                      )}
+                      <figcaption>
+                        <strong>{job.id} · {job.label}</strong>
+                        <span>{job.status === "done" ? "已生成并回写" : "队列中"}</span>
+                      </figcaption>
+                      {canRevise && job.status === "done" ? (
+                        <div className="intake-image-feedback">
+                          {revisionJob ? (
+                            <>
+                              <small>{revisionStatus === "succeeded" ? "上一版修改已回写" : revisionStatus === "failed" ? "上一版修改失败，可重新提交意见" : `Codex 单张修改：${revisionStatus || "已创建"}`}</small>
+                              {revisionJob.threadId ? (
+                                <a href={`codex://threads/${revisionJob.threadId}`} className="intake-codex-thread-link">
+                                  在 Codex 中打开这张图的修改任务
+                                </a>
+                              ) : null}
+                              {revisionJob.error ? <small className="intake-codex-error">{revisionJob.error}</small> : null}
+                            </>
+                          ) : null}
+                          <textarea
+                            value={imageFeedback[sceneJobId] || ""}
+                            maxLength={1000}
+                            rows={3}
+                            disabled={busy || revisionBusy}
+                            onChange={(event) => setImageFeedback((current) => ({ ...current, [sceneJobId]: event.target.value }))}
+                            placeholder="例如：人物太小；把夕阳改成阴天；减少空旷感；保持同一人物和画风。"
+                          />
+                          <small>{(imageFeedback[sceneJobId] || "").length}/1000 · 只修改这一张图片，其他分镜不变。</small>
+                          <button
+                            type="button"
+                            className="intake-confirm-action"
+                            disabled={busy || revisionBusy || !(imageFeedback[sceneJobId] || "").trim()}
+                            onClick={() => reviseStoryboardImage(sceneJobId)}
+                          >
+                            按意见修改这张图
+                          </button>
+                        </div>
+                      ) : null}
+                    </figure>
+                  );
+                })}
               </div>
               <button
                 type="button"
@@ -1431,7 +1578,9 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 {postProductionReached ? "全部图片已确认" : "确认全部分镜并进入后期"}
               </button>
               <small>
-                {generatingRemainingImages
+                {generatingImageRevision
+                  ? "Codex 正在修改单张分镜图片，完成后会自动回写并重新进入 G04 审核。"
+                  : generatingRemainingImages
                   ? "Codex 正在按确认样图生成，完成一张就会在这里出现。"
                   : waitingForImagesConfirmation
                     ? "请逐张检查语义、人物连续性、构图和肢体；确认前不会进入配音后期。"

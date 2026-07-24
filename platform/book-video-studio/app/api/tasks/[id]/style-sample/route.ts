@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import path from "node:path";
 import {
   getArtifacts,
   getTask,
@@ -65,6 +66,32 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       const message = String(error?.message || error);
       const status = message.includes("必须存在") ? 400 : 409;
       return NextResponse.json({ error: message }, { status });
+    }
+  }
+
+  if (action === "sync") {
+    if (task.status !== "waiting_style_confirmation") {
+      return NextResponse.json({ error: "当前没有可同步的 G03 样图" }, { status: 409 });
+    }
+    const sample = getArtifacts(id).find(
+      (item) => item.stepName === "storyboard" && item.kind === "style_sample",
+    );
+    if (!sample?.path) return NextResponse.json({ error: "缺少 G03 样图产物" }, { status: 409 });
+    const meta = (() => {
+      try { return sample.meta ? JSON.parse(sample.meta) : {}; }
+      catch { return {}; }
+    })();
+    try {
+      const registered = registerStyleSampleFile(id, {
+        imageFileName: path.basename(sample.path),
+        promptFileName: meta.promptPath ? path.basename(meta.promptPath) : "",
+        codexJobId: String(meta.codexJobId || "") || undefined,
+        revision: Number(meta.revision || 1),
+        feedback: String(meta.feedback || ""),
+      });
+      return NextResponse.json({ ok: true, ...registered, message: "已同步 Codex 当前 G03 样图" });
+    } catch (error: any) {
+      return NextResponse.json({ error: String(error?.message || error) }, { status: 409 });
     }
   }
 

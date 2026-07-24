@@ -216,8 +216,13 @@ function launch(taskId: string, jobArtifactId: string) {
   runningJobs.set(jobArtifactId, promise);
 }
 
-export function enqueueCodexRemainingImages(taskId: string, options: { force?: boolean } = {}) {
-  const manifest = startRemainingImageQueue(taskId);
+export function enqueueCodexRemainingImages(
+  taskId: string,
+  options: { force?: boolean; imageRevision?: number } = {},
+) {
+  const manifest = startRemainingImageQueue(taskId, {
+    imageRevision: options.imageRevision,
+  });
   const latest = getLatestCodexRemainingImagesJob(taskId);
   if (!options.force && latest && ["queued", "starting", "running", "succeeded"].includes(latest.meta.status)) {
     if (["queued", "starting", "running"].includes(latest.meta.status)) launch(taskId, latest.artifact.id);

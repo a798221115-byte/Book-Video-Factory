@@ -7,7 +7,10 @@ import {
 } from "@/lib/pipeline/repo";
 import { enqueueCodexStyleSample, getLatestCodexStyleSampleJob } from "@/lib/codexStyleSampleJob";
 import { enqueueCodexRemainingImages } from "@/lib/codexRemainingImagesJob";
-import { registerStyleSampleFile } from "@/lib/styleSampleRegistry";
+import {
+  registerStyleSampleFile,
+  replaceConfirmedStyleSampleFile,
+} from "@/lib/styleSampleRegistry";
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -66,6 +69,33 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       const message = String(error?.message || error);
       const status = message.includes("必须存在") ? 400 : 409;
       return NextResponse.json({ error: message }, { status });
+    }
+  }
+
+  if (action === "replace_confirmed") {
+    try {
+      const revision = Number(body.revision || 1);
+      if (!Number.isInteger(revision) || revision < 2) {
+        return NextResponse.json({ error: "鏂扮殑 G03 鏍峰浘鐗堟湰蹇呴』澶т簬 1" }, { status: 400 });
+      }
+      const registered = replaceConfirmedStyleSampleFile(id, {
+        imageFileName: String(body.imageFileName || ""),
+        promptFileName: String(body.promptFileName || ""),
+        prompt: String(body.prompt || ""),
+        revision,
+        feedback: String(body.feedback || ""),
+      });
+      const dispatched = enqueueCodexRemainingImages(id, { force: true, imageRevision: revision });
+      return NextResponse.json({
+        ok: true,
+        ...registered,
+        nextGate: "REMAINING_IMAGES_GENERATING",
+        manifest: dispatched.manifest,
+        jobId: dispatched.job.artifact.id,
+        job: dispatched.job.meta,
+      });
+    } catch (error: any) {
+      return NextResponse.json({ error: String(error?.message || error) }, { status: 409 });
     }
   }
 

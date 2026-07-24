@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.0 - 2026-07-24
+
+- Add a safe G03 style-sample replacement flow that preserves previous G04 assets and regenerates versioned storyboard images.
+
 ## 1.6.0 - 2026-07-24
 
 - 扩展原书文件上传来源，支持 EPUB、PDF、TXT、Markdown、HTML、DOCX 和 RTF。

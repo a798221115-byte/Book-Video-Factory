@@ -109,7 +109,20 @@ function loadStoryboardImageJobs(taskId: string): StoryboardImageJob[] {
   }
 }
 
-export function startRemainingImageQueue(taskId: string) {
+function imageFileNameForRevision(fileName: string, revision?: number) {
+  if (!revision || revision < 1) return fileName;
+  const extension = path.extname(fileName);
+  const stem = extension ? fileName.slice(0, -extension.length) : fileName;
+  const versionedStem = /-v\d+$/i.test(stem)
+    ? stem.replace(/-v\d+$/i, `-v${revision}`)
+    : `${stem}-v${revision}`;
+  return `${versionedStem}${extension}`;
+}
+
+export function startRemainingImageQueue(
+  taskId: string,
+  options: { imageRevision?: number } = {},
+) {
   assertTitleWorkflowComplete(taskId);
   const artifacts = getArtifacts(taskId);
   const existing = artifacts.find(
@@ -119,16 +132,21 @@ export function startRemainingImageQueue(taskId: string) {
   fs.mkdirSync(promptDir, { recursive: true });
 
   const storyboardJobs = loadStoryboardImageJobs(taskId);
+  const imageRevision = Number(options.imageRevision || 0);
+  const forceNewImageRevision = imageRevision > 0;
   const jobs = storyboardJobs.map((job) => {
+    const imageFileName = imageFileNameForRevision(job.imageFileName, imageRevision);
     const promptPath = path.join(promptDir, job.promptFileName);
     if (!fs.existsSync(promptPath)) fs.writeFileSync(promptPath, buildPrompt(job.scene), "utf8");
     const previous = existing
-      ? (parseArtifactMeta(existing.meta).jobs || []).find((item: any) => item.id === job.id)
+      ? (!forceNewImageRevision
+        ? (parseArtifactMeta(existing.meta).jobs || []).find((item: any) => item.id === job.id)
+        : null)
       : null;
     return {
       id: job.id,
       label: job.label,
-      imageFileName: job.imageFileName,
+      imageFileName,
       promptFileName: job.promptFileName,
       promptPath: projectArtifactPath(promptPath),
       status: previous?.status === "done" ? "done" : "pending",
@@ -141,6 +159,7 @@ export function startRemainingImageQueue(taskId: string) {
     generator: "codex-built-in-imagegen",
     status: jobs.every((job) => job.status === "done") ? "done" : "queued",
     requestedAt: Date.now(),
+    imageRevision: forceNewImageRevision ? imageRevision : null,
     approvedStyleSample: artifacts.find(
       (item) => item.stepName === "storyboard" && item.kind === "style_sample",
     )?.path || null,

@@ -5302,6 +5302,11 @@ textarea.dashboard-input {
   background: var(--intake-amber-soft);
 }
 
+.detail-production-step.complete {
+  color: var(--intake-green);
+  background: var(--intake-green-soft);
+}
+
 .detail-production-step.locked {
   color: var(--intake-muted);
   background: var(--intake-paper);

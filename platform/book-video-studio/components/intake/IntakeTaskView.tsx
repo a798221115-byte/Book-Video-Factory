@@ -699,6 +699,60 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const generatingRemainingImages = data.task.status === "generating_remaining_images";
   const waitingForImagesConfirmation = data.task.status === "waiting_images_confirmation";
   const readyForPostProduction = data.task.status === "ready_for_post_production";
+  const waitingForRenderReview = data.task.status === "waiting_render_review";
+  const productionComplete = data.task.status === "done";
+  const postProductionReached = readyForPostProduction || waitingForRenderReview || productionComplete;
+  const evidenceStageReached =
+    readyForWeread ||
+    highlightsConfirmed ||
+    waitingForScript ||
+    readyForStyleSample ||
+    generatingStyleSample ||
+    waitingForStyleConfirmation ||
+    readyForRemainingImages ||
+    generatingRemainingImages ||
+    waitingForImagesConfirmation ||
+    postProductionReached;
+  const evidenceLocked =
+    evidenceStageReached &&
+    !readyForWeread &&
+    !highlightsConfirmed &&
+    !waitingForScript;
+  const styleStageReached =
+    readyForStyleSample ||
+    generatingStyleSample ||
+    waitingForStyleConfirmation ||
+    readyForRemainingImages ||
+    generatingRemainingImages ||
+    waitingForImagesConfirmation ||
+    postProductionReached;
+  const remainingImagesStageReached =
+    readyForRemainingImages ||
+    generatingRemainingImages ||
+    waitingForImagesConfirmation ||
+    postProductionReached;
+  const currentStageLabel = waitingForRenderReview
+    ? "G06 联合审核"
+    : postProductionReached
+      ? "G05 配音后期"
+      : remainingImagesStageReached
+        ? "G04 全部分镜"
+        : styleStageReached
+          ? "G03 风格样图"
+          : evidenceStageReached
+            ? "G01 来源证据与 G02 文案"
+            : "抖音采集与图书确认";
+  const currentStatusLabel = waitingForBook
+    ? "待确认图书"
+    : readyForWeread
+      ? "可查热门划线"
+      : waitingForRenderReview
+        ? "等待成片审核"
+        : productionComplete
+          ? "已完成"
+          : evidenceStageReached
+            ? "生产流程进行中"
+            : "采集中";
   const hasFailed = data.steps.some((step) => step.status === "failed");
   const currentIntakeSteps = data.steps.filter((step) =>
     ["extract", "transcribe", "analyze"].includes(step.name),
@@ -723,8 +777,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           <p>{data.task.author || "账号信息待获取"} · {data.task.projectPath || "工作目录待建立"}</p>
         </div>
         <div className="detail-header-actions">
-          <span className={`intake-status ${waitingForBook ? "wait" : readyForWeread ? "ready" : "run"}`}>
-            {waitingForBook ? "待确认图书" : readyForWeread ? "可查热门划线" : "采集中"}
+          <span className={`intake-status ${waitingForBook ? "wait" : readyForWeread || productionComplete ? "ready" : "run"}`}>
+            {currentStatusLabel}
           </span>
           <a className="intake-source-link" href={data.task.sourceUrl} target="_blank" rel="noreferrer">打开抖音原链</a>
         </div>
@@ -752,21 +806,21 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       <section className="detail-production-map" aria-label="图书视频生产流程">
         <div className="detail-production-current">
           <span>当前阶段</span>
-          <strong>抖音采集与图书确认</strong>
-          <small>确认后才会进入微信读书，后续节点保持锁定。</small>
+          <strong>{currentStageLabel}</strong>
+          <small>{evidenceStageReached ? "已完成的确认门保持只读，当前阶段与产物继续显示。" : "确认后才会进入微信读书，后续节点保持锁定。"}</small>
         </div>
         {[
-          ["G01", "原文证据", readyForWeread ? "next" : "locked"],
-          ["G02", "原创口播", "locked"],
-          ["G03", "风格样图", "locked"],
-          ["G04", "全部分镜", "locked"],
-          ["G05", "配音后期", "locked"],
-          ["G06", "联合审核", "locked"],
+          ["G01", "原文证据", highlightsConfirmed || waitingForScript || styleStageReached ? "complete" : readyForWeread ? "next" : "locked"],
+          ["G02", "原创口播", styleStageReached ? "complete" : highlightsConfirmed || waitingForScript ? "next" : "locked"],
+          ["G03", "风格样图", remainingImagesStageReached ? "complete" : styleStageReached ? "next" : "locked"],
+          ["G04", "全部分镜", postProductionReached ? "complete" : remainingImagesStageReached ? "next" : "locked"],
+          ["G05", "配音后期", waitingForRenderReview || productionComplete ? "complete" : readyForPostProduction ? "next" : "locked"],
+          ["G06", "联合审核", productionComplete ? "complete" : waitingForRenderReview ? "next" : "locked"],
         ].map(([gate, label, state]) => (
           <div className={`detail-production-step ${state}`} key={gate}>
             <span>{gate}</span>
             <strong>{label}</strong>
-            <small>{state === "next" ? "下一步" : "未解锁"}</small>
+            <small>{state === "complete" ? "已完成" : state === "next" ? "当前" : "未解锁"}</small>
           </div>
         ))}
       </section>
@@ -868,7 +922,11 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             disabled={busy || (!waitingForBook && !readyForWeread) || !bookTitle.trim() || !bookAuthor.trim()}
             onClick={confirmBook}
           >
-            {readyForWeread ? "更新确认信息" : "确认并进入热门划线"}
+            {readyForWeread
+              ? "更新确认信息"
+              : evidenceStageReached
+                ? "书名信息已锁定"
+                : "确认并进入热门划线"}
           </button>
 
           {readyForWeread ? (
@@ -877,12 +935,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <span>优先查询微信读书；没有收录时，可上传 EPUB、PDF、TXT 等原书文件，由 DeepSeek 筛选相关段落。</span>
             </div>
           ) : (
-            <small>当前状态：{waitingForBook ? "等待你的确认" : "等待分析完成"}</small>
+            <small>当前状态：{waitingForBook
+              ? "等待你的确认"
+              : evidenceStageReached
+                ? "已进入后续生产阶段，图书信息已锁定"
+                : "等待分析完成"}</small>
           )}
         </aside>
       </div>
 
-      {(readyForWeread || highlightsConfirmed || waitingForScript || readyForStyleSample) ? (
+      {evidenceStageReached ? (
         <section className="intake-dbs-workspace">
           <div className="intake-section-heading">
             <div>
@@ -903,16 +965,24 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <button
                   type="button"
                   className="intake-weread-fetch"
-                  disabled={busy || readyForStyleSample}
+                  disabled={busy || evidenceLocked}
                   onClick={() => fetchTopHighlights("reset")}
                 >
-                  {busy ? "正在处理…" : isUploadedBookSource ? "重新查询微信读书" : topHighlights.length ? "重新获取前 10 条" : "获取前 10 条"}
+                  {busy
+                    ? "正在处理…"
+                    : evidenceLocked
+                      ? "热门划线已锁定"
+                      : isUploadedBookSource
+                        ? "重新查询微信读书"
+                        : topHighlights.length
+                          ? "重新获取前 10 条"
+                          : "获取前 10 条"}
                 </button>
                 {!isUploadedBookSource && topHighlights.length && hasMoreHighlights ? (
                   <button
                     type="button"
                     className="intake-weread-fetch intake-weread-more"
-                    disabled={busy || readyForStyleSample}
+                    disabled={busy || evidenceLocked}
                     onClick={() => fetchTopHighlights("append")}
                   >
                     再获取 10 条
@@ -937,12 +1007,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <input
                   type="file"
                   accept=".epub,.pdf,.txt,.md,.markdown,.html,.htm,.rtf,.docx,application/epub+zip,application/pdf,text/plain,text/markdown,text/html,application/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  disabled={busy || readyForStyleSample}
+                  disabled={busy || evidenceLocked}
                   onChange={(event) => setBookSourceFile(event.target.files?.[0] || null)}
                 />
                 <button
                   type="button"
-                  disabled={busy || readyForStyleSample || !bookSourceFile}
+                  disabled={busy || evidenceLocked || !bookSourceFile}
                   onClick={uploadBookSource}
                 >
                   {busy ? "正在解析与分析…" : "上传并分析原书"}
@@ -967,7 +1037,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={busy || readyForStyleSample}
+                          disabled={busy || evidenceLocked}
                           onChange={() => setSelectedHighlightIds((current) =>
                             current.includes(id)
                               ? current.filter((value) => value !== id)
@@ -993,7 +1063,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <button
                 type="button"
                 className="intake-confirm-action"
-                disabled={busy || readyForStyleSample || !selectedHighlightIds.length}
+                disabled={busy || evidenceLocked || !selectedHighlightIds.length}
                 onClick={confirmHighlights}
               >
                 {highlightsArtifact ? "更新并确认所选原文" : "确认所选原文证据"}
@@ -1014,7 +1084,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <textarea
                   value={copyDirection}
                   maxLength={1000}
-                  disabled={busy || readyForStyleSample}
+                  disabled={busy || evidenceLocked}
                   onChange={(event) => setCopyDirection(event.target.value)}
                   placeholder="例如：面向容易内耗、行动力不足的职场人；语气更克制，不要过度煽情；重点围绕我选中的第 5 条划线展开；控制在 60 秒左右。"
                 />
@@ -1025,7 +1095,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   <button
                     type="button"
                     key={preset}
-                    disabled={busy || readyForStyleSample}
+                    disabled={busy || evidenceLocked}
                     onClick={() => setCopyDirection((current) =>
                       current.includes(preset)
                         ? current
@@ -1039,7 +1109,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <button
                 type="button"
                 className="intake-copy-save"
-                disabled={busy || readyForStyleSample}
+                disabled={busy || evidenceLocked}
                 onClick={saveCopyDirection}
               >
                 保存微调方向
@@ -1075,7 +1145,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <textarea
                   value={candidateScript}
                   onChange={(event) => setCandidateScript(event.target.value)}
-                  disabled={busy || readyForStyleSample}
+                  disabled={busy || evidenceLocked}
                 />
                 <button
                   type="button"
@@ -1120,7 +1190,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      {((readyForStyleSample && titleWorkflowComplete) || generatingStyleSample || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || readyForPostProduction) ? (
+      {((readyForStyleSample && titleWorkflowComplete) || generatingStyleSample || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || postProductionReached) ? (
         <section className="intake-style-sample-workspace">
           <div className="intake-section-heading">
             <div>
@@ -1213,7 +1283,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      {(readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || readyForPostProduction) ? (
+      {(readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || postProductionReached) ? (
         <section className="intake-remaining-images-workspace">
           <div className="intake-section-heading">
             <div>
@@ -1297,7 +1367,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 disabled={busy || !waitingForImagesConfirmation}
                 onClick={confirmAllImages}
               >
-                {readyForPostProduction ? "全部图片已确认" : "确认全部分镜并进入后期"}
+                {postProductionReached ? "全部图片已确认" : "确认全部分镜并进入后期"}
               </button>
               <small>
                 {generatingRemainingImages

@@ -29,6 +29,27 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
   }
 
+  if (action === "revise") {
+    if (task.status !== "waiting_style_confirmation") {
+      return NextResponse.json({ error: "当前没有待修改的风格样图" }, { status: 409 });
+    }
+    const feedback = String(body.feedback || "").trim().slice(0, 1000);
+    if (!feedback) {
+      return NextResponse.json({ error: "请先填写风格修改意见" }, { status: 400 });
+    }
+    try {
+      const result = enqueueCodexStyleSample(id, { force: true, feedback });
+      return NextResponse.json({
+        ok: true,
+        revision: result.job?.meta?.revision || null,
+        jobId: result.job?.artifact.id || null,
+        job: result.job?.meta || null,
+      });
+    } catch (error: any) {
+      return NextResponse.json({ error: String(error?.message || error) }, { status: 409 });
+    }
+  }
+
   if (action === "register") {
     try {
       const registered = registerStyleSampleFile(id, {
@@ -36,6 +57,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         promptFileName: String(body.promptFileName || ""),
         prompt: String(body.prompt || ""),
         codexJobId: String(body.codexJobId || "") || undefined,
+        revision: Number(body.revision || 1),
+        feedback: String(body.feedback || ""),
       });
       return NextResponse.json({ ok: true, ...registered });
     } catch (error: any) {

@@ -23,6 +23,8 @@ export function registerStyleSampleFile(
     promptFileName?: string;
     prompt?: string;
     codexJobId?: string;
+    revision?: number;
+    feedback?: string;
   },
 ) {
   const task = getTask(taskId);
@@ -63,6 +65,8 @@ export function registerStyleSampleFile(
     promptPath: promptPath && fs.existsSync(promptPath) ? projectArtifactPath(promptPath) : null,
     sha256: fileSha256(imagePath),
     approvalRequired: true,
+    revision: Number(input.revision || 1),
+    feedback: String(input.feedback || ""),
     registeredAt: Date.now(),
   };
 

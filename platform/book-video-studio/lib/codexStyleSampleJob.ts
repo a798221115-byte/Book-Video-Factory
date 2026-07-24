@@ -23,6 +23,8 @@ export type CodexStyleSampleJobStatus =
 
 export type CodexStyleSampleJobMeta = {
   jobType: "style_sample";
+  revision: number;
+  feedback: string;
   status: CodexStyleSampleJobStatus;
   phase: string;
   message: string;
@@ -103,7 +105,7 @@ function summarizeEvent(event: CodexTaskEvent) {
   return null;
 }
 
-function buildPrompt(taskId: string, imageFileName: string, promptFileName: string) {
+function buildPrompt(taskId: string, imageFileName: string, promptFileName: string, feedback = "", revision = 1) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
   const projectDir = taskDir(taskId);
@@ -112,6 +114,8 @@ function buildPrompt(taskId: string, imageFileName: string, promptFileName: stri
   return [
     `【Book Video Studio｜G03 风格样图｜${task.bookTitle || taskId}】`,
     `你正在执行工作台自动派发的 G03 风格样图任务。任务 ID：${taskId}。`,
+    revision > 1 ? `这是第 ${revision} 版样图修改，请在保留已确认方向的基础上落实用户反馈。` : "这是第一版代表性样图。",
+    ...(feedback ? ["用户对上一版样图的修改意见：", feedback] : []),
     "",
     "严格执行以下要求：",
     "1. 先完整阅读当前项目的 AGENTS.md，以及该任务目录中的 script.txt、titles.json、script_sources.md（如存在）。",
@@ -162,7 +166,13 @@ async function runJob(taskId: string, jobArtifactId: string) {
   });
 
   const projectRoot = path.resolve(path.join(taskDir(taskId), "..", ".."));
-  const prompt = buildPrompt(taskId, initial.expectedImageFileName, initial.expectedPromptFileName);
+  const prompt = buildPrompt(
+    taskId,
+    initial.expectedImageFileName,
+    initial.expectedPromptFileName,
+    initial.feedback,
+    initial.revision,
+  );
   await runVisibleCodexTask({
     title: `Book Video Studio｜G03 风格样图｜${task.bookTitle || taskId}`,
     prompt,
@@ -193,6 +203,8 @@ async function runJob(taskId: string, jobArtifactId: string) {
     imageFileName: initial.expectedImageFileName,
     promptFileName: initial.expectedPromptFileName,
     codexJobId: jobArtifactId,
+    revision: initial.revision,
+    feedback: initial.feedback,
   });
   updateJob(jobArtifactId, {
     status: "succeeded",
@@ -226,7 +238,7 @@ function launch(taskId: string, jobArtifactId: string) {
   runningJobs.set(jobArtifactId, promise);
 }
 
-export function enqueueCodexStyleSample(taskId: string, options: { force?: boolean } = {}) {
+export function enqueueCodexStyleSample(taskId: string, options: { force?: boolean; feedback?: string } = {}) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
   assertTitleWorkflowComplete(taskId);
@@ -245,16 +257,20 @@ export function enqueueCodexStyleSample(taskId: string, options: { force?: boole
     return { job: latest, alreadyCompleted: latest.meta.status === "succeeded" };
   }
 
+  const feedback = String(options.feedback || "").trim().slice(0, 1000);
+  const revision = Math.max(1, Number(latest?.meta.revision || 0) + 1);
   const now = Date.now();
   const meta: CodexStyleSampleJobMeta = {
     jobType: "style_sample",
+    revision,
+    feedback,
     status: "queued",
     phase: "queued",
     message: "G03 已进入 Codex 队列",
     progress: 0.03,
     threadId: null,
-    expectedImageFileName: "style-sample-v1.png",
-    expectedPromptFileName: "style-sample-v1.txt",
+    expectedImageFileName: `style-sample-v${revision}.png`,
+    expectedPromptFileName: `style-sample-v${revision}.txt`,
     eventLogPath: null,
     createdAt: now,
     startedAt: null,

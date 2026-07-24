@@ -407,6 +407,55 @@
   line-height: 1.9;
 }
 
+.intake-style-feedback {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid rgba(183, 77, 60, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 246, 238, 0.82);
+}
+
+.intake-style-feedback label {
+  display: grid;
+  gap: 8px;
+}
+
+.intake-style-feedback label > span {
+  color: #744635;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.intake-style-feedback textarea {
+  width: 100%;
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid rgba(117, 78, 48, 0.2);
+  border-radius: 12px;
+  outline: none;
+  resize: vertical;
+  color: var(--intake-ink);
+  background: #fffdf9;
+  font: 0.84rem/1.7 var(--sans);
+}
+
+.intake-style-feedback textarea:focus {
+  border-color: var(--intake-accent);
+  box-shadow: 0 0 0 3px rgba(183, 77, 60, 0.12);
+}
+
+.intake-style-feedback small {
+  color: #7c7067;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.intake-style-feedback button {
+  min-height: 44px;
+}
+
 .intake-style-sample-empty {
   display: flex;
   flex-direction: column;

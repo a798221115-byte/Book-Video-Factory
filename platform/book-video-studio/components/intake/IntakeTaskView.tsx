@@ -129,6 +129,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const [bookAuthor, setBookAuthor] = useState("");
   const [selectedHighlightIds, setSelectedHighlightIds] = useState<string[]>([]);
   const [copyDirection, setCopyDirection] = useState("");
+  const [styleFeedback, setStyleFeedback] = useState("");
   const [candidateScript, setCandidateScript] = useState("");
   const [bookSourceFile, setBookSourceFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -221,6 +222,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     ? remainingImageManifest.jobs
     : [];
   const completedRemainingImages = remainingImageJobs.filter((item: any) => item.status === "done").length;
+
+  useEffect(() => {
+    if (!styleFeedback && codexStyleSampleJob.feedback) {
+      setStyleFeedback(String(codexStyleSampleJob.feedback));
+    }
+  }, [codexStyleSampleJob.feedback, styleFeedback]);
   const candidates = useMemo(() => {
     const meta = parseJson(candidateArtifact?.meta);
     return Array.isArray(meta.candidates) ? meta.candidates : [];
@@ -617,6 +624,36 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Codex G03 任务重试失败");
       setMessage("已重新创建 Codex G03 生图任务，页面会持续显示进度。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reviseStyleSample = async () => {
+    const feedback = styleFeedback.trim();
+    if (!feedback) {
+      setMessage("请先填写这张样图需要修改的地方。");
+      return;
+    }
+    if (demoMode) {
+      setMessage("演示任务不会重新生成真实样图。");
+      return;
+    }
+    setBusy(true);
+    setMessage("已提交修改意见，正在创建新的 Codex G03 样图任务…");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/style-sample`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revise", feedback }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "G03 样图修改任务创建失败");
+      setStyleFeedback("");
+      setMessage(`已创建第 ${Number(payload.revision || 2)} 版 G03 样图任务，页面会持续回传进度。`);
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -1200,7 +1237,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             <span className="intake-dbs-version">Codex imagegen</span>
           </div>
 
-          {styleSampleArtifact?.path ? (
+          {styleSampleArtifact?.path && !generatingStyleSample ? (
             <div className="intake-style-sample-grid">
               <figure>
                 <img src={fileUrl(styleSampleArtifact.path)} alt="Codex 生成的 G03 风格样图" />
@@ -1215,6 +1252,30 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   <li>人物、倒影和环境是否自然</li>
                   <li>顶部和字幕区域是否保留了自然低信息区</li>
                 </ul>
+                {waitingForStyleConfirmation ? (
+                  <div className="intake-style-feedback">
+                    <label>
+                      <span>不满意？告诉 Codex 怎么修改</span>
+                      <textarea
+                        value={styleFeedback}
+                        maxLength={1000}
+                        rows={4}
+                        disabled={busy}
+                        onChange={(event) => setStyleFeedback(event.target.value)}
+                        placeholder="例如：人物改为更年轻；减少暖黄色；保留客厅场景，但让两个人的动作更自然；顶部留出更多字幕安全区。"
+                      />
+                      <small>{styleFeedback.length}/1000 · 只修改画风、色彩、人物、构图和留白，不会改动已确认文案。</small>
+                    </label>
+                    <button
+                      type="button"
+                      className="intake-confirm-action"
+                      disabled={busy || !styleFeedback.trim()}
+                      onClick={reviseStyleSample}
+                    >
+                      按意见重新生成样图
+                    </button>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className="intake-confirm-action"

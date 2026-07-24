@@ -18,6 +18,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const body = await req.json().catch(() => ({}));
   const bookTitle = String(body.bookTitle || "").trim();
   const bookAuthor = String(body.bookAuthor || "").trim();
+  const preserveStage = body.preserveStage === true;
   if (!bookTitle || !bookAuthor) {
     return NextResponse.json({ error: "书名和作者都必须确认" }, { status: 400 });
   }
@@ -26,8 +27,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   updateTask(id, {
     bookTitle,
     bookAuthor,
-    status: "ready_for_weread",
-    currentGate: "WEREAD_HIGHLIGHTS",
+    status: preserveStage ? task.status : "ready_for_weread",
+    currentGate: preserveStage ? task.currentGate : "WEREAD_HIGHLIGHTS",
   });
 
   const meta = {
@@ -35,7 +36,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     book_author: bookAuthor,
     confirmed_at: Date.now(),
     evidence: "人工确认保存",
-    next_gate: "微信读书版本与热门划线",
+    next_gate: preserveStage ? task.currentGate : "微信读书版本与热门划线",
     project_path: projectPath,
   };
   const clipsDir = path.join(taskDir(id), "video_clips");

@@ -17,6 +17,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   const body = await req.json().catch(() => ({}));
   const retryStaleVoice = body?.retry === true;
+  const regenerateVoice = body?.regenerateVoice === true;
+  const rerender = body?.rerender === true;
   // A worker restart can leave the DB at generating_voice while the child
   // process and its in-memory lock are already gone. An explicit retry repairs
   // that state before starting a fresh locked job.
@@ -28,6 +30,27 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       error: "",
     });
     updateTask(id, { status: "ready_for_post_production", currentGate: "POST_PRODUCTION" });
+  }
+  if (regenerateVoice) {
+    resetLockedFemaleNarration(id);
+    for (const step of ["tts", "subtitle", "render"] as const) {
+      setStepStatus(id, step, { status: "pending", progress: 0, error: "" });
+    }
+    updateTask(id, { status: "ready_for_post_production", currentGate: "POST_PRODUCTION" });
+  }
+  if (rerender && task.status === "waiting_render_review") {
+    for (const step of ["subtitle", "render"] as const) {
+      setStepStatus(id, step, { status: "pending", progress: 0, error: "" });
+    }
+    updateTask(id, { status: "waiting_voice_confirmation", currentGate: "VOICE_REVIEW" });
+    startLockedFemalePostProduction(id).catch((error) =>
+      console.error("[locked-female-post-production]", error),
+    );
+    return NextResponse.json({
+      ok: true,
+      phase: "post-production",
+      nextGate: "CAPTIONS_GENERATING",
+    });
   }
 
   if (lockedFemalePostProductionIsRunning(id)) {

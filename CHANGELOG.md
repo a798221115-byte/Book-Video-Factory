@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.0 - 2026-07-25
+
+- Add a complete G06 joint-review workspace for the 60fps review MP4, editable Jianying draft report, standalone WeChat Channels cover, and technical validation report.
+- Render confirmed storyboard images with deterministic non-repeating 60fps motion, exact frame padding, and real voice-duration alignment.
+- Make the locked female narration start with the exact book title and remove duplicate share-intro phrases.
+- Recover from stale voice workers, support subtitle/render-only retries, and preserve the current gate during late book-metadata corrections.
+- Retry supported DeepSeek gateway models automatically and repair mismatched bilingual subtitle batches one card at a time.
+
 ## 1.10.1 - 2026-07-24
 
 - 更新 `produce-wechat-book-video` Skill 至 1.1.3。

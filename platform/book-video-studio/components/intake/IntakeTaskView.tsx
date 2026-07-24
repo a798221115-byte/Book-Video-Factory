@@ -834,6 +834,27 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
+  const confirmDelivery = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/delivery-assets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "confirm" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "G06 联合审核确认失败");
+      setMessage("成片、剪映草稿、独立封面和验收报告已全部确认，任务已完成。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!data) {
     return <main className="intake-detail-shell"><div className="intake-loading">正在读取任务…</div></main>;
   }
@@ -865,6 +886,22 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const postProductionStageReached = postProductionReached || generatingVoice || waitingVoiceConfirmation || generatingSubtitles || renderingVideo || voiceFailed || postProductionFailed;
   const reviewVideoArtifact = data.artifacts.find(
     (item) => item.stepName === "render" && ["review_video", "video"].includes(item.kind) && item.path,
+  );
+  const deliveryCoverArtifact = data.artifacts.find(
+    (item) => item.stepName === "delivery" && item.kind === "cover" && item.path,
+  );
+  const deliveryDraftArtifact = data.artifacts.find(
+    (item) => item.stepName === "delivery" && item.kind === "jianying_draft_report" && item.path,
+  );
+  const deliveryValidationArtifact = data.artifacts.find(
+    (item) => item.stepName === "delivery" && item.kind === "validation_report" && item.path,
+  );
+  const deliveryDraftMeta = parseJson(deliveryDraftArtifact?.meta);
+  const deliveryReady = Boolean(
+    reviewVideoArtifact?.path &&
+    deliveryCoverArtifact?.path &&
+    deliveryDraftArtifact?.path &&
+    deliveryValidationArtifact?.path,
   );
   const evidenceStageReached =
     readyForWeread ||
@@ -1714,6 +1751,75 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               </div>
             );
           })()}
+        </section>
+      ) : null}
+
+      {(waitingForRenderReview || productionComplete) ? (
+        <section className="intake-style-sample-workspace" aria-label="G06 联合审核">
+          <div className="intake-section-heading">
+            <div>
+              <span className="intake-kicker">G06 联合审核</span>
+              <h2>成片、剪映草稿与独立封面</h2>
+            </div>
+            <span className="intake-dbs-version">{deliveryReady ? "产物已齐全" : "产物整理中"}</span>
+          </div>
+
+          <div className="intake-delivery-grid">
+            <article className="intake-delivery-card">
+              <strong>60fps 双语字幕审核成片</strong>
+              {reviewVideoArtifact?.path ? (
+                <>
+                  <video src={fileUrl(reviewVideoArtifact.path)} controls preload="metadata" />
+                  <a className="intake-confirm-action" href={fileUrl(reviewVideoArtifact.path)} target="_blank" rel="noreferrer">
+                    单独打开成片
+                  </a>
+                </>
+              ) : <small>成片仍在渲染。</small>}
+            </article>
+
+            <article className="intake-delivery-card">
+              <strong>视频号独立封面</strong>
+              {deliveryCoverArtifact?.path ? (
+                <>
+                  <img src={fileUrl(deliveryCoverArtifact.path)} alt="视频号独立封面" />
+                  <a className="intake-confirm-action" href={fileUrl(deliveryCoverArtifact.path)} target="_blank" rel="noreferrer">
+                    打开封面原图
+                  </a>
+                </>
+              ) : <small>独立封面仍在整理。</small>}
+            </article>
+
+            <article className="intake-delivery-card intake-delivery-files">
+              <strong>可编辑剪映草稿与验收</strong>
+              {deliveryDraftArtifact?.path ? (
+                <a className="intake-confirm-action" href={fileUrl(deliveryDraftArtifact.path)} target="_blank" rel="noreferrer">
+                  查看剪映草稿验收报告
+                </a>
+              ) : <small>剪映草稿仍在创建。</small>}
+              {deliveryValidationArtifact?.path ? (
+                <a className="intake-confirm-action" href={fileUrl(deliveryValidationArtifact.path)} target="_blank" rel="noreferrer">
+                  查看成片技术验收报告
+                </a>
+              ) : null}
+              {deliveryDraftMeta.nativeDirectory ? (
+                <small className="intake-delivery-path">
+                  剪映原生草稿：{String(deliveryDraftMeta.nativeDirectory)}
+                </small>
+              ) : null}
+            </article>
+          </div>
+
+          <button
+            type="button"
+            className="intake-confirm-action"
+            disabled={busy || !waitingForRenderReview || !deliveryReady}
+            onClick={confirmDelivery}
+          >
+            {productionComplete ? "G06 已确认，任务完成" : "确认成片、草稿和封面，完成任务"}
+          </button>
+          <small>
+            只有成片、剪映草稿、独立封面和两份验收报告全部回传后，按钮才会解锁。
+          </small>
         </section>
       ) : null}
 

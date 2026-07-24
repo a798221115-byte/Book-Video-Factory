@@ -127,7 +127,28 @@ async function translateCards(chinese: string[]) {
   const parsed = parseModelJson(response);
   const translations = Array.isArray(parsed.translations) ? parsed.translations.map(String) : [];
   if (translations.length !== chinese.length) {
-    throw new Error(`DeepSeek 字幕翻译数量不一致：中文 ${chinese.length} 条，英文 ${translations.length} 条`);
+    const repaired: string[] = [];
+    for (let index = 0; index < chinese.length; index += 1) {
+      const fallbackResponse = await getTranscriptLLM().chat({
+        system: [
+          "你是短视频双语字幕翻译器。",
+          "把简体中文翻译成自然、克制、简短的一行英文字幕。",
+          "只输出 JSON：{\"translation\":\"...\"}。",
+        ].join("\n"),
+        user: `请只翻译这一条字幕：${JSON.stringify(chinese[index])}`,
+        temperature: 0.1,
+        json: true,
+      });
+      const fallbackParsed = parseModelJson(fallbackResponse);
+      const item = typeof fallbackParsed.translation === "string"
+        ? fallbackParsed.translation.replace(/\s+/g, " ").trim()
+        : "";
+      if (!item) {
+        throw new Error(`DeepSeek 字幕翻译补偿失败：第 ${index + 1}/${chinese.length} 条为空`);
+      }
+      repaired.push(item);
+    }
+    return repaired;
   }
   return translations.map((item: string) => item.replace(/\s+/g, " ").trim());
 }
@@ -223,6 +244,147 @@ function compactDate() {
   }).format(new Date()).replaceAll("-", "");
 }
 
+const STILL_MOTIONS = [
+  "zoom-out",
+  "zoom-in",
+  "pan-left-to-right",
+  "pan-right-to-left",
+] as const;
+
+function parseArtifactMeta(raw: string | null | undefined) {
+  try { return raw ? JSON.parse(raw) : {}; }
+  catch { return {}; }
+}
+
+function motionSeed(taskId: string) {
+  let value = 2166136261;
+  for (const char of taskId) value = Math.imul(value ^ char.charCodeAt(0), 16777619);
+  return value >>> 0;
+}
+
+function assignMotions<T extends Record<string, any>>(taskId: string, shots: T[]) {
+  let seed = motionSeed(taskId);
+  let previous = "";
+  return shots.map((shot) => {
+    const choices = STILL_MOTIONS.filter((item) => item !== previous);
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    const motion = choices[(seed >>> 0) % choices.length];
+    previous = motion;
+    return { ...shot, motion };
+  });
+}
+
+function resolveApprovedImageEntries(taskId: string, dir: string) {
+  const all = getArtifacts(taskId);
+  const storyboardImages = all
+    .filter((item) => item.stepName === "storyboard" && item.kind === "storyboard_image" && item.path)
+    .map((item) => {
+      const meta = parseArtifactMeta(item.meta);
+      return {
+        id: String(meta.jobId || item.label || item.id),
+        imageRelative: String(item.path),
+        image: path.resolve(dir, String(item.path).replace(/^work[/\\][^/\\]+[/\\]/, "")),
+      };
+    })
+    .filter((item) => fs.existsSync(item.image))
+    .sort((left, right) => left.id.localeCompare(right.id, undefined, { numeric: true }));
+  const styleArtifact = [...all]
+    .reverse()
+    .find((item) => item.stepName === "storyboard" && item.kind === "style_sample" && item.path);
+  const styleEntry = styleArtifact?.path
+    ? {
+        id: "STYLE",
+        imageRelative: String(styleArtifact.path),
+        image: path.resolve(dir, String(styleArtifact.path).replace(/^work[/\\][^/\\]+[/\\]/, "")),
+      }
+    : null;
+  const ordered = [...storyboardImages];
+  if (styleEntry && fs.existsSync(styleEntry.image)) ordered.splice(Math.min(1, ordered.length), 0, styleEntry);
+  const seen = new Set<string>();
+  return ordered.filter((item) => {
+    const key = path.normalize(item.image).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function resolveRenderShots(taskId: string, dir: string, storyboard: any, timeline: VoiceSegment[]) {
+  const direct = (storyboard.beats || []).map((beat: any) => {
+    const imageRelative =
+      storyboard.generated_images?.[beat.id] ||
+      beat.image_path ||
+      (beat.image?.file_name ? `storyboard/images/${beat.image.file_name}` : "");
+    const image = imageRelative ? path.resolve(dir, imageRelative) : "";
+    return {
+      id: String(beat.id),
+      order: Number(beat.order || 0),
+      image,
+      imageRelative,
+      startSeconds: Number(beat.actual_voice_start_seconds),
+      endSeconds: Number(beat.actual_voice_end_seconds),
+      durationSeconds: Number(beat.actual_voice_duration_seconds),
+      scriptText: String(beat.script_text || ""),
+    };
+  });
+  const directValid = direct.length > 0 && direct.every(
+    (shot: any) => fs.existsSync(shot.image) && Number.isFinite(shot.durationSeconds) && shot.durationSeconds > 0,
+  );
+  if (directValid) return assignMotions(taskId, direct);
+
+  const images = resolveApprovedImageEntries(taskId, dir);
+  if (!images.length) throw new Error("No approved storyboard images are available for rendering");
+  if (images.length > timeline.length) throw new Error("Approved image count exceeds narration segment count");
+
+  const shots: any[] = [];
+  let cursor = 0;
+  for (let imageIndex = 0; imageIndex < images.length; imageIndex++) {
+    const remainingImages = images.length - imageIndex;
+    const remainingSegments = timeline.length - cursor;
+    let take = Math.max(1, Math.round(remainingSegments / remainingImages));
+    take = Math.min(take, remainingSegments - (remainingImages - 1));
+    const members = timeline.slice(cursor, cursor + take);
+    cursor += take;
+    const startSeconds = Number(members[0].startSeconds || 0);
+    const endSeconds = Number(members[members.length - 1].endSeconds || startSeconds);
+    shots.push({
+      id: images[imageIndex].id,
+      order: imageIndex + 1,
+      image: images[imageIndex].image,
+      imageRelative: images[imageIndex].imageRelative,
+      startSeconds,
+      endSeconds,
+      durationSeconds: Number((endSeconds - startSeconds).toFixed(6)),
+      scriptText: members.map((item) => item.text).join(""),
+      sourceSegmentIndexes: members.map((item) => item.index),
+    });
+  }
+  return assignMotions(taskId, shots);
+}
+
+function motionFilter(motion: string, frameCount: number) {
+  const denominator = Math.max(1, frameCount - 1);
+  const progress = `min(1,max(0,on/${denominator}))`;
+  const ease = `(${progress})*(${progress})*(3-2*(${progress}))`;
+  let zoom = "1.2";
+  let x = "iw/2-(iw/zoom/2)";
+  const y = "ih/2-(ih/zoom/2)";
+  if (motion === "zoom-out") zoom = `1.2-0.2*(${ease})`;
+  else if (motion === "zoom-in") zoom = `1+0.2*(${ease})`;
+  else if (motion === "pan-left-to-right") x = `(iw-iw/zoom)*(${ease})`;
+  else if (motion === "pan-right-to-left") x = `(iw-iw/zoom)*(1-(${ease}))`;
+  return [
+    "scale=2160:3840:force_original_aspect_ratio=increase:flags=lanczos",
+    "crop=2160:3840",
+    `zoompan=z='${zoom}':x='${x}':y='${y}':d=1:s=2160x3840:fps=60`,
+    "scale=1080:1920:flags=lanczos",
+    "setsar=1",
+    "format=yuv420p",
+  ].join(",");
+}
+
 export async function startLockedFemalePostProduction(taskId: string) {
   if (running.has(taskId)) return;
   running.add(taskId);
@@ -271,7 +433,7 @@ export async function startLockedFemalePostProduction(taskId: string) {
     fs.writeFileSync(assPath, buildAss(cards, duration, task.bookTitle || "图书", task.bookAuthor || ""), "utf8");
 
     const storyboard = JSON.parse(fs.readFileSync(storyboardPath, "utf8"));
-    const beats = (storyboard.beats || []).map((beat: any) => {
+    const legacyBeats = false ? (storyboard.beats || []).map((beat: any) => {
       const imageRelative = storyboard.generated_images?.[beat.id] || beat.image?.file_name && `storyboard/images/${beat.image.file_name}`;
       const imagePath = imageRelative ? path.resolve(dir, imageRelative) : "";
       if (!imagePath || !fs.existsSync(imagePath)) throw new Error(`分镜 ${beat.id} 缺少已确认图片`);
@@ -285,10 +447,11 @@ export async function startLockedFemalePostProduction(taskId: string) {
         durationSeconds: Number(beat.actual_voice_duration_seconds),
         scriptText: String(beat.script_text || ""),
       };
-    });
-    if (!beats.length || beats.some((beat: any) => !Number.isFinite(beat.durationSeconds) || beat.durationSeconds <= 0)) {
+    }) : [];
+    if (false && (!legacyBeats.length || legacyBeats.some((beat: any) => !Number.isFinite(beat.durationSeconds) || beat.durationSeconds <= 0))) {
       throw new Error("storyboard.json 缺少真实配音镜头时长");
     }
+    const beats = resolveRenderShots(taskId, dir, storyboard, timeline);
     const config = JSON.parse(fs.readFileSync(path.join("F:\\Codex\\.codex\\skills\\produce-wechat-book-video", "assets", "default-config.json"), "utf8"));
     const introPath = path.resolve(projectRoot, config.introVariants.female.path);
     const musicPath = path.resolve(projectRoot, config.backgroundMusic);
@@ -307,6 +470,7 @@ export async function startLockedFemalePostProduction(taskId: string) {
       fixedIntro: path.relative(projectRoot, introPath).replaceAll("\\", "/"),
       introDurationSeconds: introDuration,
       voice: projectArtifactPath(voicePath),
+      draftVoice: "voice/narration-female-locked-v1-master.wav",
       voiceTimeline: projectArtifactPath(timelinePath),
       bodyDurationSeconds: duration,
       totalDurationSeconds: Number((introDuration + duration).toFixed(3)),
@@ -317,6 +481,7 @@ export async function startLockedFemalePostProduction(taskId: string) {
         chinese: projectArtifactPath(cnSrtPath),
         english: projectArtifactPath(enSrtPath),
         ass: projectArtifactPath(assPath),
+        cards,
       },
       shots: beats,
     };
@@ -340,19 +505,41 @@ export async function startLockedFemalePostProduction(taskId: string) {
       startedAt: Date.now(),
       output: JSON.stringify({ phase: "building-body", shots: beats.length }),
     });
-    const concatPath = path.join(renderDir, "body-images.ffconcat");
-    const concatLines = ["ffconcat version 1.0"];
-    for (const beat of beats) {
-      concatLines.push(`file '${quoteConcatPath(beat.image)}'`);
-      concatLines.push(`duration ${beat.durationSeconds.toFixed(3)}`);
+    const shotsDir = path.join(renderDir, "motion-shots");
+    fs.mkdirSync(shotsDir, { recursive: true });
+    const targetFrames = Math.ceil(duration * 60);
+    const frameCounts = beats.map((beat: any) => Math.max(1, Math.round(beat.durationSeconds * 60)));
+    frameCounts[frameCounts.length - 1] += targetFrames - frameCounts.reduce((sum: number, count: number) => sum + count, 0);
+    const motionPaths: string[] = [];
+    for (let index = 0; index < beats.length; index++) {
+      const beat = beats[index];
+      const motionPath = path.join(shotsDir, `${String(index + 1).padStart(2, "0")}.mp4`);
+      await runFfmpeg([
+        "-loop", "1", "-framerate", "60", "-i", beat.image,
+        "-vf", motionFilter(beat.motion, frameCounts[index]),
+        "-frames:v", String(frameCounts[index]), "-an",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "17",
+        "-pix_fmt", "yuv420p", "-r", "60", motionPath,
+      ], dir, `motion shot ${index + 1}`);
+      motionPaths.push(motionPath);
+      setStepStatus(taskId, "render", {
+        progress: 0.05 + 0.45 * ((index + 1) / beats.length),
+        output: JSON.stringify({ phase: "rendering-motion-shots", completed: index + 1, total: beats.length }),
+      });
     }
-    concatLines.push(`file '${quoteConcatPath(beats[beats.length - 1].image)}'`);
+    const concatPath = path.join(renderDir, "body-motion.ffconcat");
+    const concatLines = ["ffconcat version 1.0", ...motionPaths.map((item) => `file '${quoteConcatPath(item)}'`)];
     fs.writeFileSync(concatPath, `${concatLines.join("\n")}\n`, "utf8");
+    const rawBodyPath = path.join(renderDir, "body-motion.mp4");
+    await runFfmpeg([
+      "-f", "concat", "-safe", "0", "-i", concatPath,
+      "-an", "-c", "copy", rawBodyPath,
+    ], dir, "motion shot concat");
 
     const bodyPath = path.join(renderDir, "body-female-auto.mp4");
     await runFfmpeg([
-      "-f", "concat", "-safe", "0", "-i", concatPath,
-      "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=60,ass=captions-female.ass",
+      "-i", rawBodyPath,
+      "-vf", "ass=captions-female.ass",
       "-t", duration.toFixed(3),
       "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
       "-r", "60", "-movflags", "+faststart", bodyPath,
@@ -366,8 +553,8 @@ export async function startLockedFemalePostProduction(taskId: string) {
     const totalDuration = introDuration + duration;
     const fadeStart = Math.max(0, totalDuration - 1);
     const filter = [
-      "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=60,setsar=1,setpts=PTS-STARTPTS[iv]",
-      "[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=60,setsar=1,setpts=PTS-STARTPTS[bv]",
+      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=60,tpad=stop_mode=clone:stop_duration=0.1,setsar=1,trim=duration=${introDuration.toFixed(3)},setpts=PTS-STARTPTS[iv]`,
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=60,tpad=stop_mode=clone:stop_duration=0.1,setsar=1,trim=duration=${duration.toFixed(3)},setpts=PTS-STARTPTS[bv]`,
       "[iv][bv]concat=n=2:v=1:a=0[v]",
       `[0:a]atrim=0:${introDuration.toFixed(3)},asetpts=PTS-STARTPTS,apad,atrim=0:${totalDuration.toFixed(3)}[ia]`,
       `[2:a]aresample=48000,asetpts=PTS-STARTPTS,adelay=${Math.round(introDuration * 1000)}:all=1[va]`,

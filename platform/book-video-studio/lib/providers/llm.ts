@@ -27,14 +27,22 @@ class OpenAICompatProvider implements LLMProvider {
   async chat(opts: ChatOpts): Promise<string> {
     // 中转站偶发 5xx/超时/空响应，重试 3 次指数退避（4xx 等非瞬时错误直接抛）
     let lastErr: any;
+    let activeOpts = opts;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const out = await this.once(opts);
+        const out = await this.once(activeOpts);
         if (out && out.trim()) return out;
         lastErr = new Error(`${this.name} 返回空内容`);
       } catch (e: any) {
         lastErr = e;
         const msg = String(e?.message || e);
+        if (
+          /supported API model names are deepseek-v4-pro or deepseek-v4-flash/i.test(msg) &&
+          activeOpts.model !== "deepseek-v4-flash"
+        ) {
+          activeOpts = { ...activeOpts, model: "deepseek-v4-flash" };
+          continue;
+        }
         const transient = /\b5\d\d\b|timeout|aborted|ECONNRESET|ECONNREFUSED|fetch failed|do_request_failed|网络|返回空/i.test(msg);
         if (!transient || attempt === 2) throw e;
       }
@@ -44,14 +52,15 @@ class OpenAICompatProvider implements LLMProvider {
   }
 
   private async once(opts: ChatOpts): Promise<string> {
-    const stream = this.forceStream;
+    const model = opts.model || this.defaultModel;
+    const stream = this.forceStream || model.includes("flash");
     // 该网关 json_object 模式要求【user 消息】里含小写 "json"（不看 system），否则 400
     let user = opts.user;
     if (opts.json && !/json/.test(user)) {
       user += "\n（仅输出 json，不要任何额外文字。）";
     }
     const body: any = {
-      model: opts.model || this.defaultModel,
+      model,
       messages: [
         { role: "system", content: opts.system },
         { role: "user", content: user },

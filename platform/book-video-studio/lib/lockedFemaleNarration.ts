@@ -88,6 +88,10 @@ function readStoryboard(taskId: string) {
   return { filePath, value };
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function prepareSegments(taskId: string) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
@@ -96,14 +100,18 @@ function prepareSegments(taskId: string) {
   if (!beats.length) throw new Error("storyboard.json 没有可用分镜");
   const title = `《${task.bookTitle || storyboard.book?.title || ""}》`;
   const segments: { text: string; beatId: string; pauseAfterSeconds: number }[] = [];
+  if (title !== "《》") {
+    segments.push({ text: title, beatId: String(beats[0]?.id || "title"), pauseAfterSeconds: 1.8 });
+  }
+  const duplicateShareLine = title === "《》"
+    ? null
+    : new RegExp(`^(?:我们)?今天(?:要)?分享(?:的是)?\\s*${escapeRegExp(title)}[。！？!?\\s]*`);
   for (const beat of beats) {
     let text = String(beat.script_text || "").trim();
     if (!text) continue;
     const beatId = String(beat.id);
-    if (!segments.length && title !== "《》" && text.startsWith(title)) {
-      segments.push({ text: title, beatId, pauseAfterSeconds: 1.8 });
-      text = text.slice(title.length).trim();
-    }
+    if (title !== "《》" && text.startsWith(title)) text = text.slice(title.length).replace(/^[。！？!?\s]+/, "").trim();
+    if (duplicateShareLine) text = text.replace(duplicateShareLine, "").trim();
     if (text) segments.push({ text, beatId, pauseAfterSeconds: 0.55 });
   }
   if (!segments.length) throw new Error("分镜中缺少 script_text");
@@ -275,10 +283,23 @@ export async function startLockedFemaleNarration(taskId: string) {
     const reusableSegments = fs.existsSync(segmentDir)
       ? fs.readdirSync(segmentDir).filter((name) => /^segment\d+\.wav$/i.test(name)).length
       : 0;
+    let timelineMatches = false;
+    if (fs.existsSync(timelinePath)) {
+      try {
+        const previousTimeline = JSON.parse(fs.readFileSync(timelinePath, "utf8"));
+        const previousSegments = Array.isArray(previousTimeline.timeline) ? previousTimeline.timeline : [];
+        timelineMatches = previousSegments.length === segments.length && previousSegments.every(
+          (item: any, index: number) =>
+            String(item.text || "") === segments[index].text &&
+            Number(item.pauseAfterSeconds || 0) === segments[index].pauseAfterSeconds,
+        );
+      } catch { timelineMatches = false; }
+    }
     const canReuseSynthesis =
       fs.existsSync(rawOutput) &&
       fs.existsSync(timelinePath) &&
-      reusableSegments === segments.length;
+      reusableSegments === segments.length &&
+      timelineMatches;
     if (canReuseSynthesis) {
       setStepStatus(taskId, "tts", {
         progress: 0.9,

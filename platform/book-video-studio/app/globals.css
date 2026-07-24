@@ -407,6 +407,43 @@
   line-height: 1.9;
 }
 
+.intake-delivery-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(240px, 0.7fr) minmax(280px, 0.9fr);
+  gap: 18px;
+  margin: 18px 0;
+}
+
+.intake-delivery-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(117, 78, 48, 0.13);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.intake-delivery-card video,
+.intake-delivery-card img {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  border-radius: 14px;
+  background: #16120f;
+  object-fit: contain;
+}
+
+.intake-delivery-files {
+  justify-content: flex-start;
+}
+
+.intake-delivery-path {
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+
 .intake-style-feedback {
   display: grid;
   gap: 16px;
@@ -535,7 +572,8 @@
 @media (max-width: 900px) {
   .intake-dbs-grid,
   .intake-dbs-review,
-  .intake-style-sample-grid {
+  .intake-style-sample-grid,
+  .intake-delivery-grid {
     grid-template-columns: 1fr;
   }
 

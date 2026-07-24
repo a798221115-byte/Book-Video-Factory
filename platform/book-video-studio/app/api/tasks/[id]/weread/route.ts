@@ -99,7 +99,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({
       error: detail,
       sourceStatus: "unavailable",
-      fallback: "uploaded_epub",
+      fallback: "uploaded_book",
     }, { status: 502 });
   }
 }

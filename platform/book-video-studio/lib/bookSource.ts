@@ -6,6 +6,10 @@ import { getBookLLM } from "./providers/llm";
 
 const require = createRequire(import.meta.url);
 const AdmZip = require("adm-zip");
+const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{
+  text?: string;
+  info?: Record<string, unknown>;
+}>;
 
 export type BookSourceParagraph = {
   id: string;
@@ -16,8 +20,9 @@ export type BookSourceParagraph = {
 
 export type BookSourceCandidate = BookSourceParagraph & {
   count: null;
-  sourceType: "uploaded_epub";
+  sourceType: "uploaded_book" | "uploaded_epub";
   sourceFile: string;
+  sourceFormat: string;
   relevanceScore: number;
   relevanceReason: string;
   connection: string;
@@ -28,6 +33,8 @@ type ParsedEpub = {
   author: string;
   paragraphs: BookSourceParagraph[];
 };
+
+export type ParsedBookSource = ParsedEpub;
 
 function parseJsonObject(raw: string) {
   const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
@@ -184,6 +191,142 @@ export function parseEpubBuffer(buffer: Buffer): ParsedEpub {
   };
 }
 
+function decodeTextBuffer(buffer: Buffer) {
+  const utf8 = new TextDecoder("utf-8").decode(buffer);
+  const replacementCount = (utf8.match(/\ufffd/g) || []).length;
+  if (replacementCount > Math.max(3, Math.floor(utf8.length * 0.002))) {
+    try {
+      return new TextDecoder("gb18030").decode(buffer);
+    } catch {
+      // Keep the UTF-8 result when the runtime does not expose gb18030.
+    }
+  }
+  return utf8;
+}
+
+function isLikelyChapterHeading(line: string) {
+  const normalized = line.trim();
+  if (normalized.length < 2 || normalized.length > 80) return false;
+  if (/[。！？!?；;，,]$/.test(normalized)) return false;
+  return /^(第[一二三四五六七八九十百千万零〇\d]+[章节卷篇部]|chapter\s+\d+|part\s+[ivx\d]+|序言|前言|引言|目录|后记|结语)/i.test(normalized);
+}
+
+function paragraphsFromText(raw: string, locationPrefix: string): BookSourceParagraph[] {
+  const lines = raw
+    .replace(/^\uFEFF/, "")
+    .replace(/\u0000/g, "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim());
+  const blocks: Array<{ text: string; chapter: string; index: number }> = [];
+  let chapter = "";
+  let pending: string[] = [];
+  let blockIndex = 0;
+  const flush = () => {
+    const text = pending.join(" ").replace(/\s+/g, " ").trim();
+    pending = [];
+    if (text) blocks.push({ text, chapter, index: blockIndex++ });
+  };
+
+  for (const line of lines) {
+    if (!line) {
+      flush();
+      continue;
+    }
+    if (isLikelyChapterHeading(line) && !pending.length) {
+      chapter = line;
+      continue;
+    }
+    pending.push(line);
+  }
+  flush();
+
+  // Some PDFs and TXT exports have no blank lines. Split the whole text into
+  // sentence-sized blocks so DeepSeek receives usable evidence instead of one
+  // enormous paragraph.
+  if (blocks.length <= 1 && raw.length > 1200) {
+    const fallback = raw.replace(/\s+/g, " ").trim();
+    blocks.splice(0, blocks.length, ...splitLongParagraph(fallback).map((text, index) => ({
+      text,
+      chapter: "",
+      index,
+    })));
+  }
+
+  const paragraphs: BookSourceParagraph[] = [];
+  const seen = new Set<string>();
+  for (const block of blocks) {
+    for (const text of splitLongParagraph(block.text)) {
+      const cleaned = text.trim();
+      if (cleaned.length < 24 || /^[\d\s.,，。！？!?；;:：、“”‘’'"()（）【】\[\]—-]+$/.test(cleaned)) continue;
+      const normalized = cleaned.replace(/\s+/g, "");
+      if (seen.has(normalized)) continue;
+      seen.add(normalized);
+      paragraphs.push({
+        id: createHash("sha1")
+          .update(`${locationPrefix}:${block.index}:${cleaned}`)
+          .digest("hex")
+          .slice(0, 16),
+        text: cleaned,
+        chapter: block.chapter,
+        location: `${locationPrefix}#paragraph-${block.index + 1}`,
+      });
+    }
+  }
+  if (!paragraphs.length) throw new Error("原书文件中没有解析出可分析的正文段落");
+  return paragraphs;
+}
+
+function parseTextBuffer(buffer: Buffer, locationPrefix: string): ParsedBookSource {
+  const raw = decodeTextBuffer(buffer);
+  return { title: "", author: "", paragraphs: paragraphsFromText(raw, locationPrefix) };
+}
+
+function parseDocxBuffer(buffer: Buffer): ParsedBookSource {
+  const zip = new AdmZip(buffer);
+  const documentEntry = zip.getEntry("word/document.xml");
+  if (!documentEntry) throw new Error("DOCX 中找不到 word/document.xml");
+  const documentXml = documentEntry.getData().toString("utf8");
+  const coreEntry = zip.getEntry("docProps/core.xml");
+  const coreXml = coreEntry ? coreEntry.getData().toString("utf8") : "";
+  const textXml = documentXml
+    .replace(/<w:br\b[^>]*\/?>(?:<\/w:br>)?/gi, "\n")
+    .replace(/<\/w:p>/gi, "\n");
+  return {
+    title: xmlValue(coreXml, "dc:title"),
+    author: xmlValue(coreXml, "dc:creator"),
+    paragraphs: paragraphsFromText(htmlToText(textXml), "word/document.xml"),
+  };
+}
+
+async function parsePdfBuffer(buffer: Buffer): Promise<ParsedBookSource> {
+  const result = await pdfParse(buffer);
+  const info = result.info || {};
+  const paragraphs = paragraphsFromText(String(result.text || ""), "pdf");
+  return {
+    title: String(info.Title || "").trim(),
+    author: String(info.Author || "").trim(),
+    paragraphs,
+  };
+}
+
+export async function parseBookSourceBuffer(buffer: Buffer, fileName: string): Promise<ParsedBookSource> {
+  const extension = path.extname(fileName).toLowerCase();
+  if (extension === ".epub") return parseEpubBuffer(buffer);
+  if (extension === ".pdf") return parsePdfBuffer(buffer);
+  if (extension === ".docx") return parseDocxBuffer(buffer);
+  if ([".txt", ".md", ".markdown", ".html", ".htm", ".rtf"].includes(extension)) {
+    const raw = decodeTextBuffer(buffer);
+    const text = extension === ".html" || extension === ".htm"
+      ? htmlToText(raw)
+      : extension === ".rtf"
+        ? htmlToText(raw.replace(/\\[a-z]+\d* ?/gi, "").replace(/[{}]/g, ""))
+        : raw;
+    return { title: "", author: "", paragraphs: paragraphsFromText(text, extension.slice(1)) };
+  }
+  throw new Error("当前不支持这种原书格式，请上传 EPUB、PDF、TXT、Markdown、HTML 或 DOCX 文件");
+}
+
 function localRelevanceScore(paragraph: BookSourceParagraph, terms: string[]) {
   const text = paragraph.text.toLowerCase().replace(/\s+/g, "");
   let score = 0;
@@ -229,7 +372,7 @@ ${input.cleanedTranscript.slice(0, 8000)}
 爆款结构分析：
 ${input.viralStructure.slice(0, 6000)}
 
-请输出 json，用于从用户上传的原书 EPUB 中检索内容相关、观点相近或能支撑同一冲突的原文。`,
+请输出 json，用于从用户上传的原书文件中检索内容相关、观点相近或能支撑同一冲突的原文。`,
     temperature: 0.15,
     json: true,
   });
@@ -255,7 +398,7 @@ ${input.viralStructure.slice(0, 6000)}
   }
 
   const rankingRaw = await llm.chat({
-    system: `你是严谨的原书证据筛选编辑。只能从用户上传 EPUB 的候选段落中选择，不得改写、拼接或补造原文。
+    system: `你是严谨的原书证据筛选编辑。只能从用户上传原书文件的候选段落中选择，不得改写、拼接或补造原文。
 
 筛选目标：
 1. 与参考爆款稿表达相同、相近或存在清晰逻辑联系；
@@ -298,8 +441,9 @@ ${payloadParts.join("\n")}
       return {
         ...paragraph,
         count: null,
-        sourceType: "uploaded_epub" as const,
+        sourceType: "uploaded_book" as const,
         sourceFile: input.sourceFile,
+        sourceFormat: path.extname(input.sourceFile).replace(/^\./, "").toLowerCase() || "book",
         relevanceScore: Math.max(0, Math.min(100, Number(match.score || 0))),
         relevanceReason: String(match.reason || "").trim(),
         connection: String(match.connection || "").trim(),

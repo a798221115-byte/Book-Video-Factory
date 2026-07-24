@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   findRelevantBookPassages,
-  parseEpubBuffer,
+  parseBookSourceBuffer,
   writeParsedBookSourceAudit,
 } from "@/lib/bookSource";
 import {
@@ -18,14 +18,18 @@ import {
 export const runtime = "nodejs";
 
 function safeFileName(fileName: string) {
+  const extension = path.extname(fileName).toLowerCase();
   const base = path.basename(fileName, path.extname(fileName))
     .normalize("NFKC")
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 80) || "uploaded-book";
-  return `${base}.epub`;
+  return `${base}${extension || ".txt"}`;
 }
+
+const SUPPORTED_EXTENSIONS = new Set([".epub", ".pdf", ".txt", ".md", ".markdown", ".html", ".htm", ".rtf", ".docx"]);
+const MAX_SOURCE_FILE_BYTES = 150 * 1024 * 1024;
 
 function upsertArtifact(input: {
   taskId: string;
@@ -67,13 +71,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const formData = await req.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) {
-      return NextResponse.json({ error: "请选择 EPUB 原书文件" }, { status: 400 });
+      return NextResponse.json({ error: "请选择 EPUB、PDF、TXT 等原书文件" }, { status: 400 });
     }
-    if (!file.name.toLowerCase().endsWith(".epub")) {
-      return NextResponse.json({ error: "当前仅支持 EPUB 文件" }, { status: 415 });
+    const extension = path.extname(file.name).toLowerCase();
+    if (!SUPPORTED_EXTENSIONS.has(extension)) {
+      return NextResponse.json({ error: "当前支持 EPUB、PDF、TXT、Markdown、HTML、DOCX 和 RTF 文件" }, { status: 415 });
     }
-    if (file.size <= 0 || file.size > 50 * 1024 * 1024) {
-      return NextResponse.json({ error: "EPUB 文件必须大于 0 且不超过 50MB" }, { status: 413 });
+    if (file.size <= 0 || file.size > MAX_SOURCE_FILE_BYTES) {
+      return NextResponse.json({ error: "原书文件必须大于 0 且不超过 150MB" }, { status: 413 });
     }
 
     const artifacts = getArtifacts(id);
@@ -93,20 +98,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const sourcePath = path.join(sourceDirectory, storedName);
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(sourcePath, buffer);
-    const parsed = parseEpubBuffer(buffer);
+    const parsed = await parseBookSourceBuffer(buffer, file.name);
     upsertArtifact({
       taskId: id,
       stepName: "weread",
       kind: "book_source_file",
-      label: "用户上传的 EPUB 原书",
+      label: "用户上传的原书文件",
       path: projectArtifactPath(sourcePath),
       meta: {
-        sourceType: "uploaded_epub",
+        sourceType: "uploaded_book",
+        sourceFormat: extension.slice(1),
         originalFileName: file.name,
         storedFileName: storedName,
         bytes: file.size,
-        epubTitle: parsed.title,
-        epubAuthor: parsed.author,
+        sourceTitle: parsed.title,
+        sourceAuthor: parsed.author,
         paragraphCount: parsed.paragraphs.length,
         uploadedAt: Date.now(),
       },
@@ -130,7 +136,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       content: JSON.stringify(result.themes, null, 2),
       path: projectArtifactPath(audit.matchesPath),
       meta: {
-        sourceType: "uploaded_epub",
+        sourceType: "uploaded_book",
+        sourceFormat: extension.slice(1),
         model: "deepseek",
         paragraphCount: result.paragraphCount,
         candidateCount: result.candidates.length,
@@ -142,11 +149,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       (item) => item.stepName === "weread" && item.kind === "top_highlight_candidates",
     );
     const candidateMeta = {
-      sourceType: "uploaded_epub",
-      sourceLabel: "用户上传 EPUB 原书",
+      sourceType: "uploaded_book",
+      sourceLabel: "用户上传原书文件",
+      sourceFormat: extension.slice(1),
       book: {
-        title: result.epubTitle || task.bookTitle,
-        author: result.epubAuthor || task.bookAuthor,
+        title: parsed.title || task.bookTitle,
+        author: parsed.author || task.bookAuthor,
         fileName: storedName,
       },
       highlights: result.candidates,
@@ -179,17 +187,18 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       stepName: "weread",
       kind: "book_source_status",
       label: "原书文件分析状态",
-      content: "已完成 EPUB 解析与 DeepSeek 相关性筛选",
+      content: `已完成 ${extension.slice(1).toUpperCase()} 原书解析与 DeepSeek 相关性筛选`,
       meta: {
         status: "ready",
-        sourceType: "uploaded_epub",
+        sourceType: "uploaded_book",
+        sourceFormat: extension.slice(1),
         candidateCount: result.candidates.length,
         updatedAt: Date.now(),
       },
     });
     return NextResponse.json({
       ok: true,
-      sourceType: "uploaded_epub",
+      sourceType: "uploaded_book",
       book: candidateMeta.book,
       paragraphCount: result.paragraphCount,
       highlights: result.candidates,
@@ -204,7 +213,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       content: String(error?.message || error),
       meta: {
         status: "failed",
-        sourceType: "uploaded_epub",
+        sourceType: "uploaded_book",
         error: String(error?.message || error),
         updatedAt: Date.now(),
       },

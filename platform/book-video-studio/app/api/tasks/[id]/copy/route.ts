@@ -119,8 +119,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       taskId: id,
       stepName: "weread",
       kind: "popular_highlights",
-      label: sourceType === "uploaded_epub"
-        ? "已确认的 EPUB 原书相关段落"
+      label: sourceType === "uploaded_book" || sourceType === "uploaded_epub"
+        ? "已确认的原书相关段落"
         : "已确认的微信读书热门划线",
       content,
       meta: { highlights, sourceType, confirmedAt: Date.now() },

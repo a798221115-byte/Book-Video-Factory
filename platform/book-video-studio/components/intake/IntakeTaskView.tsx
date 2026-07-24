@@ -235,7 +235,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   );
   const wereadBook = topHighlightsMeta.book || {};
   const sourceType = String(topHighlightsMeta.sourceType || "weread");
-  const isUploadedBookSource = sourceType === "uploaded_epub";
+  const isUploadedBookSource = sourceType === "uploaded_book" || sourceType === "uploaded_epub";
   const hasMoreHighlights = topHighlights.length >= 10 && topHighlightsMeta.hasMore !== false;
   const wereadStatus = parseJson(wereadStatusArtifact?.meta);
   const bookSourceStatus = parseJson(bookSourceStatusArtifact?.meta);
@@ -392,7 +392,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "确认失败");
-      setMessage("书名和作者已确认。下一步可以查询微信读书，或上传 EPUB 原书。");
+      setMessage("书名和作者已确认。下一步可以查询微信读书，或上传 EPUB、PDF、TXT 等原书文件。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -403,7 +403,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
 
   const uploadBookSource = async () => {
     if (!bookSourceFile) {
-      setMessage("请先选择 EPUB 原书文件。");
+      setMessage("请先选择 EPUB、PDF、TXT 等原书文件。");
       return;
     }
     if (demoMode) {
@@ -411,7 +411,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       return;
     }
     setBusy(true);
-    setMessage("正在解析 EPUB，并由 DeepSeek 筛选与爆款参考文案相关的原书段落…");
+    setMessage("正在解析原书文件，并由 DeepSeek 筛选与爆款参考文案相关的原书段落…");
     try {
       const formData = new FormData();
       formData.set("file", bookSourceFile);
@@ -827,7 +827,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         <aside className="intake-confirm-panel">
           <span className="intake-kicker">确认门</span>
           <h2>核对书名和作者</h2>
-          <p>只有你明确确认后，任务才能进入微信读书或 EPUB 原书证据阶段。</p>
+          <p>只有你明确确认后，任务才能进入微信读书或原书文件证据阶段。</p>
           <div className="detail-evidence-check">
             <span>识别依据</span>
             <strong>标题 + 账号 + 口播逐字稿</strong>
@@ -874,7 +874,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           {readyForWeread ? (
             <div className="intake-next-gate">
               <strong>可以查询热门划线</strong>
-              <span>优先查询微信读书；没有收录时，可上传 EPUB 原书并由 DeepSeek 筛选相关段落。</span>
+              <span>优先查询微信读书；没有收录时，可上传 EPUB、PDF、TXT 等原书文件，由 DeepSeek 筛选相关段落。</span>
             </div>
           ) : (
             <small>当前状态：{waitingForBook ? "等待你的确认" : "等待分析完成"}</small>
@@ -897,7 +897,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <span className="intake-kicker">G01 确认门</span>
               <h3>{isUploadedBookSource ? "原书相关段落" : "全书热门划线"}{topHighlights.length ? `（已加载 ${topHighlights.length} 条）` : ""}</h3>
               <p>{isUploadedBookSource
-                ? "这些候选来自你上传的 EPUB 原书，由 DeepSeek 根据爆款参考文案筛选；不代表微信读书热度。"
+                ? "这些候选来自你上传的原书文件，由 DeepSeek 根据爆款参考文案筛选；不代表微信读书热度。"
                 : "根据已确认的书名和作者匹配微信读书版本，按真实划线人数从高到低连续排列。"}</p>
               <div className="intake-weread-actions">
                 <button
@@ -926,17 +926,17 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <div className="intake-source-status unavailable">
                   <strong>微信读书未获取到这本书或热门划线</strong>
                   <span>{wereadStatus.detail || wereadStatusArtifact?.content}</span>
-                  <small>可改用下方 EPUB 原书来源；候选将按与爆款参考文案的相关性排序。</small>
+                  <small>可改用下方原书文件来源；候选将按与爆款参考文案的相关性排序。</small>
                 </div>
               ) : null}
               <div className="intake-book-source-upload">
                 <div>
-                  <strong>微信读书没有结果？上传原书 EPUB</strong>
+                  <strong>微信读书没有结果？上传原书文件（EPUB、PDF、TXT 等）</strong>
                   <span>DeepSeek 会从原书中找出观点相同、相近或存在逻辑联系的句子和段落。</span>
                 </div>
                 <input
                   type="file"
-                  accept=".epub,application/epub+zip"
+                  accept=".epub,.pdf,.txt,.md,.markdown,.html,.htm,.rtf,.docx,application/epub+zip,application/pdf,text/plain,text/markdown,text/html,application/rtf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   disabled={busy || readyForStyleSample}
                   onChange={(event) => setBookSourceFile(event.target.files?.[0] || null)}
                 />
@@ -987,7 +987,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   })}
                 </div>
               ) : (
-                <div className="intake-highlight-empty">可先查询微信读书；没有结果时上传 EPUB 原书进行相关性筛选。</div>
+                <div className="intake-highlight-empty">可先查询微信读书；没有结果时上传原书文件进行相关性筛选。</div>
               )}
               <small>已选择 {selectedHighlightIds.length} 条；确认后这些可追溯原句才能进入 DBS 二创阶段。</small>
               <button
@@ -1006,7 +1006,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <p>DeepSeek 会依次执行传播心理解码、五维内容诊断、开头优化和逻辑延续检查，不预测“必爆”。</p>
               <ol>
                 <li>只借鉴参考视频的结构、节奏和情绪机制</li>
-                <li>直接引用只使用已确认且可追溯的微信读书或 EPUB 原文</li>
+                <li>直接引用只使用已确认且可追溯的微信读书或原书文件原文</li>
                 <li>生成后停在文案确认门，不会制作分镜或图片</li>
               </ol>
               <label className="intake-copy-direction">

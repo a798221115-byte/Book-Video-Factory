@@ -1,6 +1,6 @@
 {
   "name": "book-video-studio",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -26,6 +26,7 @@
     "nanoid": "^5.0.9",
     "next": "^15.1.8",
     "opencc-js": "^1.4.1",
+    "pdf-parse": "^1.1.4",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "zod": "^3.24.1"

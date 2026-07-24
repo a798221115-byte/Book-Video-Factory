@@ -129,7 +129,7 @@ Copy reusable media from `assets/`; never move originals.
 - Split first at meaningful changes in idea, action, scene, emotion, or narrative function. Use roughly eight seconds per image only as a soft pacing check after semantic segmentation; allow shorter or longer holds when the copy requires them.
 - Never split a complete causal statement, contrast, or emotional unit merely to approach eight seconds, and never add filler images to reach a target count.
 - Keep generated backgrounds free of text; add title, author, column, and captions deterministically.
-- Keep the upper title-safe region compact, normally no more than 15% of frame height, while continuing low-contrast environmental detail through it.
+- Reserve a low-interference fixed-header band at roughly 18%–30% of frame height for `读书分享`, the book title, and the author/translator line. Continue low-contrast environmental detail through this band instead of creating a flat empty block, and keep faces, hands, and key objects outside it when practical.
 - Vary visual grammar across people, empty environments, objects, architecture, weather, and landscapes.
 - Inspect every visible head, neck, torso, limb, joint, hand, finger, hip, knee, and foot at full frame and enlarged scale. Regenerate or edit anatomy defects; never hide them with crops, text, or motion.
 
@@ -147,6 +147,7 @@ Copy reusable media from `assets/`; never move originals.
 - Keep Chinese and English caption cards paired, synchronized, and one line each.
 - Remove Chinese comma and full-stop characters `，。` from display captions.
 - Use the standard typography baseline unless explicitly changed: book title 88, author 48, Chinese caption 58, English caption 30. Use light orange for the title and light blue for the author.
+- Treat `读书分享`, the book title, and the author/translator line as one fixed-header group. Do not place this group tight against the top edge. Compared with the legacy top-aligned layout, move the complete group downward by approximately 15% of the 1920px canvas height (about 288px), normally occupying the 18%–30% vertical band. Preserve the group's internal order and spacing; allow only small subject-aware adjustments, and verify the placement on sampled frames before delivery.
 - Keep title, author, Chinese captions, and English captions as editable Jianying text tracks.
 - Preserve intro audio. Mix intro/body BGM at 0.63, duck under speech, and fade out over the final second with narration.
 - Create a new Jianying draft. Copy media into it, use existing absolute paths, and never overwrite an existing draft.

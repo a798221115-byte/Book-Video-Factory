@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.10.1 - 2026-07-24
+
+- 更新 `produce-wechat-book-video` Skill 至 1.1.3。
+- 固定文字组默认相对旧版顶部布局下移约画面高度 15%，并把约 18%–30% 高度设为低干扰文字带。
+
 ## 1.10.0 - 2026-07-24
 
 - Add the G05 post-production workspace with female narration, subtitle, render progress, review-video link, and stale-job retry recovery after worker restarts.

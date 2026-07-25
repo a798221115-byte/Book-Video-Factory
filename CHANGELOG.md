@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.1 - 2026-07-25
+
+- Store Jianying native drafts under `F:\JianyingPro` while keeping the original application path compatible through a directory junction.
+
 ## 1.11.0 - 2026-07-25
 
 - Add a complete G06 joint-review workspace for the 60fps review MP4, editable Jianying draft report, standalone WeChat Channels cover, and technical validation report.

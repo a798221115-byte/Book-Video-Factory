@@ -61,7 +61,7 @@ function collectDeliveryAssets(taskId: string) {
   const projectDir = path.resolve(task.projectPath);
   const workRoot = path.resolve(projectDir, "jianying_draft");
   const nativeRoot = path.resolve(
-    "C:\\Users\\Administrator\\AppData\\Local\\JianyingPro\\User Data\\Projects\\com.lveditor.draft",
+    "F:\\JianyingPro\\User Data\\Projects\\com.lveditor.draft",
   );
   const coverPath = newestFile(path.join(projectDir, "cover"), (name) => /-cover\.png$/i.test(name));
   const coverValidationPath = path.join(projectDir, "cover", "validation.md");

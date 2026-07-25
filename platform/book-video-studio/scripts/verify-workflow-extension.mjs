@@ -44,5 +44,7 @@ assert.match(manifest.tools["media-publish-check"].installPath, /^F:\\/);
 const compliance = read("lib", "complianceWorkflow.ts");
 assert.match(compliance, /existingThreadId: task\.codexThreadId/);
 assert.match(compliance, /media-publish-check/);
+assert.match(compliance, /action: "generate_long"/, "C01 pass must start the title branch");
+assert.match(compliance, /continuePostProduction: false/, "C01 pass must start early voice without post-production");
 
 console.log("workflow-extension-verification-ok");

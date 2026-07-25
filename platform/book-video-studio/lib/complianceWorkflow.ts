@@ -132,6 +132,20 @@ async function runAudit(taskId: string, scope: ComplianceScope) {
       return;
     }
     updateTask(taskId, { status: "ready_for_long_titles", currentGate: "LONG_TITLE_GENERATION" });
+    const internalBaseUrl = process.env.BOOK_VIDEO_STUDIO_INTERNAL_URL
+      || `http://127.0.0.1:${process.env.PORT || "3000"}`;
+    fetch(`${internalBaseUrl}/api/tasks/${taskId}/titles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "generate_long" }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(String(payload?.error || `HTTP ${response.status}`));
+      }
+    }).catch((error) => {
+      console.error("[long-title-generation]", error);
+    });
     upsertWorkflowRun(taskId, "voice_timeline", {
       status: "queued", progress: 0, message: "文案合规通过，等待提前配音",
     });

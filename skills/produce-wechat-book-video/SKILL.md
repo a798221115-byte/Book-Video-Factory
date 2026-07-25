@@ -135,8 +135,10 @@ Copy reusable media from `assets/`; never move originals.
 - Split first at meaningful changes in idea, action, scene, emotion, or narrative function. Use roughly eight seconds per image only as a soft pacing check after semantic segmentation; allow shorter or longer holds when the copy requires them.
 - Never split a complete causal statement, contrast, or emotional unit merely to approach eight seconds, and never add filler images to reach a target count.
 - Keep generated backgrounds free of text; add title, author, column, and captions deterministically.
+- Never generate a large pure-color, near-solid, or empty gradient block anywhere in the frame, including the title band, caption safe area, corners, and lower frame. Every low-information region must retain scene-coherent low-contrast texture, spatial depth, environmental detail, or natural light and shadow.
 - Reserve a low-interference fixed-header band at roughly 18%–30% of frame height for `读书分享`, the book title, and the author/translator line. Continue low-contrast environmental detail through this band instead of creating a flat empty block, and keep faces, hands, and key objects outside it when practical.
 - Vary visual grammar across people, empty environments, objects, architecture, weather, and landscapes.
+- Inspect the full frame at G03 and every G04 image specifically for pure-color or visually inactive flat blocks. Reject and regenerate any failing image; do not hide the defect with cropping, captions, title cards, blur, or motion.
 - Inspect every visible head, neck, torso, limb, joint, hand, finger, hip, knee, and foot at full frame and enlarged scale. Regenerate or edit anatomy defects; never hide them with crops, text, or motion.
 
 ## Narration, captions, render, and draft

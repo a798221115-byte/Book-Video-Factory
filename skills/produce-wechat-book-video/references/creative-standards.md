@@ -36,7 +36,10 @@ Composition rules:
 
 - Reserve only a compact upper region for column, title, and author, normally no more than about 15% of frame height.
 - A safe area is not an empty color block. Continue the scene's wall texture, architecture, sky, foliage, weather, atmosphere, or light through title and caption regions at low contrast.
-- Do not use large flat or near-flat monochrome fields to manufacture negative space. Reject frames where visually inactive color blocks dominate, the subject is forced too low, or the meaningful scene occupies too little of the canvas.
+- Do not use a large pure-color, near-solid, monochrome, or empty gradient field to manufacture negative space anywhere in the frame. This prohibition includes the title band, caption safe area, corners, and lower frame.
+- Require every low-information area to retain scene-coherent low-contrast texture, spatial depth, environmental detail, or natural light and shadow. Low detail is allowed; visually inactive flat fill is not.
+- Include this constraint explicitly in every G03 and G04 image-generation prompt and negative prompt.
+- Inspect the entire frame before approval. Reject and regenerate frames where a pure-color or visually inactive flat block is visible, the subject is forced too low, or the meaningful scene occupies too little of the canvas. Do not conceal a failing block with cropping, captions, title cards, blur, or motion.
 - Let the subject and environmental storytelling occupy most of the frame while preserving readable low-detail landing areas for deterministic text.
 - Vary visual grammar across a video. Mix character action with meaningful empty environments, object close-ups, architecture, weather, and natural landscapes; do not default every line to a person standing or looking away.
 - Use a character only when identity, action, relationship, or emotion materially carries the sentence. Use non-character frames when space, light, objects, or nature can express the meaning more precisely.

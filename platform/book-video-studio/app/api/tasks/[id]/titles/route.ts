@@ -225,7 +225,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       error: "标题流程只能在 G02 文案确认后、G03 风格样图生成前修改",
     }, { status: 409 });
   }
-  if (artifacts.some((item) => item.stepName === "storyboard" && item.kind === "style_sample")) {
+  if (artifacts.some((item) => {
+    if (item.stepName !== "storyboard" || item.kind !== "style_sample") return false;
+    try { return !item.meta || !JSON.parse(item.meta).invalidatedAt; }
+    catch { return true; }
+  })) {
     return NextResponse.json({
       error: "G03 风格样图已经生成；如需更换长标题，必须先执行回退并使现有图片失效",
     }, { status: 409 });

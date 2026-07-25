@@ -40,6 +40,20 @@ work/YYYY-MM-DD-book-slug-NN/
 
 Copy reusable media from `assets/`; never move originals.
 
+### Reversible gates and rollback
+
+Every user-facing gate must expose a return action. A return is a controlled workflow revision, not navigation-only UI:
+
+1. preview the affected downstream nodes and ask for explicit confirmation;
+2. preserve previous files, generated media, reports, and Codex task history for audit;
+3. mark affected downstream artifacts and runs as superseded instead of deleting them;
+4. reopen the selected gate with the latest confirmed content restored for editing;
+5. clear dependent approvals and rerun every affected compliance check, title branch, timing step, image gate, render, or upload gate;
+6. keep independent completed work when valid, such as retaining V01 narration when only a title changes;
+7. warn that an existing platform draft or published post is an external side effect and will not be automatically deleted or withdrawn.
+
+At minimum support returning to book identity, G01 sources, G02 copy, G02.1 long title, G02.2 short title, G03 style, G04 images, G05 post-production, G06 combined review, and G08 publication information.
+
 ## 2. Pre-G01: reference acquisition and diagnosis
 
 When the user supplies a Douyin link:

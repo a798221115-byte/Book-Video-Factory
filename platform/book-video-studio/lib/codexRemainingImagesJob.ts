@@ -42,9 +42,14 @@ function parseMeta(raw: string | null | undefined): CodexRemainingImagesJobMeta 
   }
 }
 
+function isInvalidated(raw: string | null | undefined) {
+  try { return Boolean(raw && JSON.parse(raw).invalidatedAt); }
+  catch { return false; }
+}
+
 export function getLatestCodexRemainingImagesJob(taskId: string) {
   return getArtifacts(taskId)
-    .filter((item) => item.stepName === "storyboard" && item.kind === "codex_job")
+    .filter((item) => item.stepName === "storyboard" && item.kind === "codex_job" && !isInvalidated(item.meta))
     .map((artifact) => ({ artifact, meta: parseMeta(artifact.meta) }))
     .filter((item): item is { artifact: typeof item.artifact; meta: CodexRemainingImagesJobMeta } => Boolean(item.meta))
     .sort((a, b) => b.artifact.createdAt - a.artifact.createdAt)[0] || null;
@@ -92,7 +97,7 @@ function buildPrompt(taskId: string) {
   if (!task) throw new Error("任务不存在");
   const { manifest } = manifestFor(taskId);
   const sample = getArtifacts(taskId).find(
-    (item) => item.stepName === "storyboard" && item.kind === "style_sample",
+    (item) => item.stepName === "storyboard" && item.kind === "style_sample" && !isInvalidated(item.meta),
   );
   if (!sample?.path) throw new Error("缺少已确认的 G03 风格样图");
   const samplePath = path.resolve(path.join(taskDir(taskId), "..", ".."), sample.path);

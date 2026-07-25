@@ -162,7 +162,9 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     return () => window.clearInterval(timer);
   }, [data, load]);
 
-  const artifacts = data?.artifacts || [];
+  const artifacts = (data?.artifacts || []).filter(
+    (item) => !parseJson(item.meta).invalidatedAt,
+  );
   const video = artifacts.find((item) => item.stepName === "extract" && item.kind === "video");
   const rawTranscript = artifacts.find((item) =>
     item.kind === "transcript" && ["extract", "transcribe"].includes(item.stepName),
@@ -618,6 +620,45 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
+  const rollbackWorkflow = async (
+    target: "book" | "sources" | "script" | "long_title" | "short_title" | "style" | "images" | "post_production" | "delivery_review" | "publication",
+  ) => {
+    if (demoMode) {
+      setMessage("演示任务不会写入真实回退状态。");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const previewResponse = await fetch(`/api/tasks/${taskId}/rollback?target=${target}`, {
+        cache: "no-store",
+      });
+      const preview = await previewResponse.json().catch(() => ({}));
+      if (!previewResponse.ok) throw new Error(preview.error || "无法读取回退影响");
+      const accepted = window.confirm(
+        `确定返回修改「${preview.label}」吗？\n\n${preview.impact}${preview.externalNotice ? `\n\n${preview.externalNotice}` : ""}\n\n旧文件会保留，但下游结果会标记为已失效。`,
+      );
+      if (!accepted) return;
+      const response = await fetch(`/api/tasks/${taskId}/rollback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target,
+          confirmImpact: true,
+          reason: `用户从工作台返回修改 ${preview.label}`,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "流程回退失败");
+      setMessage(`已返回 ${payload.label}。旧产物已保留并标记失效，请修改后重新确认。`);
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const confirmStyleSample = async () => {
     if (demoMode) {
       setMessage("演示任务不会确认真实样图。");
@@ -905,18 +946,29 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   );
   const waitingForRenderReview = data.task.status === "waiting_render_review";
   const productionComplete = data.task.status === "done";
-  const postProductionReached = readyForPostProduction || waitingForRenderReview || productionComplete;
+  const publishingStageReached = [
+    "media_compliance_queued",
+    "media_compliance_failed",
+    "media_compliance_blocked",
+    "ready_for_draft_upload",
+    "draft_upload_failed",
+    "uploading_draft",
+    "waiting_publication_confirmation",
+    "analytics_complete",
+  ].includes(data.task.status) || data.task.status.startsWith("waiting_analytics_");
+  const deliveryStageReached = waitingForRenderReview || productionComplete || publishingStageReached;
+  const postProductionReached = readyForPostProduction || deliveryStageReached;
   const postProductionStageReached = postProductionReached || generatingVoice || waitingVoiceConfirmation || generatingSubtitles || renderingVideo || voiceFailed || postProductionFailed;
-  const reviewVideoArtifact = data.artifacts.find(
+  const reviewVideoArtifact = artifacts.find(
     (item) => item.stepName === "render" && ["review_video", "video"].includes(item.kind) && item.path,
   );
-  const deliveryCoverArtifact = data.artifacts.find(
+  const deliveryCoverArtifact = artifacts.find(
     (item) => item.stepName === "delivery" && item.kind === "cover" && item.path,
   );
-  const deliveryDraftArtifact = data.artifacts.find(
+  const deliveryDraftArtifact = artifacts.find(
     (item) => item.stepName === "delivery" && item.kind === "jianying_draft_report" && item.path,
   );
-  const deliveryValidationArtifact = data.artifacts.find(
+  const deliveryValidationArtifact = artifacts.find(
     (item) => item.stepName === "delivery" && item.kind === "validation_report" && item.path,
   );
   const deliveryDraftMeta = parseJson(deliveryDraftArtifact?.meta);
@@ -926,10 +978,17 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     deliveryDraftArtifact?.path &&
     deliveryValidationArtifact?.path,
   );
+  const copyReviewStageReached = [
+    "text_compliance_queued",
+    "text_compliance_failed",
+    "text_compliance_blocked",
+    "waiting_voice_timeline",
+  ].includes(data.task.status);
   const evidenceStageReached =
     readyForWeread ||
     highlightsConfirmed ||
     waitingForScript ||
+    copyReviewStageReached ||
     readyForLongTitles ||
     waitingForLongTitleConfirmation ||
     readyForShortTitles ||
@@ -1084,8 +1143,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           ["G02.2", "10 个短标题", shortTitleConfirmed ? "complete" : longTitleConfirmed && titleSelectionReached ? "next" : "locked"],
           ["G03", "风格样图", remainingImagesStageReached ? "complete" : styleStageReached ? "next" : "locked"],
           ["G04", "全部分镜", postProductionReached ? "complete" : remainingImagesStageReached ? "next" : "locked"],
-          ["G05", "配音后期", waitingForRenderReview || productionComplete ? "complete" : readyForPostProduction ? "next" : "locked"],
-          ["G06", "联合审核", productionComplete ? "complete" : waitingForRenderReview ? "next" : "locked"],
+          ["G05", "配音后期", deliveryStageReached ? "complete" : readyForPostProduction ? "next" : "locked"],
+          ["G06", "联合审核", productionComplete || publishingStageReached ? "complete" : waitingForRenderReview ? "next" : "locked"],
         ].map(([gate, label, state]) => (
           <div className={`detail-production-step ${state}`} key={gate}>
             <span>{gate}</span>
@@ -1179,13 +1238,23 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
 
           <label>
             <span>确认书名</span>
-            <input value={bookTitle} onChange={(event) => setBookTitle(event.target.value)} placeholder="请输入准确书名" />
+            <input disabled={busy || evidenceLocked} value={bookTitle} onChange={(event) => setBookTitle(event.target.value)} placeholder="请输入准确书名" />
           </label>
           <label>
             <span>确认作者</span>
-            <input value={bookAuthor} onChange={(event) => setBookAuthor(event.target.value)} placeholder="请输入准确作者" />
+            <input disabled={busy || evidenceLocked} value={bookAuthor} onChange={(event) => setBookAuthor(event.target.value)} placeholder="请输入准确作者" />
           </label>
 
+          {evidenceLocked ? (
+            <button
+              type="button"
+              className="intake-secondary-action"
+              disabled={busy}
+              onClick={() => rollbackWorkflow("book")}
+            >
+              返回修改书名与作者
+            </button>
+          ) : null}
           <button
             className="intake-confirm-action"
             type="button"
@@ -1221,7 +1290,17 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <span className="intake-kicker">G01 → G02</span>
               <h2>原文证据与 DeepSeek × DBS 二创</h2>
             </div>
-            <span className="intake-dbs-version">dbskill v2.18.4</span>
+            <div className="intake-section-heading-actions">
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("book")}>
+                返回修改书名
+              </button>
+              {evidenceLocked ? (
+                <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("sources")}>
+                  返回重选原文证据
+                </button>
+              ) : null}
+              <span className="intake-dbs-version">dbskill v2.18.4</span>
+            </div>
           </div>
 
           <div className="intake-dbs-grid">
@@ -1417,6 +1496,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   onChange={(event) => setCandidateScript(event.target.value)}
                   disabled={busy || evidenceLocked}
                 />
+                {evidenceLocked ? (
+                  <button
+                    type="button"
+                    className="intake-secondary-action"
+                    disabled={busy}
+                    onClick={() => rollbackWorkflow("script")}
+                  >
+                    返回修改文稿
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="intake-confirm-action"
@@ -1454,7 +1543,22 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <span className="intake-kicker">G02.1 / G02.2 标题确认门</span>
               <h2>先选长标题，再选短标题</h2>
             </div>
-            <span className="intake-dbs-version">dbs-xhs-title</span>
+            <div className="intake-section-heading-actions">
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("script")}>
+                返回修改文稿
+              </button>
+              {longTitleConfirmed ? (
+                <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("long_title")}>
+                  返回重选长标题
+                </button>
+              ) : null}
+              {shortTitleConfirmed ? (
+                <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("short_title")}>
+                  返回重选短标题
+                </button>
+              ) : null}
+              <span className="intake-dbs-version">dbs-xhs-title</span>
+            </div>
           </div>
           <TitleSelectionPanel
             task={data.task}
@@ -1479,7 +1583,17 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <span className="intake-kicker">G03 风格确认门</span>
               <h2>Codex 代表性风格样图</h2>
             </div>
-            <span className="intake-dbs-version">Codex imagegen</span>
+            <div className="intake-section-heading-actions">
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("short_title")}>
+                返回修改标题
+              </button>
+              {!waitingForStyleConfirmation && styleSampleArtifact ? (
+                <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("style")}>
+                  返回修改风格样图
+                </button>
+              ) : null}
+              <span className="intake-dbs-version">Codex imagegen</span>
+            </div>
           </div>
 
           {styleSampleArtifact?.path && !generatingStyleSample ? (
@@ -1605,6 +1719,24 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <h2>Codex 剩余分镜图片</h2>
             </div>
             <div className="intake-section-heading-actions">
+              <button
+                type="button"
+                className="intake-secondary-action"
+                disabled={busy}
+                onClick={() => rollbackWorkflow("style")}
+              >
+                返回修改风格样图
+              </button>
+              {postProductionStageReached ? (
+                <button
+                  type="button"
+                  className="intake-secondary-action"
+                  disabled={busy}
+                  onClick={() => rollbackWorkflow("images")}
+                >
+                  返回修改分镜图片
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="intake-secondary-action"
@@ -1760,7 +1892,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <span className="intake-kicker">G05 配音后期</span>
               <h2>配音、字幕与成片</h2>
             </div>
-            <span className="intake-dbs-version">female-book-narrator-locked-v1</span>
+            <div className="intake-section-heading-actions">
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("images")}>
+                返回修改分镜图片
+              </button>
+              <span className="intake-dbs-version">female-book-narrator-locked-v1</span>
+            </div>
           </div>
           {(() => {
             const ttsStep = data.steps.find((step) => step.name === "tts");
@@ -1774,7 +1911,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             const failed = voiceFailed || postProductionFailed || staleVoice;
             const status = waitingForRenderReview
               ? "成片已生成，等待 G06 审核"
-              : productionComplete
+              : productionComplete || publishingStageReached
                 ? "后期制作已完成"
                 : failed
                   ? "后期制作失败，可重试"
@@ -1789,7 +1926,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <div className="intake-codex-job">
                 <div className="intake-codex-job-head">
                   <div>
-                    <span className={`intake-codex-state ${failed ? "failed" : waitingForRenderReview || productionComplete ? "succeeded" : running ? "running" : "queued"}`}>
+                    <span className={`intake-codex-state ${failed ? "failed" : deliveryStageReached ? "succeeded" : running ? "running" : "queued"}`}>
                       {status}
                     </span>
                     <strong>{failed ? (ttsStep?.error || renderStep?.error || "请点击重试") : "工作台会在每个阶段完成后自动更新这里"}</strong>
@@ -1820,14 +1957,22 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      {(waitingForRenderReview || productionComplete) ? (
+      {deliveryStageReached ? (
         <section className="intake-style-sample-workspace" aria-label="G06 联合审核">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G06 联合审核</span>
               <h2>成片、剪映草稿与独立封面</h2>
             </div>
-            <span className="intake-dbs-version">{deliveryReady ? "产物已齐全" : "产物整理中"}</span>
+            <div className="intake-section-heading-actions">
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("images")}>
+                返回修改分镜图片
+              </button>
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("post_production")}>
+                返回重做后期
+              </button>
+              <span className="intake-dbs-version">{deliveryReady ? "产物已齐全" : "产物整理中"}</span>
+            </div>
           </div>
 
           <div className="intake-delivery-grid">
@@ -1889,7 +2034,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      <WorkflowExtensionPanel taskId={taskId} data={data} reload={load} />
+      <WorkflowExtensionPanel taskId={taskId} data={data} reload={load} onRollback={rollbackWorkflow} />
     </main>
   );
 }

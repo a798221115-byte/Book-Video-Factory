@@ -27,6 +27,7 @@ for (const route of [
   ["app", "api", "tasks", "[id]", "draft-upload", "route.ts"],
   ["app", "api", "tasks", "[id]", "publication", "route.ts"],
   ["app", "api", "tasks", "[id]", "metrics", "route.ts"],
+  ["app", "api", "tasks", "[id]", "rollback", "route.ts"],
 ]) {
   assert.ok(exists(...route), `missing API route ${route.join("/")}`);
 }
@@ -34,6 +35,9 @@ for (const route of [
 const uploader = read("scripts", "upload_weixin_draft.py");
 assert.match(uploader, /is_draft=True/, "uploader must force draft mode");
 assert.doesNotMatch(uploader, /click\([^)]*正式发布/, "adapter must not automate formal publication");
+const draftUploadRoute = read("app", "api", "tasks", "[id]", "draft-upload", "route.ts");
+assert.match(draftUploadRoute, /duplicatePrevented/);
+assert.match(draftUploadRoute, /waiting_publication_confirmation/, "restored draft must return to G08");
 
 const manifest = JSON.parse(read("integrations", "third-party-tools.json"));
 assert.equal(manifest.tools["social-auto-upload"].mode, "weixin_channels_draft_only");
@@ -46,5 +50,21 @@ assert.match(compliance, /existingThreadId: task\.codexThreadId/);
 assert.match(compliance, /media-publish-check/);
 assert.match(compliance, /action: "generate_long"/, "C01 pass must start the title branch");
 assert.match(compliance, /continuePostProduction: false/, "C01 pass must start early voice without post-production");
+
+const rollback = read("lib", "workflowRollback.ts");
+for (const target of [
+  "book", "sources", "script", "long_title", "short_title",
+  "style", "images", "post_production", "delivery_review", "publication",
+]) {
+  assert.match(rollback, new RegExp(`"${target}"`), `missing rollback target ${target}`);
+}
+assert.match(rollback, /invalidatedAt/, "rollback must invalidate downstream artifacts");
+assert.match(rollback, /superseded/, "rollback must supersede downstream runs");
+assert.doesNotMatch(rollback, /clearArtifacts|deleteArtifact|rmSync|unlinkSync/, "rollback must preserve previous artifacts");
+
+const intakeView = read("components", "intake", "IntakeTaskView.tsx");
+for (const label of ["返回修改文稿", "返回重选长标题", "返回重选短标题", "返回修改风格样图", "返回修改分镜图片", "返回重做后期"]) {
+  assert.match(intakeView, new RegExp(label), `missing workbench return action: ${label}`);
+}
 
 console.log("workflow-extension-verification-ok");

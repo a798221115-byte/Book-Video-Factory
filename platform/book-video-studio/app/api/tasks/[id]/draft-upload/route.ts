@@ -44,7 +44,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const existing = getPublicationRecords(id).find(
     (item) => item.idempotencyKey === key && item.status === "draft_ready",
   );
-  if (existing) return NextResponse.json({ ok: true, duplicatePrevented: true, record: existing });
+  if (existing) {
+    upsertWorkflowRun(id, "draft_upload", {
+      status: "succeeded",
+      progress: 1,
+      message: "已恢复原视频号草稿记录，未重复上传",
+      finishedAt: existing.uploadedAt || Date.now(),
+    });
+    updateTask(id, { status: "waiting_publication_confirmation", currentGate: "PUBLICATION_CONFIRMATION" });
+    return NextResponse.json({ ok: true, duplicatePrevented: true, record: existing });
+  }
 
   upsertPublicationRecord(id, key, { accountId: account.id, status: "uploading", error: null });
   upsertWorkflowRun(id, "draft_upload", {

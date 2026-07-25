@@ -7,6 +7,8 @@ description: Produce, review, draft-upload, and track a gated WeChat Channels ve
 
 Treat a Douyin link or book title as intake only. Execute through the next mandatory confirmation gate, sync the actual state to Feishu when enabled, and stop until the user explicitly confirms.
 
+Every confirmation gate must remain reversible from the workbench. Before returning to an earlier gate, show which downstream approvals and artifacts will become stale. Preserve prior files and audit history, mark downstream records as superseded instead of deleting them, reopen the selected gate for editing, and require all affected checks and confirmations to run again. Never imply that returning locally deletes an already uploaded draft or retracts a published platform post.
+
 ## Load only what is needed
 
 - Read `references/workflow.md` before full production.

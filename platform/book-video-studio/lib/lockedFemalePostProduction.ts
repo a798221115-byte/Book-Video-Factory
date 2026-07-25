@@ -112,45 +112,68 @@ function splitCaptionText(text: string, maxChars = 15) {
 }
 
 async function translateCards(chinese: string[]) {
-  const response = await getTranscriptLLM().chat({
-    system: [
-      "你是短视频双语字幕翻译器。",
-      "把每条简体中文翻译成自然、克制、简短的英文字幕。",
-      "每条英文必须保持一行，尽量不超过 42 个英文字符。",
-      "不得增加解释，不得合并、拆分或改变条目数量。",
-      "只输出 JSON：{\"translations\":[\"...\"]}。",
-    ].join("\n"),
-    user: `请翻译以下 JSON 数组，并严格保持顺序和数量：\n${JSON.stringify(chinese)}`,
-    temperature: 0.1,
-    json: true,
-  });
-  const parsed = parseModelJson(response);
-  const translations = Array.isArray(parsed.translations) ? parsed.translations.map(String) : [];
-  if (translations.length !== chinese.length) {
-    const repaired: string[] = [];
-    for (let index = 0; index < chinese.length; index += 1) {
-      const fallbackResponse = await getTranscriptLLM().chat({
-        system: [
-          "你是短视频双语字幕翻译器。",
-          "把简体中文翻译成自然、克制、简短的一行英文字幕。",
-          "只输出 JSON：{\"translation\":\"...\"}。",
-        ].join("\n"),
-        user: `请只翻译这一条字幕：${JSON.stringify(chinese[index])}`,
-        temperature: 0.1,
-        json: true,
-      });
-      const fallbackParsed = parseModelJson(fallbackResponse);
-      const item = typeof fallbackParsed.translation === "string"
-        ? fallbackParsed.translation.replace(/\s+/g, " ").trim()
-        : "";
-      if (!item) {
-        throw new Error(`DeepSeek 字幕翻译补偿失败：第 ${index + 1}/${chinese.length} 条为空`);
-      }
-      repaired.push(item);
-    }
-    return repaired;
+  const normalize = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim();
+  let translations: string[] = [];
+  try {
+    const response = await getTranscriptLLM().chat({
+      system: [
+        "你是短视频双语字幕翻译器。",
+        "把每条简体中文翻译成自然、克制、简短的英文字幕。",
+        "每条英文必须保持一行，尽量不超过 42 个英文字符。",
+        "不得增加解释，不得合并、拆分或改变条目数量。",
+        "只输出 JSON：{\"translations\":[\"...\"]}。",
+      ].join("\n"),
+      user: `请翻译以下 JSON 数组，并严格保持顺序和数量：\n${JSON.stringify(chinese)}`,
+      temperature: 0.1,
+      json: true,
+    });
+    const parsed = parseModelJson(response);
+    translations = Array.isArray(parsed.translations) ? parsed.translations.map(normalize) : [];
+  } catch {
+    translations = [];
   }
-  return translations.map((item: string) => item.replace(/\s+/g, " ").trim());
+
+  const repaired: string[] = [];
+  for (let index = 0; index < chinese.length; index += 1) {
+    let item = normalize(translations[index]);
+    for (let attempt = 1; !item && attempt <= 3; attempt += 1) {
+      const jsonMode = attempt < 3;
+      const fallbackResponse = await getTranscriptLLM().chat({
+        system: jsonMode
+          ? [
+              "你是短视频双语字幕翻译器。",
+              "把简体中文翻译成自然、克制、简短的一行英文字幕。",
+              "只输出 JSON：{\"translation\":\"...\"}。",
+            ].join("\n")
+          : "Translate the Chinese caption into one concise English subtitle. Return only the English translation.",
+        user: jsonMode
+          ? `请只翻译这一条字幕：${JSON.stringify(chinese[index])}`
+          : chinese[index],
+        temperature: attempt === 1 ? 0.1 : 0,
+        json: jsonMode,
+      });
+      if (jsonMode) {
+        try {
+          const fallbackParsed = parseModelJson(fallbackResponse);
+          item = normalize(
+            fallbackParsed.translation ??
+            (Array.isArray(fallbackParsed.translations) ? fallbackParsed.translations[0] : ""),
+          );
+        } catch {
+          item = "";
+        }
+      } else {
+        item = normalize(fallbackResponse.replace(/^```(?:text)?\s*/i, "").replace(/\s*```$/, ""))
+          .replace(/^["']|["']$/g, "")
+          .trim();
+      }
+    }
+    if (!item) {
+      throw new Error(`DeepSeek 字幕翻译补偿失败：第 ${index + 1}/${chinese.length} 条连续 3 次为空`);
+    }
+    repaired.push(item);
+  }
+  return repaired;
 }
 
 function buildCaptionCards(timeline: VoiceSegment[], translations: string[]) {

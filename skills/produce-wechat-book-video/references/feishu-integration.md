@@ -15,14 +15,18 @@ Use this integration only when `<project-root>/integrations/feishu-book-pipeline
 | --- | --- | --- |
 | G01 | WeRead popular highlights | explicit user approval |
 | G02 | narration copy | explicit user approval |
+| C01 | copy compliance review | system PASS after G02 |
+| V01 | locked narration and measured timeline | system PASS |
 | G03 | exactly one style sample | explicit user approval |
 | G04 | all remaining images | explicit user approval |
 | G05 | post-production technical validation | system PASS |
+| C02 | complete pre-publication media review | system PASS |
 | G06 | review MP4, Jianying draft, and WeChat Channels cover | explicit user approval |
-| G07 | publication | explicit user authorization |
-| G08 | result and archive | recorded publication plus explicit archive approval |
+| G07 | WeChat Channels draft-only upload | explicit G06 approval plus selected account |
+| G08 | human publication confirmation | recorded account, work ID, URL, and actual time |
+| G09 | 24h/72h/7d analytics review | three traceable snapshots |
 
-The default production workflow ends at G06 after the MP4, editable Jianying draft, and standalone cover are approved together. G07 and G08 are out of scope unless the user explicitly requests a separate publication or archive workflow.
+Formal publication is always manual. G07 may create a platform draft only; it must never click the platform publish action.
 
 Never infer a user-confirmed gate from existing files. Historical projects may use `已完成（倒推）`, but new projects must use explicit confirmation.
 
@@ -36,7 +40,7 @@ Run the sync script:
 4. when waiting for confirmation (`待确认` / `等待用户确认`);
 5. when validation passes;
 6. when a step fails or is blocked;
-7. when publication and archive are recorded.
+7. when a draft upload, human publication, metric snapshot, or review is recorded.
 
 Example commands:
 
@@ -55,7 +59,9 @@ The recurring automation must call `queue` first. It may claim one new row per r
 
 `确认节点` is one row per project and gate. The stable key is `<project-id>-GNN`. Always update `节点状态`, `证据与文件`, `备注`, and `下一阶段`.
 
-`Codex任务队列` records execution state, heartbeat, retry, outputs, and errors. It is the automation layer, not the content source of truth.
+`Codex任务队列` records execution state, heartbeat, retry, outputs, and errors. Reuse one stable Codex task/thread per book-video project across all nodes.
+
+Reuse the existing `数据快照` and `复盘记录` structures for G09. Store each 24h/72h/7d snapshot separately; do not overwrite an earlier horizon.
 
 ## Error policy
 

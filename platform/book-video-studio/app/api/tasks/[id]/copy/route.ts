@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { generateDbsCopy, type VerifiedHighlight } from "@/lib/dbsCopy";
+import { enqueueComplianceAudit } from "@/lib/complianceWorkflow";
 import {
   getArtifacts,
   getTask,
@@ -144,10 +145,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       label: "用户已确认口播稿",
       content: script,
       path: outputPath,
-      meta: { confirmedAt: Date.now(), nextGate: "STYLE_SAMPLE" },
+      meta: { confirmedAt: Date.now(), nextGate: "TEXT_COMPLIANCE" },
     });
-    updateTask(id, { status: "ready_for_long_titles", currentGate: "LONG_TITLE_GENERATION" });
-    return NextResponse.json({ ok: true, path: outputPath });
+    updateTask(id, { status: "text_compliance_queued", currentGate: "TEXT_COMPLIANCE" });
+    enqueueComplianceAudit(id, "text");
+    return NextResponse.json({ ok: true, path: outputPath, complianceQueued: true });
   }
 
   return NextResponse.json({ error: "不支持的操作" }, { status: 400 });

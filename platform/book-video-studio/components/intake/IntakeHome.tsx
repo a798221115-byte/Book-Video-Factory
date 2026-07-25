@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import IntakeForm from "./IntakeForm";
+import WeReadTopicDiscovery from "./WeReadTopicDiscovery";
 
 type TaskRow = {
   id: string;
@@ -26,10 +27,15 @@ const statusCopy: Record<string, { label: string; tone: string }> = {
   ready_for_weread: { label: "可查热门划线", tone: "ready" },
   highlights_confirmed: { label: "准备生成文案", tone: "run" },
   waiting_script_confirmation: { label: "待确认文案", tone: "wait" },
+  text_compliance_queued: { label: "C01 合规排队中", tone: "run" },
+  text_compliance_running: { label: "C01 合规审核中", tone: "run" },
+  text_compliance_blocked: { label: "C01 需修改", tone: "error" },
+  text_compliance_failed: { label: "C01 审核失败", tone: "error" },
   ready_for_long_titles: { label: "正在生成长标题", tone: "run" },
   waiting_long_title_confirmation: { label: "待确认长标题", tone: "wait" },
   ready_for_short_titles: { label: "可生成短标题", tone: "ready" },
   waiting_short_title_confirmation: { label: "待确认短标题", tone: "wait" },
+  waiting_voice_timeline: { label: "等待 V01 真实时间轴", tone: "run" },
   ready_for_style_sample: { label: "待生成 G03 样图", tone: "ready" },
   generating_style_sample: { label: "G03 样图生成中", tone: "run" },
   waiting_style_confirmation: { label: "待确认 G03 风格", tone: "wait" },
@@ -38,7 +44,18 @@ const statusCopy: Record<string, { label: string; tone: string }> = {
   generating_image_revision: { label: "单张图片修改中", tone: "run" },
   waiting_images_confirmation: { label: "待审核 G04 分镜", tone: "wait" },
   ready_for_post_production: { label: "待进入后期", tone: "ready" },
+  media_compliance_queued: { label: "C02 终审排队中", tone: "run" },
+  media_compliance_running: { label: "C02 发布审核中", tone: "run" },
+  media_compliance_blocked: { label: "C02 需修正", tone: "error" },
+  media_compliance_failed: { label: "C02 审核失败", tone: "error" },
   waiting_render_review: { label: "待审核成片", tone: "wait" },
+  ready_for_draft_upload: { label: "待上传视频号草稿", tone: "ready" },
+  uploading_draft: { label: "视频号草稿上传中", tone: "run" },
+  waiting_publication_confirmation: { label: "待人工发布确认", tone: "wait" },
+  waiting_analytics_24h: { label: "待录入 24h 数据", tone: "wait" },
+  waiting_analytics_72h: { label: "待录入 72h 数据", tone: "wait" },
+  waiting_analytics_7d: { label: "待录入 7d 数据", tone: "wait" },
+  analytics_complete: { label: "复盘完成", tone: "ready" },
   done: { label: "已完成", tone: "ready" },
   failed: { label: "需要处理", tone: "error" },
 };
@@ -75,11 +92,17 @@ function gateLabel(task: TaskRow) {
   if (task.status === "ready_for_weread") return "G01 热门划线";
   if (task.status === "waiting_confirmation") return "确认书名作者";
   if (["highlights_confirmed", "waiting_script_confirmation"].includes(task.status)) return "G02 原创口播";
+  if (task.status.startsWith("text_compliance_")) return "C01 文案合规";
   if (["ready_for_long_titles", "waiting_long_title_confirmation"].includes(task.status)) return "G02.1 长标题";
   if (["ready_for_short_titles", "waiting_short_title_confirmation"].includes(task.status)) return "G02.2 短标题";
+  if (task.status === "waiting_voice_timeline") return "V01 提前配音";
   if (["ready_for_style_sample", "generating_style_sample", "waiting_style_confirmation"].includes(task.status)) return "G03 风格样图";
   if (["ready_for_remaining_images", "generating_remaining_images", "generating_image_revision", "waiting_images_confirmation"].includes(task.status)) return "G04 分镜审核";
   if (["ready_for_post_production", "waiting_render_review", "done"].includes(task.status)) return "G05/G06 后期审核";
+  if (task.status.startsWith("media_compliance_")) return "C02 发布审核";
+  if (["ready_for_draft_upload", "uploading_draft"].includes(task.status)) return "G07 草稿上传";
+  if (task.status === "waiting_publication_confirmation") return "G08 人工发布";
+  if (task.status.startsWith("waiting_analytics_") || task.status === "analytics_complete") return "G09 数据复盘";
   if (task.status === "failed") return "处理异常";
   return "抖音采集分析";
 }
@@ -117,6 +140,7 @@ export default function IntakeHome({ tasks }: { tasks: TaskRow[] }) {
 
   return (
     <main className="studio-shell">
+      <WeReadTopicDiscovery />
       <header className="studio-topbar">
         <div>
           <span className="studio-breadcrumb">图书视频生产 / 抖音采集</span>

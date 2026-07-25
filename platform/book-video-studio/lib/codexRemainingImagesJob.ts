@@ -8,6 +8,7 @@ import {
   projectArtifactPath,
   saveArtifact,
   taskDir,
+  updateTask,
 } from "./pipeline/repo";
 import { registerRemainingImageFile } from "./remainingImageRegistry";
 import { parseArtifactMeta, startRemainingImageQueue } from "./storyboardGeneration";
@@ -159,8 +160,9 @@ async function runJob(taskId: string, jobArtifactId: string) {
     title: `Book Video Studio｜G04 剩余分镜｜${task?.bookTitle || taskId}`,
     prompt: buildPrompt(taskId),
     projectRoot,
-    existingThreadId: initial.threadId,
+    existingThreadId: task?.codexThreadId || initial.threadId,
     onEvent: async (event) => {
+      if (event.type === "thread.started") updateTask(taskId, { codexThreadId: event.thread_id });
       appendEvent(logPath, event.raw);
       const counts = syncCompletedFiles(taskId, jobArtifactId);
       updateJob(jobArtifactId, {

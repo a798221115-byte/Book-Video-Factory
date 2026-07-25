@@ -300,3 +300,163 @@ export async function fetchTopPopularHighlights(
     totalReported,
   };
 }
+
+export type WeReadTopicCandidate = {
+  bookId: string;
+  title: string;
+  author: string;
+  cover: string;
+  deepLink: string;
+  rating: number;
+  ratingCount: number;
+  readingCount: number;
+  noteCount: number;
+  popularHighlightCount: number;
+  popularHighlightQuality: number;
+  reason: string;
+  sources: string[];
+  score: number;
+};
+
+function candidateFromBook(raw: any, source: string): WeReadTopicCandidate | null {
+  const info = raw?.bookInfo || raw?.book?.bookInfo || raw?.book || raw;
+  const bookId = String(info?.bookId || raw?.bookId || "");
+  const title = String(info?.title || "");
+  if (!bookId || !title) return null;
+  const noteCount = Number(raw?.noteCount || 0)
+    + Number(raw?.reviewCount || 0)
+    + Number(raw?.bookmarkCount || 0);
+  const rating = Number(info?.newRating || raw?.newRating || 0);
+  const readingCount = Number(info?.readingCount || raw?.readingCount || 0);
+  return {
+    bookId,
+    title,
+    author: String(info?.author || ""),
+    cover: String(info?.cover || ""),
+    deepLink: String(info?.deepLink || ""),
+    rating,
+    ratingCount: Number(info?.newRatingCount || raw?.newRatingCount || 0),
+    readingCount,
+    noteCount,
+    popularHighlightCount: 0,
+    popularHighlightQuality: 0,
+    reason: String(raw?.reason || (
+      source === "notebooks" ? "你的笔记和划线证据较丰富"
+        : source === "shelf" ? "来自你的微信读书书架"
+          : source === "similar" ? "与高分候选主题相近"
+            : ""
+    )),
+    sources: [source],
+    score: rating * 0.35 + Math.log10(readingCount + 1) * 18 + Math.log10(noteCount + 1) * 20,
+  };
+}
+
+function mergeTopicCandidates(groups: WeReadTopicCandidate[][]) {
+  const merged = new Map<string, WeReadTopicCandidate>();
+  for (const item of groups.flat()) {
+    const previous = merged.get(item.bookId);
+    if (!previous) {
+      merged.set(item.bookId, item);
+      continue;
+    }
+    merged.set(item.bookId, {
+      ...previous,
+      ...item,
+      rating: Math.max(previous.rating, item.rating),
+      ratingCount: Math.max(previous.ratingCount, item.ratingCount),
+      readingCount: Math.max(previous.readingCount, item.readingCount),
+      noteCount: Math.max(previous.noteCount, item.noteCount),
+      popularHighlightQuality: Math.max(previous.popularHighlightQuality, item.popularHighlightQuality),
+      reason: previous.reason || item.reason,
+      sources: Array.from(new Set([...previous.sources, ...item.sources])),
+      score: Math.max(previous.score, item.score) + 8,
+    });
+  }
+  return Array.from(merged.values());
+}
+
+export async function discoverWeReadTopics(keyword = "") {
+  const requests: Promise<WeReadTopicCandidate[]>[] = [
+    wereadRequest({ api_name: "/book/recommend", count: 12, maxIdx: 0 })
+      .then((data) => (Array.isArray(data?.books) ? data.books : [])
+        .map((item: any) => candidateFromBook(item, "recommend"))
+        .filter(Boolean) as WeReadTopicCandidate[]),
+    wereadRequest({ api_name: "/user/notebooks", count: 100 })
+      .then((data) => (Array.isArray(data?.books) ? data.books : [])
+        .map((item: any) => candidateFromBook(item, "notebooks"))
+        .filter(Boolean) as WeReadTopicCandidate[]),
+    wereadRequest({ api_name: "/shelf/sync" })
+      .then((data) => (Array.isArray(data?.books) ? data.books : [])
+        .map((item: any) => candidateFromBook(item, "shelf"))
+        .filter(Boolean) as WeReadTopicCandidate[]),
+  ];
+  if (keyword.trim()) {
+    requests.push(
+      wereadRequest({ api_name: "/store/search", keyword: keyword.trim(), scope: 10, count: 12 })
+        .then((data) => searchBooks(data)
+          .map((item: any) => candidateFromBook(item, "search"))
+          .filter(Boolean) as WeReadTopicCandidate[]),
+    );
+  }
+  const settled = await Promise.allSettled(requests);
+  const successful = settled
+    .filter((item): item is PromiseFulfilledResult<WeReadTopicCandidate[]> => item.status === "fulfilled")
+    .map((item) => item.value);
+  if (!successful.length) {
+    const firstError = settled.find((item) => item.status === "rejected") as PromiseRejectedResult | undefined;
+    throw firstError?.reason || new Error("微信读书主动选题暂时不可用");
+  }
+
+  let merged = mergeTopicCandidates(successful);
+  const similarSeed = merged.sort((left, right) => right.score - left.score)[0];
+  if (similarSeed) {
+    try {
+      const similar = await wereadRequest({
+        api_name: "/book/similar",
+        bookId: similarSeed.bookId,
+        count: 12,
+        maxIdx: 0,
+      });
+      const similarBooks = Array.isArray(similar?.booksimilar?.books)
+        ? similar.booksimilar.books
+        : [];
+      merged = mergeTopicCandidates([
+        merged,
+        similarBooks
+          .map((item: any) => candidateFromBook(item, "similar"))
+          .filter(Boolean) as WeReadTopicCandidate[],
+      ]);
+    } catch {
+      // 相似推荐是加分项；主推荐、书架或搜索仍可独立形成真实候选。
+    }
+  }
+  const ranked = merged
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 16);
+  const enriched = await mapWithConcurrency(ranked, 4, async (candidate) => {
+    try {
+      const popular = await wereadRequest({
+        api_name: "/book/bestbookmarks",
+        bookId: candidate.bookId,
+        chapterUid: 0,
+        synckey: 0,
+      });
+      const count = Array.isArray(popular?.items) ? popular.items.length : 0;
+      const items = Array.isArray(popular?.items) ? popular.items : [];
+      const substantive = items.filter((item: any) => String(item?.markText || "").trim().length >= 12).length;
+      const averageHeat = items.length
+        ? items.reduce((sum: number, item: any) => sum + Math.log10(Number(item?.totalCount || 0) + 1), 0) / items.length
+        : 0;
+      const quality = Math.round(Math.min(100, substantive * 3 + averageHeat * 15));
+      return {
+        ...candidate,
+        popularHighlightCount: count,
+        popularHighlightQuality: quality,
+        score: candidate.score + Math.min(20, count) + quality * 0.2,
+      };
+    } catch {
+      return candidate;
+    }
+  });
+  return enriched.sort((left, right) => right.score - left.score).slice(0, 10);
+}

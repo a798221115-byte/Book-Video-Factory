@@ -10,6 +10,7 @@ export const tasks = sqliteTable("tasks", {
   bookTitle: text("book_title"),
   bookAuthor: text("book_author"),
   projectPath: text("project_path"),
+  codexThreadId: text("codex_thread_id"),
   currentGate: text("current_gate").notNull().default("INTAKE"),
   notes: text("notes"),
   stats: text("stats"), // JSON: {likes, plays, comments...}
@@ -52,7 +53,55 @@ export const settings = sqliteTable("settings", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const workflowRuns = sqliteTable("workflow_runs", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  nodeKey: text("node_key").notNull(),
+  status: text("status").notNull().default("queued"),
+  progress: real("progress").notNull().default(0),
+  message: text("message"),
+  artifactPath: text("artifact_path"),
+  error: text("error"),
+  attempt: integer("attempt").notNull().default(1),
+  startedAt: integer("started_at"),
+  finishedAt: integer("finished_at"),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const publicationRecords = sqliteTable("publication_records", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  platform: text("platform").notNull().default("weixin_channels"),
+  accountId: text("account_id"),
+  status: text("status").notNull().default("not_started"),
+  idempotencyKey: text("idempotency_key").notNull(),
+  draftId: text("draft_id"),
+  platformWorkId: text("platform_work_id"),
+  url: text("url"),
+  uploadedAt: integer("uploaded_at"),
+  publishedAt: integer("published_at"),
+  error: text("error"),
+  meta: text("meta"),
+  createdAt: integer("created_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export const metricSnapshots = sqliteTable("metric_snapshots", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id").notNull(),
+  publicationId: text("publication_id").notNull(),
+  horizon: text("horizon").notNull(),
+  capturedAt: integer("captured_at").notNull(),
+  metrics: text("metrics").notNull(),
+  derived: text("derived").notNull(),
+  review: text("review"),
+  createdAt: integer("created_at").notNull(),
+});
+
 export type Task = typeof tasks.$inferSelect;
 export type Step = typeof steps.$inferSelect;
 export type Artifact = typeof artifacts.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
+export type WorkflowRun = typeof workflowRuns.$inferSelect;
+export type PublicationRecord = typeof publicationRecords.$inferSelect;
+export type MetricSnapshot = typeof metricSnapshots.$inferSelect;

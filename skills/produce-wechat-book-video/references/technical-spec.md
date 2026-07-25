@@ -37,6 +37,8 @@ Keep all four as editable Jianying text materials and preserve one-line caption 
 
 The production default is `female`. Never infer `male` from legacy assets, filenames, prior projects, or a stale configuration value; select it only from an explicit user request.
 
+Narration starts after C01 copy compliance passes, in parallel with long/short title confirmation. Store every completed segment's measured start/end immediately, update `recipe.json` and storyboard timing fields, and use those values as the caption and image-hold authority. G03 must wait for this real timeline.
+
 Read the selected project preset before generation. Both variants use VoxCPM2 / `openbmb/VoxCPM2`, CFG 2.0, 20 inference steps, fixed seed 42 for every segment, normalize false, denoise false, retry bad case false, and native 1.00x generation speed.
 
 ### 男版音色
@@ -132,6 +134,9 @@ Check:
 - one-line captions and forbidden punctuation;
 - image/audio paths and draft ID consistency;
 - sample frames at the intro boundary, middle, and ending.
+- a passing C02 media report before G06 and draft upload;
+- draft-only upload mode, selected account, and idempotency record;
+- no automated formal publication action.
 
 ## Approved standalone cover
 

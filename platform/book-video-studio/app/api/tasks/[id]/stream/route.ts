@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
 import { createHash } from "node:crypto";
-import { getTask, getSteps, getArtifacts, ensureSteps } from "@/lib/pipeline/repo";
+import {
+  getTask, getSteps, getArtifacts, ensureSteps, getWorkflowRuns,
+  getPublicationRecords, getMetricSnapshots,
+} from "@/lib/pipeline/repo";
 import { reapZombieSteps } from "@/lib/pipeline/runner";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +53,9 @@ function buildPayload(id: string) {
     task,
     steps: getSteps(id),
     artifacts: getArtifacts(id).map(compactArtifact),
+    workflowRuns: getWorkflowRuns(id),
+    publicationRecords: getPublicationRecords(id),
+    metricSnapshots: getMetricSnapshots(id),
   };
 }
 
@@ -97,6 +103,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
             a.metaSig || "",
             a.path || "",
           ]),
+          w: payload.workflowRuns.map((run: any) => [run.nodeKey, run.status, run.progress, run.updatedAt]),
+          p: payload.publicationRecords.map((record: any) => [record.id, record.status, record.updatedAt]),
+          m: payload.metricSnapshots.map((snapshot: any) => [snapshot.id, snapshot.horizon, snapshot.capturedAt]),
         });
         if (sig !== lastSig) {
           lastSig = sig;
@@ -107,7 +116,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
         // 终态判定：无 running 且 task 已 done/failed → 收尾
         const anyRunning = payload.steps.some((s: any) => s.status === "running");
-        if (!anyRunning && (payload.task.status === "done" || payload.task.status === "failed")) {
+        if (!anyRunning && (payload.task.status === "analytics_complete" || payload.task.status === "failed")) {
           try { controller.enqueue(enc.encode("event: end\ndata: {}\n\n")); } catch {}
           finish();
         }

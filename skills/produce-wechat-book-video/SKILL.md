@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce and Feishu-track a gated WeChat Channels vertical book video from a Douyin reference link, book title, selected book, or draft topic. Use when the user asks to make or continue a 视频号图书号/读书视频, including TikHub reference download, Codex transcription, dbs-content benchmark-copy diagnosis, WeRead popular-highlight sourcing, derivative-copy approval, one-style-image approval, remaining storyboard images, locked narration, bilingual captions, fixed intro, final MP4, editable Jianying draft, standalone cover, and per-step Feishu updates.
+description: Produce, review, draft-upload, and track a gated WeChat Channels vertical book video from active WeRead topic discovery, a Douyin reference link, book title, or draft topic. Includes evidence sourcing, compliance checks, early real-timeline narration, gated images, post-production, draft-only WeChat Channels upload, human publication confirmation, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -29,23 +29,29 @@ Deliver:
 6. A new editable Jianying draft with internalized media.
 7. A validation report that exposes missing or low-confidence items.
 8. A separate 1080x1260 WeChat Channels cover using the verified original book cover.
+9. Machine-readable C01 copy-compliance and C02 pre-publication review reports.
+10. A draft-only WeChat Channels upload record, human publication record, and 24h/72h/7d metric snapshots when publication is requested.
 
 ## Mandatory blocking order
 
-Enforce this exact sequence:
+Enforce this exact sequence. A workbench project reuses one persistent Codex task/thread across every node:
 
-1. TikHub downloads the supplied Douyin reference.
-2. Codex/local Whisper extracts the reference copy and performs only minimal correction.
-3. `dbs-content` diagnoses the hook, content structure, emotional progression, language mechanisms, and reusable framework.
+1. G00 selects a topic from real WeRead recommendations/bookshelf/highlights/search or accepts a supplied Douyin reference. Never use simulated WeRead candidates.
+2. TikHub downloads a supplied Douyin reference when present.
+3. Codex/local Whisper extracts the reference copy and performs only minimal correction; `dbs-content` diagnoses reusable mechanisms.
 4. `weread-skills` verifies the exact edition and fetches whole-book popular highlights.
 5. Present the transcript, diagnosis, and WeRead evidence as one source package; wait for explicit G01 approval.
-6. Fuse the approved abstract framework with approved WeRead evidence and original reflection to create derivative copy; wait for explicit G02 approval.
-7. After G02 approval, use the TikHub Douyin title and `dbs-xhs-title` to generate exactly 10 traceable long-title candidates; wait for the user to select one.
-8. Only after a long title is selected, generate exactly 10 short-title candidates from that selected long title; wait for the user to select one.
-9. Only after both titles are confirmed, create exactly one representative 9:16 style sample; wait for explicit G03 approval.
+6. Create derivative copy from approved evidence and original reflection; wait for explicit G02 approval.
+7. Run C01 with `media-publish-check`. Preserve the approved original. A block prevents titles, narration, images, and post-production until the user approves a revision and it passes again.
+8. After C01 passes, run two branches in parallel: G02.1 long title → G02.2 short title, and V01 locked narration → measured segment timing → `recipe.json`/storyboard/caption timeline.
+9. G03 starts only after both titles and V01 real timing are complete. Generate exactly one representative 9:16 style sample; wait for explicit approval.
 10. Generate the remaining images; inspect them and wait for explicit G04 approval.
-11. After all images are approved, create the default locked female narration, captions, review MP4, Jianying draft, validation report, and separate cover. Switch to the locked male variant only on an explicit user request.
-12. Wait for explicit combined G06 approval of the MP4, draft, and cover; then stop the default workflow.
+11. Create captions, HyperFrames review MP4, editable Jianying draft, validation report, and separate cover using the existing real voice timeline.
+12. Run C02 full media review. High-risk findings block G06 and G07 until corrected and re-reviewed.
+13. Wait for explicit combined G06 approval of the MP4, draft, and cover.
+14. In G07, use the pinned `dreammis/social-auto-upload` adapter in draft-only mode. Never click or automate formal publication.
+15. In G08, record the human-confirmed account, work ID, URL, and actual publication time.
+16. In G09, store 24h, 72h, and 7d metric snapshots and produce a traceable review with the next-video experiment.
 
 Never infer approval from a supplied title or link, Agent self-review, local files, downstream artifacts, or Feishu status.
 
@@ -81,7 +87,7 @@ Never infer approval from a supplied title or link, Agent self-review, local fil
 ## Feishu and workspace
 
 - Inspect `AGENTS.md`, fixed assets, voice presets, the Feishu binding, and the supplied reference before production.
-- Create or claim the Feishu project and initialize eight gate records before local work when Feishu sync is enabled.
+- Create or claim the Feishu project and initialize the required gate and system-node records before local work when Feishu sync is enabled.
 - Create the dated work folder with `scripts/init_project.py` or the equivalent stable structure.
 - After every transition, wait state, failure, or completed artifact, call `scripts/sync_feishu_pipeline.mjs`.
 - A Feishu failure must be visible but must not corrupt local files.
@@ -135,6 +141,7 @@ Copy reusable media from `assets/`; never move originals.
 
 ## Narration, captions, render, and draft
 
+- Start locked narration immediately after C01 passes, in parallel with title selection. Persist each segment's measured start/end and do not regenerate it merely because images are not ready.
 - Apply exactly one still-image motion to each storyboard image: centered zoom-out from 120% to 100%, centered zoom-in from 100% to 120%, fixed-120% left-to-right pan, or fixed-120% right-to-left pan. Never combine zoom and pan on the same image or reverse direction inside a shot.
 - Assign motions with reproducible pseudo-random selection and exclude the immediately previous motion from the next shot's candidates, so adjacent images do not repeat the same effect.
 - Normalize each motion across the image's actual narration-aligned hold. Use the approved slow 8-second reference pace, monotonic smoothstep easing, 60fps, and 2x supersampled motion before downscaling to delivery size to suppress pixel stepping and shake.
@@ -153,13 +160,16 @@ Copy reusable media from `assets/`; never move originals.
 - Create a new Jianying draft. Copy media into it, use existing absolute paths, and never overwrite an existing draft.
 - Keep content ID, metadata ID, and root-index ID identical and unique in the generated draft bundle.
 
-## Cover and workflow endpoint
+## Cover, review, draft upload, and workflow endpoint
 
 - Verify the original edition cover from WeRead or another authoritative public listing.
 - Create one separate 1080x1260 cover with `scripts/compose_wechat_cover.py`.
 - Preserve the original cover artwork and typography; never ask an image model to redraw it.
 - Keep the cover separate from the MP4.
-- After explicit combined G06 approval, end the default workflow. Publishing, embedding, distribution, and archive require a separate explicit request and use G07/G08.
+- Run C02 after G05 and label its output as automated risk assessment, not a platform-approval guarantee.
+- After explicit combined G06 approval, upload only to the selected WeChat Channels account's draft box with an idempotency key.
+- Formal publication remains manual. Do not enter G09 until G08 records the real work ID, URL, account, and publication time.
+- Save 24h/72h/7d snapshots without overwriting earlier snapshots and sync the derived review to Feishu when enabled.
 
 ## Supporting skills and tools
 
@@ -169,6 +179,8 @@ Copy reusable media from `assets/`; never move originals.
 - Use `weread-skills` for edition verification and popular highlights.
 - Use `imagegen` for original storyboard images and revisions.
 - Use local VoxCPM for locked narration.
+- Use installed `media-publish-check` for C01 and C02.
+- Use pinned `dreammis/social-auto-upload` only through the workbench draft-only adapter.
 - Run `scripts/resolve_production_variant.py` before G05.
 - Use `scripts/generate_voice_sample.py` for deterministic preset tests.
 - Use FFmpeg for assembly, audio processing, subtitles, and validation.

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getTask, setStepStatus, updateTask } from "@/lib/pipeline/repo";
+import { getStep, getTask, setStepStatus, updateTask } from "@/lib/pipeline/repo";
 import {
   lockedFemaleNarrationIsRunning,
+  lockedFemaleNarrationNeedsRegeneration,
   resetLockedFemaleNarration,
   startLockedFemaleNarration,
 } from "@/lib/lockedFemaleNarration";
@@ -38,7 +39,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     updateTask(id, { status: "ready_for_post_production", currentGate: "POST_PRODUCTION" });
   }
-  if (rerender && task.status === "waiting_render_review") {
+  if (rerender && ["waiting_render_review", "media_compliance_blocked", "media_compliance_failed"].includes(task.status)) {
     for (const step of ["subtitle", "render"] as const) {
       setStepStatus(id, step, { status: "pending", progress: 0, error: "" });
     }
@@ -82,12 +83,45 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "当前阶段不能启动女声后期" }, { status: 409 });
   }
   if (currentTask.status === "post_production_failed") {
+    if (lockedFemaleNarrationNeedsRegeneration(id)) {
+      resetLockedFemaleNarration(id);
+      for (const step of ["tts", "subtitle", "render"] as const) {
+        setStepStatus(id, step, { status: "pending", progress: 0, error: "" });
+      }
+      updateTask(id, { status: "ready_for_post_production", currentGate: "POST_PRODUCTION" });
+      startLockedFemaleNarration(id).catch((error: any) => {
+        const message = String(error?.message || error);
+        setStepStatus(id, "tts", { status: "failed", error: message, finishedAt: Date.now() });
+        updateTask(id, { status: "voice_failed", currentGate: "VOICE_GENERATION_FAILED" });
+        console.error("[locked-female-narration]", error);
+      });
+      return NextResponse.json({
+        ok: true,
+        phase: "voice",
+        regeneratedStaleNarration: true,
+        variant: "female",
+        preset: "female-book-narrator-locked-v1",
+        nextGate: "VOICE_GENERATING",
+      });
+    }
     startLockedFemalePostProduction(id).catch((error) =>
       console.error("[locked-female-post-production]", error),
     );
     return NextResponse.json({
       ok: true,
       phase: "post-production",
+      nextGate: "CAPTIONS_GENERATING",
+    });
+  }
+  if (getStep(id, "voice_timeline")?.status === "done") {
+    updateTask(id, { status: "waiting_voice_confirmation", currentGate: "VOICE_REVIEW" });
+    startLockedFemalePostProduction(id).catch((error) =>
+      console.error("[locked-female-post-production]", error),
+    );
+    return NextResponse.json({
+      ok: true,
+      phase: "post-production",
+      reusedEarlyVoice: true,
       nextGate: "CAPTIONS_GENERATING",
     });
   }

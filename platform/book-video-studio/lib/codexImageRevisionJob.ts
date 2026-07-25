@@ -151,12 +151,14 @@ async function runJob(taskId: string, jobArtifactId: string) {
   if (!scene) throw new Error("分镜任务不存在");
   const outputImagePath = path.join(taskDir(taskId), "storyboard", "images", initial.expectedImageFileName);
   const outputPromptPath = path.join(taskDir(taskId), "storyboard", "prompts", initial.expectedPromptFileName);
+  const task = getTask(taskId);
   await runVisibleCodexTask({
     title: `Book Video Studio｜单张图片修改｜${initial.sceneJobId}｜${getTask(taskId)?.bookTitle || taskId}`,
     prompt: buildPrompt(taskId, scene, initial.currentImagePath, outputImagePath, outputPromptPath, initial.feedback, initial.revision),
     projectRoot,
-    existingThreadId: initial.threadId,
+    existingThreadId: task?.codexThreadId || initial.threadId,
     onEvent: async (event) => {
+      if (event.type === "thread.started") updateTask(taskId, { codexThreadId: event.thread_id });
       appendEvent(logPath, event.raw);
       updateJob(jobArtifactId, {
         status: "running",

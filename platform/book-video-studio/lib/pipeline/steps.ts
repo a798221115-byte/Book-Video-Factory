@@ -1,22 +1,36 @@
-// Pipeline step 定义 + 依赖关系（决定重跑级联）
 export const STEP_NAMES = [
-  "extract",    // 热点采集：链接 -> 视频+meta+原始ASR
-  "transcribe", // 转写+清洗：原始ASR -> 干净正文（附件A）
-  "analyze",    // 图书候选 + 爆款结构分析，完成后等待人工确认
-  "rewrite",    // 改写+书名识别：清洗稿 -> 改写候选（附件B）+ 书名JSON（附件D）
-  "tts",        // 配音：改写稿 -> 切分（附件F）-> index-tts2 -> 音频
-  "images",     // 配图：九宫格 gpt-image-2 -> 裁 9 张分镜（附件E）
-  "subtitle",   // 字幕对齐：tts.wav -> Whisper词级时间戳 -> SRT
-  "render",     // 成片：背景视频+字幕+音频 -> HyperFrames/ffmpeg -> mp4
+  "extract",
+  "transcribe",
+  "analyze",
+  "rewrite",
+  "tts",
+  "images",
+  "subtitle",
+  "render",
+  "topic_discovery",
+  "text_compliance",
+  "voice_timeline",
+  "media_compliance",
+  "draft_upload",
+  "publication",
+  "analytics",
 ] as const;
 
 export type StepName = (typeof STEP_NAMES)[number];
 export const INTAKE_STEP_NAMES: StepName[] = ["extract", "transcribe", "analyze"];
 
-// 当前全链默认跑完所有步骤。保留该列表用于未来重新引入可选步骤。
-export const OPTIONAL_STEPS: StepName[] = [];
+// The gated workflow nodes are driven by explicit APIs instead of the legacy
+// automatic runner, so they remain optional for legacy completion checks.
+export const OPTIONAL_STEPS: StepName[] = [
+  "topic_discovery",
+  "text_compliance",
+  "voice_timeline",
+  "media_compliance",
+  "draft_upload",
+  "publication",
+  "analytics",
+];
 
-// 每步依赖的上游步骤（重跑某步时，下游自动失效/级联）
 export const STEP_DEPS: Record<StepName, StepName[]> = {
   extract: [],
   transcribe: ["extract"],
@@ -24,29 +38,42 @@ export const STEP_DEPS: Record<StepName, StepName[]> = {
   rewrite: ["transcribe"],
   tts: ["rewrite"],
   subtitle: ["tts"],
-  images: ["rewrite"], // 默认按改写后的正式口播分段生成配图数量，TTS 与配图可并行。
+  images: ["rewrite"],
   render: ["subtitle", "tts", "extract", "images"],
+  topic_discovery: [],
+  text_compliance: ["rewrite"],
+  voice_timeline: ["text_compliance"],
+  media_compliance: ["render"],
+  draft_upload: ["media_compliance"],
+  publication: ["draft_upload"],
+  analytics: ["publication"],
 };
 
 export const STEP_LABELS: Record<StepName, string> = {
   extract: "采集",
-  transcribe: "转写+清洗",
+  transcribe: "转写与清洗",
   analyze: "图书与爆款分析",
-  rewrite: "改写+书名识别",
+  rewrite: "二创文案",
   tts: "TTS 配音",
   subtitle: "字幕对齐",
   images: "配图",
   render: "成片导出",
+  topic_discovery: "G00 微信读书主动选题",
+  text_compliance: "C01 文案合规初审",
+  voice_timeline: "V01 提前配音与真实时间轴",
+  media_compliance: "C02 发布前完整审核",
+  draft_upload: "G07 视频号草稿箱",
+  publication: "G08 人工发布确认",
+  analytics: "G09 发布数据复盘",
 };
 
-// 给定要重跑的步骤，返回所有需要级联失效的下游步骤
 export function downstreamOf(name: StepName): StepName[] {
   const result: StepName[] = [];
-  const visit = (n: StepName) => {
-    for (const s of STEP_NAMES) {
-      if (STEP_DEPS[s].includes(n) && !result.includes(s)) {
-        result.push(s);
-        visit(s);
+  const visit = (current: StepName) => {
+    for (const step of STEP_NAMES) {
+      if (STEP_DEPS[step].includes(current) && !result.includes(step)) {
+        result.push(step);
+        visit(step);
       }
     }
   };

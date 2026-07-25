@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "tools": {
+    "media-publish-check": {
+      "source": "https://github.com/XshuiAi/media-publish-check.git",
+      "commit": "f77010a54c838aafacbe41c3613e98c2cd078c0e",
+      "installPath": "F:\\Codex\\.codex\\skills\\media-publish-check",
+      "role": "C01 text compliance and C02 complete pre-publication review"
+    },
+    "social-auto-upload": {
+      "source": "https://github.com/dreammis/social-auto-upload.git",
+      "commit": "dde0eacb91268de2680825396eea873f8d8ddb38",
+      "installPath": "F:\\Codex\\tools\\social-auto-upload",
+      "mode": "weixin_channels_draft_only",
+      "formalPublishAutomation": false,
+      "privateAccountDataPath": "F:\\Codex\\data\\book-video-studio\\weixin-accounts"
+    }
+  }
+}

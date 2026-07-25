@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import WorkflowExtensionPanel from "./WorkflowExtensionPanel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TitleSelectionPanel from "../task-view/TitleSelectionPanel";
 
@@ -592,6 +593,11 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "文案确认失败");
+      if (payload.complianceQueued) {
+        setMessage("文案已确认并保留原稿，C01 文案合规初审已启动。审核通过后会自动并行生成长标题和真实配音时间轴。");
+        await load();
+        return;
+      }
       const titleResponse = await fetch(`/api/tasks/${taskId}/titles`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1883,6 +1889,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
+      <WorkflowExtensionPanel taskId={taskId} data={data} reload={load} />
     </main>
   );
 }

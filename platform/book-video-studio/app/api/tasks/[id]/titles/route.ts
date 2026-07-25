@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
-import { getArtifacts, getTask, patchArtifact, saveArtifact, taskDir, updateTask } from "@/lib/pipeline/repo";
+import { getArtifacts, getStep, getTask, patchArtifact, saveArtifact, taskDir, updateTask } from "@/lib/pipeline/repo";
 import { getLLM } from "@/lib/providers/llm";
 import { enqueueCodexStyleSample } from "@/lib/codexStyleSampleJob";
 import type { TitleCandidate } from "@/lib/titleWorkflow";
@@ -66,7 +66,13 @@ function writeMeta(taskId: string, meta: Record<string, any>) {
     short_pending: { status: "waiting_short_title_confirmation", currentGate: "SHORT_TITLE_CONFIRMATION" },
     complete: { status: "ready_for_style_sample", currentGate: "STYLE_SAMPLE_CONFIRMATION" },
   };
-  if (taskStateByStage[meta.title_stage]) updateTask(taskId, taskStateByStage[meta.title_stage]);
+  if (meta.title_stage === "complete") {
+    updateTask(taskId, getStep(taskId, "voice_timeline")?.status === "done"
+      ? taskStateByStage.complete
+      : { status: "waiting_voice_timeline", currentGate: "VOICE_TIMELINE" });
+  } else if (taskStateByStage[meta.title_stage]) {
+    updateTask(taskId, taskStateByStage[meta.title_stage]);
+  }
 }
 
 function cleanTitle(value: unknown, maxLength: number) {
@@ -184,6 +190,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!task) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = await req.json().catch(() => ({}));
   const action = String(body.action || "generate_long");
+  if (
+    action === "generate_long"
+    && ["text_compliance_queued", "text_compliance_failed", "text_compliance_blocked"].includes(task.status)
+  ) {
+    return NextResponse.json({
+      ok: true,
+      stage: "compliance_pending",
+      queued: true,
+      message: "C01 文案合规初审通过后才会生成长标题",
+      longCandidates: [],
+      shortCandidates: [],
+    });
+  }
   const meta = readMeta(id) as Record<string, any>;
   const artifacts = getArtifacts(id);
   const scriptText =

@@ -597,7 +597,9 @@ export async function startLockedFemalePostProduction(taskId: string) {
       finishedAt: Date.now(),
       output: JSON.stringify({ phase: "done", video: projectArtifactPath(finalPath), durationSeconds: validation.durationSeconds }),
     });
-    updateTask(taskId, { status: "waiting_render_review", currentGate: "RENDER_REVIEW" });
+    updateTask(taskId, { status: "media_compliance_queued", currentGate: "MEDIA_COMPLIANCE" });
+    const { enqueueComplianceAudit } = await import("./complianceWorkflow");
+    enqueueComplianceAudit(taskId, "media");
   } catch (error: any) {
     const task = getTask(taskId);
     const failedStep = task?.status === "rendering_video" ? "render" : "subtitle";

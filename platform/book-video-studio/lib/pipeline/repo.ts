@@ -1,5 +1,7 @@
 import { db } from "../db";
-import { tasks, steps, artifacts } from "../db/schema";
+import {
+  tasks, steps, artifacts, workflowRuns, publicationRecords, metricSnapshots,
+} from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { STEP_NAMES, type StepName } from "./steps";
@@ -286,6 +288,92 @@ export function saveArtifact(a: {
 
 export function getArtifacts(taskId: string) {
   return db.select().from(artifacts).where(eq(artifacts.taskId, taskId)).all();
+}
+
+export function getWorkflowRuns(taskId: string) {
+  return db.select().from(workflowRuns).where(eq(workflowRuns.taskId, taskId)).all();
+}
+
+export function upsertWorkflowRun(
+  taskId: string,
+  nodeKey: string,
+  patch: Partial<typeof workflowRuns.$inferInsert>,
+) {
+  const existing = getWorkflowRuns(taskId).find((item) => item.nodeKey === nodeKey);
+  const now = Date.now();
+  if (existing) {
+    const retrying = patch.status === "queued"
+      && ["failed", "blocked"].includes(existing.status);
+    db.update(workflowRuns).set({
+      ...patch,
+      ...(retrying ? { attempt: existing.attempt + 1 } : {}),
+      updatedAt: now,
+    })
+      .where(eq(workflowRuns.id, existing.id)).run();
+    return getWorkflowRuns(taskId).find((item) => item.nodeKey === nodeKey)!;
+  }
+  const value = {
+    id: nanoid(12),
+    taskId,
+    nodeKey,
+    status: "queued",
+    progress: 0,
+    attempt: 1,
+    updatedAt: now,
+    ...patch,
+  };
+  db.insert(workflowRuns).values(value).run();
+  return value;
+}
+
+export function getPublicationRecords(taskId: string) {
+  return db.select().from(publicationRecords)
+    .where(eq(publicationRecords.taskId, taskId)).all();
+}
+
+export function upsertPublicationRecord(
+  taskId: string,
+  idempotencyKey: string,
+  patch: Partial<typeof publicationRecords.$inferInsert>,
+) {
+  const existing = getPublicationRecords(taskId)
+    .find((item) => item.idempotencyKey === idempotencyKey);
+  const now = Date.now();
+  if (existing) {
+    db.update(publicationRecords).set({ ...patch, updatedAt: now })
+      .where(eq(publicationRecords.id, existing.id)).run();
+    return getPublicationRecords(taskId).find((item) => item.id === existing.id)!;
+  }
+  const value = {
+    id: nanoid(12),
+    taskId,
+    platform: "weixin_channels",
+    status: "not_started",
+    idempotencyKey,
+    createdAt: now,
+    updatedAt: now,
+    ...patch,
+  };
+  db.insert(publicationRecords).values(value).run();
+  return value;
+}
+
+export function getMetricSnapshots(taskId: string) {
+  return db.select().from(metricSnapshots)
+    .where(eq(metricSnapshots.taskId, taskId)).all();
+}
+
+export function upsertMetricSnapshot(input: typeof metricSnapshots.$inferInsert) {
+  const existing = getMetricSnapshots(input.taskId).find(
+    (item) => item.publicationId === input.publicationId && item.horizon === input.horizon,
+  );
+  if (existing) {
+    const { id: _id, ...patch } = input;
+    db.update(metricSnapshots).set(patch).where(eq(metricSnapshots.id, existing.id)).run();
+    return { ...existing, ...patch };
+  }
+  db.insert(metricSnapshots).values(input).run();
+  return input;
 }
 
 // 重跑某步前清掉它上次产生的产物，避免重复堆积

@@ -11,7 +11,7 @@ import {
   updateTask,
 } from "./pipeline/repo";
 import { registerStyleSampleFile } from "./styleSampleRegistry";
-import { assertTitleWorkflowComplete } from "./titleWorkflow";
+import { assertStyleSampleInputsComplete } from "./titleWorkflow";
 import { runVisibleCodexTask, type CodexTaskEvent } from "./codexAppServer";
 
 export type CodexStyleSampleJobStatus =
@@ -112,6 +112,7 @@ function buildPrompt(taskId: string, imageFileName: string, promptFileName: stri
   const imagePath = path.join(projectDir, "storyboard", "images", imageFileName);
   const promptPath = path.join(projectDir, "storyboard", "prompts", promptFileName);
   return [
+    "重要：V01 已在 storyboard/storyboard.json 和 voice/voice-timeline-female-locked-v1.json 写入真实配音时间轴。必须保留现有 beat id、script_text 与 actual_voice_* 字段；只允许补充画面语义、构图和提示词，不得重新按固定时长切分。",
     `【Book Video Studio｜G03 风格样图｜${task.bookTitle || taskId}】`,
     `你正在执行工作台自动派发的 G03 风格样图任务。任务 ID：${taskId}。`,
     revision > 1 ? `这是第 ${revision} 版样图修改，请在保留已确认方向的基础上落实用户反馈。` : "这是第一版代表性样图。",
@@ -177,8 +178,9 @@ async function runJob(taskId: string, jobArtifactId: string) {
     title: `Book Video Studio｜G03 风格样图｜${task.bookTitle || taskId}`,
     prompt,
     projectRoot,
-    existingThreadId: initial.threadId,
+    existingThreadId: task.codexThreadId || initial.threadId,
     onEvent: async (event) => {
+      if (event.type === "thread.started") updateTask(taskId, { codexThreadId: event.thread_id });
       appendEvent(logPath, event.raw);
       const summary = summarizeEvent(event);
       updateJob(jobArtifactId, {
@@ -241,7 +243,7 @@ function launch(taskId: string, jobArtifactId: string) {
 export function enqueueCodexStyleSample(taskId: string, options: { force?: boolean; feedback?: string } = {}) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
-  assertTitleWorkflowComplete(taskId);
+  assertStyleSampleInputsComplete(taskId);
   const sample = getArtifacts(taskId).find(
     (item) => item.stepName === "storyboard" && item.kind === "style_sample",
   );

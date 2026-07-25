@@ -140,7 +140,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   for (const asset of result.assets) upsertDeliveryAsset(id, asset);
 
   if (body?.action === "confirm") {
-    updateTask(id, { status: "done", currentGate: "DELIVERY_COMPLETE" });
+    updateTask(id, { status: "ready_for_draft_upload", currentGate: "DRAFT_UPLOAD" });
   }
   return NextResponse.json({
     ok: true,

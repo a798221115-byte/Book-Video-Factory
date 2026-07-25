@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "node:crypto";
-import { getTask, getSteps, getArtifacts, ensureSteps } from "@/lib/pipeline/repo";
+import {
+  getTask, getSteps, getArtifacts, ensureSteps, getWorkflowRuns,
+  getPublicationRecords, getMetricSnapshots,
+} from "@/lib/pipeline/repo";
 import { reapZombieSteps } from "@/lib/pipeline/runner";
 
 function shortHash(value: string | null) {
@@ -17,6 +20,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   return NextResponse.json({
     task,
     steps: getSteps(id),
+    workflowRuns: getWorkflowRuns(id),
+    publicationRecords: getPublicationRecords(id),
+    metricSnapshots: getMetricSnapshots(id),
     artifacts: getArtifacts(id).map(a => ({
       id: a.id,
       stepName: a.stepName,

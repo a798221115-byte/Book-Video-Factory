@@ -154,9 +154,20 @@ Generate remaining images with the approved style, palette, identity, period, li
 
 Sync `G04=待确认` and stop for all-image approval.
 
-## 7. Gate G05: narration and technical post-production
+## 7. C01 and V01: compliance, early narration, and real timing
 
-Start only after all images are explicitly approved.
+Immediately after explicit G02 approval, run `media-publish-check` against the approved copy. Save the immutable input, risk level, risky sentences, categories, suggestions, timestamp, and raw report. A failed or high-risk report blocks titles, voice, images, and post-production. Never overwrite the approved copy.
+
+After C01 passes, start two branches in parallel:
+
+- G02.1 long-title confirmation followed by G02.2 short-title confirmation;
+- V01 locked narration, measured segment timing, `voice/` artifacts, `recipe.json`, storyboard timing fields, and caption timing basis.
+
+G03 cannot start until both branches finish. The measured narration is the timing authority; roughly eight seconds per image remains only a semantic pacing check.
+
+## 8. Gate G05: technical post-production
+
+Start only after all images are explicitly approved. Reuse V01 output unless the approved copy changed.
 
 Resolve the production variant:
 
@@ -192,13 +203,15 @@ Create a new editable draft after timing is stable. Copy intro, images, voice, m
 
 Validate content, timing, audio peaks, paths, anatomy, typography, IDs, media ranges, and editability. Sync `G05=已通过` only after technical validation passes.
 
-## 8. Gate G06: combined review and cover
+## 9. C02 and Gate G06: publication review, combined review, and cover
 
 Verify the exact original cover from WeRead or another authoritative public listing. Do not substitute a similar edition.
 
 Create one separate 1080x1260 cover with `scripts/compose_wechat_cover.py`. Preserve the original cover artwork and typography. Generated imagery may be used only around it.
 
-Sync `G06=待确认` and ask the user to review:
+Before G06, run C02 across copy/captions, images/cover, final video/audio, technical properties, copyright/AI-label considerations, platform-fit items, and Jianying editability. Save the full report. High-risk findings block G06 and draft upload; any correction requires a new C02 report. State clearly that this is automated risk assessment and not a platform guarantee.
+
+After C02 passes, sync `G06=待确认` and ask the user to review:
 
 - opening audio and transition;
 - first body sentence;
@@ -211,8 +224,14 @@ Sync `G06=待确认` and ask the user to review:
 
 Stop until explicit combined approval.
 
-## 9. Workflow endpoint
+## 10. G07–G09: draft upload, human publication, and review
 
-After explicit G06 approval, sync G06 to confirmed and end the default workflow.
+After explicit G06 approval:
 
-Do not embed the cover, shift video/audio, regenerate narration, change captions, mutate the recipe or draft, create distribution records, publish, or archive. Those actions require a separate explicit request and use G07/G08.
+1. G07 selects an existing logged-in WeChat Channels account and calls the pinned `dreammis/social-auto-upload` adapter with `is_draft=True`.
+2. Use one deterministic idempotency key per task/account/final-video version. On retry, resume or return the existing upload record instead of creating an uncontrolled duplicate.
+3. Upload the final video, standalone cover, confirmed long/short titles, description, and tags. Never automate the formal publish click.
+4. G08 waits for the user to publish in the platform backend and record account, work ID, URL, and actual publication time.
+5. G09 accepts separate 24h, 72h, and 7d snapshots, derives engagement/share/save/follow conversion rates, and writes a review plus next-video experiment.
+
+Every transition, wait state, retry, error, and artifact must update the same persistent Codex task and the workbench workflow run.

@@ -13,6 +13,7 @@ import {
   updateTask,
 } from "./pipeline/repo";
 import { startLockedFemalePostProduction } from "./lockedFemalePostProduction";
+import { isTitleWorkflowComplete, readTitleWorkflowMeta } from "./titleWorkflow";
 
 const execFileP = promisify(execFile);
 const PYTHON = "F:\\Codex\\tools\\voxcpm2-venv\\Scripts\\python.exe";
@@ -107,7 +108,7 @@ function prepareSegments(taskId: string) {
     ? null
     : new RegExp(`^(?:我们)?今天(?:要)?分享(?:的是)?\\s*${escapeRegExp(title)}[。！？!?\\s]*`);
   for (const beat of beats) {
-    let text = String(beat.script_text || "").trim();
+    let text = String(beat.script_text || beat.narration || beat.scriptText || "").trim();
     if (!text) continue;
     const beatId = String(beat.id);
     if (title !== "《》" && text.startsWith(title)) text = text.slice(title.length).replace(/^[。！？!?\s]+/, "").trim();
@@ -117,6 +118,33 @@ function prepareSegments(taskId: string) {
   if (!segments.length) throw new Error("分镜中缺少 script_text");
   segments[segments.length - 1].pauseAfterSeconds = 0.3;
   return { task, storyboard, storyboardPath: filePath, segments };
+}
+
+function timelineMatchesSegments(timelinePath: string, segments: { text: string; pauseAfterSeconds: number }[]) {
+  if (!fs.existsSync(timelinePath)) return false;
+  try {
+    const previousTimeline = JSON.parse(fs.readFileSync(timelinePath, "utf8"));
+    const previousSegments = Array.isArray(previousTimeline.timeline) ? previousTimeline.timeline : [];
+    return previousSegments.length === segments.length && previousSegments.every(
+      (item: any, index: number) =>
+        String(item.text || "") === segments[index].text &&
+        Number(item.pauseAfterSeconds || 0) === segments[index].pauseAfterSeconds,
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function lockedFemaleNarrationNeedsRegeneration(taskId: string) {
+  try {
+    const { segments } = prepareSegments(taskId);
+    const voiceDir = path.join(taskDir(taskId), "voice");
+    const timelinePath = path.join(voiceDir, "voice-timeline-female-locked-v1.json");
+    const masterOutput = path.join(voiceDir, "narration-female-locked-v1-master.wav");
+    return !fs.existsSync(masterOutput) || !timelineMatchesSegments(timelinePath, segments);
+  } catch {
+    return true;
+  }
 }
 
 function writeVariantArtifact(taskId: string, variant: any) {
@@ -206,10 +234,54 @@ async function runPythonWithProgress(taskId: string, args: string[], totalSegmen
   });
 }
 
-export async function startLockedFemaleNarration(taskId: string) {
+function ensureEarlyStoryboard(taskId: string) {
+  const filePath = path.join(taskDir(taskId), "storyboard", "storyboard.json");
+  if (fs.existsSync(filePath)) return;
+  const task = getTask(taskId);
+  const scriptPath = path.join(taskDir(taskId), "script.txt");
+  if (!task || !fs.existsSync(scriptPath)) throw new Error("缺少已确认的 script.txt");
+  const script = fs.readFileSync(scriptPath, "utf8").trim();
+  const units = script.split(/(?<=[。！？!?；;])|\n+/).map((item) => item.trim()).filter(Boolean);
+  const beats: any[] = [];
+  let buffer = "";
+  for (const unit of units) {
+    if (buffer && buffer.length + unit.length > 110) {
+      beats.push({ id: `B${String(beats.length + 1).padStart(2, "0")}`, script_text: buffer });
+      buffer = "";
+    }
+    buffer += unit;
+  }
+  if (buffer) beats.push({ id: `B${String(beats.length + 1).padStart(2, "0")}`, script_text: buffer });
+  if (!beats.length) throw new Error("已确认文案没有可用于配音的内容");
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify({
+    version: 2,
+    timing_authority: "voice/voice-timeline-female-locked-v1.json",
+    segmentation_rules: {
+      method: "semantic-first-provisional-before-voice",
+      pacing_reference_seconds: 8,
+      fixed_image_count: false,
+    },
+    book: { title: task.bookTitle || "", author: task.bookAuthor || "" },
+    beats,
+  }, null, 2) + "\n", "utf8");
+}
+
+export async function startLockedFemaleNarration(
+  taskId: string,
+  options: { continuePostProduction?: boolean; early?: boolean } = {},
+) {
   if (running.has(taskId)) throw new Error("当前任务的女声配音正在生成");
   running.add(taskId);
-  const { task, storyboard, storyboardPath, segments } = prepareSegments(taskId);
+  let prepared: ReturnType<typeof prepareSegments>;
+  try {
+    if (options.early) ensureEarlyStoryboard(taskId);
+    prepared = prepareSegments(taskId);
+  } catch (error) {
+    running.delete(taskId);
+    throw error;
+  }
+  const { task, storyboard, storyboardPath, segments } = prepared;
   const projectRoot = path.resolve(taskDir(taskId), "..", "..");
   const voiceDir = path.join(taskDir(taskId), "voice");
   const segmentDir = path.join(voiceDir, "segments-female-locked-v1");
@@ -240,7 +312,9 @@ export async function startLockedFemaleNarration(taskId: string) {
       completedSegments: 0,
     }),
   });
-  updateTask(taskId, { status: "generating_voice", currentGate: "VOICE_GENERATING" });
+  if (!options.early) {
+    updateTask(taskId, { status: "generating_voice", currentGate: "VOICE_GENERATING" });
+  }
 
   try {
     const { stdout } = await execFileP(PYTHON, [
@@ -283,18 +357,7 @@ export async function startLockedFemaleNarration(taskId: string) {
     const reusableSegments = fs.existsSync(segmentDir)
       ? fs.readdirSync(segmentDir).filter((name) => /^segment\d+\.wav$/i.test(name)).length
       : 0;
-    let timelineMatches = false;
-    if (fs.existsSync(timelinePath)) {
-      try {
-        const previousTimeline = JSON.parse(fs.readFileSync(timelinePath, "utf8"));
-        const previousSegments = Array.isArray(previousTimeline.timeline) ? previousTimeline.timeline : [];
-        timelineMatches = previousSegments.length === segments.length && previousSegments.every(
-          (item: any, index: number) =>
-            String(item.text || "") === segments[index].text &&
-            Number(item.pauseAfterSeconds || 0) === segments[index].pauseAfterSeconds,
-        );
-      } catch { timelineMatches = false; }
-    }
+    const timelineMatches = timelineMatchesSegments(timelinePath, segments);
     const canReuseSynthesis =
       fs.existsSync(rawOutput) &&
       fs.existsSync(timelinePath) &&
@@ -397,17 +460,33 @@ export async function startLockedFemaleNarration(taskId: string) {
         durationSeconds: timeline.durationSeconds,
       }),
     });
-    updateTask(taskId, { status: "generating_subtitles", currentGate: "CAPTIONS_GENERATING" });
-    startLockedFemalePostProduction(taskId).catch((error) =>
-      console.error("[locked-female-post-production]", error),
-    );
+    setStepStatus(taskId, "voice_timeline", {
+      status: "done",
+      progress: 1,
+      output: JSON.stringify({
+        durationSeconds: timeline.durationSeconds,
+        timelinePath: projectArtifactPath(timelinePath),
+      }),
+      finishedAt: Date.now(),
+    });
+    if (options.early && isTitleWorkflowComplete(readTitleWorkflowMeta(taskId))) {
+      updateTask(taskId, { status: "ready_for_style_sample", currentGate: "STYLE_SAMPLE_CONFIRMATION" });
+    }
+    if (options.continuePostProduction !== false) {
+      updateTask(taskId, { status: "generating_subtitles", currentGate: "CAPTIONS_GENERATING" });
+      startLockedFemalePostProduction(taskId).catch((error) =>
+        console.error("[locked-female-post-production]", error),
+      );
+    }
   } catch (error: any) {
     setStepStatus(taskId, "tts", {
       status: "failed",
       error: String(error?.message || error),
       finishedAt: Date.now(),
     });
-    updateTask(taskId, { status: "voice_failed", currentGate: "VOICE_GENERATION_FAILED" });
+    if (!options.early) {
+      updateTask(taskId, { status: "voice_failed", currentGate: "VOICE_GENERATION_FAILED" });
+    }
     throw error;
   } finally {
     running.delete(taskId);

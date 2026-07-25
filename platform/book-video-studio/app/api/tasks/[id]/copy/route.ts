@@ -146,7 +146,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       path: outputPath,
       meta: { confirmedAt: Date.now(), nextGate: "STYLE_SAMPLE" },
     });
-    updateTask(id, { status: "ready_for_style_sample", currentGate: "STYLE_SAMPLE" });
+    updateTask(id, { status: "ready_for_long_titles", currentGate: "LONG_TITLE_GENERATION" });
     return NextResponse.json({ ok: true, path: outputPath });
   }
 

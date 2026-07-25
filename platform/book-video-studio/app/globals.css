@@ -2413,6 +2413,18 @@ textarea.dashboard-input {
   color: #276a55;
 }
 
+.title-readonly-note {
+  margin: -4px 0 14px;
+  padding: 11px 13px;
+  border: 1px solid #ead6bd;
+  border-radius: 10px;
+  background: #fff8ed;
+  color: #785f42;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
 .title-source-box,
 .selected-title-summary {
   display: grid;

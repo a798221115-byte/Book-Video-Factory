@@ -202,6 +202,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     Boolean(String(bookMeta.selected_long_title || "").trim()) &&
     Boolean(String(bookMeta.selected_short_title || "").trim())
   );
+  const longTitleConfirmed = Boolean(String(bookMeta.selected_long_title || "").trim());
+  const shortTitleConfirmed = Boolean(String(bookMeta.selected_short_title || "").trim());
   const styleSampleArtifact = artifacts.find(
     (item) => item.stepName === "storyboard" && item.kind === "style_sample",
   );
@@ -590,7 +592,18 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "文案确认失败");
-      setMessage("文案已确认并写入 script.txt。下一步先选择长标题，再选择短标题。");
+      const titleResponse = await fetch(`/api/tasks/${taskId}/titles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "generate_long" }),
+      });
+      const titlePayload = await titleResponse.json().catch(() => ({}));
+      if (!titleResponse.ok) {
+        setMessage(`文案已确认，但长标题生成失败：${titlePayload.error || titleResponse.statusText}。可在标题步骤中重试。`);
+        await load();
+        return;
+      }
+      setMessage("文案已确认并写入 script.txt，已生成 10 个可追溯长标题。请先确认 1 个长标题，再生成短标题。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -863,6 +876,10 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const readyForWeread = data.task.status === "ready_for_weread";
   const highlightsConfirmed = data.task.status === "highlights_confirmed";
   const waitingForScript = data.task.status === "waiting_script_confirmation";
+  const readyForLongTitles = data.task.status === "ready_for_long_titles";
+  const waitingForLongTitleConfirmation = data.task.status === "waiting_long_title_confirmation";
+  const readyForShortTitles = data.task.status === "ready_for_short_titles";
+  const waitingForShortTitleConfirmation = data.task.status === "waiting_short_title_confirmation";
   const readyForStyleSample = data.task.status === "ready_for_style_sample";
   const generatingStyleSample = data.task.status === "generating_style_sample";
   const waitingForStyleConfirmation = data.task.status === "waiting_style_confirmation";
@@ -907,6 +924,10 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     readyForWeread ||
     highlightsConfirmed ||
     waitingForScript ||
+    readyForLongTitles ||
+    waitingForLongTitleConfirmation ||
+    readyForShortTitles ||
+    waitingForShortTitleConfirmation ||
     readyForStyleSample ||
     generatingStyleSample ||
     waitingForStyleConfirmation ||
@@ -919,8 +940,21 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     !readyForWeread &&
     !highlightsConfirmed &&
     !waitingForScript;
-  const styleStageReached =
+  const titleSelectionReached =
+    readyForLongTitles ||
+    waitingForLongTitleConfirmation ||
+    readyForShortTitles ||
+    waitingForShortTitleConfirmation ||
     readyForStyleSample ||
+    generatingStyleSample ||
+    waitingForStyleConfirmation ||
+    readyForRemainingImages ||
+    generatingRemainingImages ||
+    generatingImageRevision ||
+    waitingForImagesConfirmation ||
+    postProductionStageReached;
+  const styleStageReached =
+    (readyForStyleSample && titleWorkflowComplete) ||
     generatingStyleSample ||
     waitingForStyleConfirmation ||
     readyForRemainingImages ||
@@ -943,13 +977,25 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         ? "G04 全部分镜"
         : styleStageReached
           ? "G03 风格样图"
+          : titleSelectionReached
+            ? longTitleConfirmed
+              ? "G02.2 短标题确认"
+              : "G02.1 长标题确认"
           : evidenceStageReached
             ? "G01 来源证据与 G02 文案"
             : "抖音采集与图书确认";
   const currentStatusLabel = waitingForBook
     ? "待确认图书"
-    : readyForWeread
-      ? "可查热门划线"
+      : readyForWeread
+        ? "可查热门划线"
+      : readyForLongTitles
+        ? "正在生成长标题"
+      : waitingForLongTitleConfirmation
+        ? "等待确认长标题"
+      : readyForShortTitles
+        ? "可生成短标题"
+      : waitingForShortTitleConfirmation
+        ? "等待确认短标题"
       : waitingForRenderReview
         ? "等待成片审核"
         : generatingImageRevision
@@ -1026,8 +1072,10 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           <small>{evidenceStageReached ? "已完成的确认门保持只读，当前阶段与产物继续显示。" : "确认后才会进入微信读书，后续节点保持锁定。"}</small>
         </div>
         {[
-          ["G01", "原文证据", highlightsConfirmed || waitingForScript || styleStageReached ? "complete" : readyForWeread ? "next" : "locked"],
-          ["G02", "原创口播", styleStageReached ? "complete" : highlightsConfirmed || waitingForScript ? "next" : "locked"],
+          ["G01", "原文证据", highlightsConfirmed || waitingForScript || titleSelectionReached ? "complete" : readyForWeread ? "next" : "locked"],
+          ["G02", "原创口播", titleSelectionReached ? "complete" : highlightsConfirmed || waitingForScript ? "next" : "locked"],
+          ["G02.1", "10 个长标题", longTitleConfirmed ? "complete" : titleSelectionReached ? "next" : "locked"],
+          ["G02.2", "10 个短标题", shortTitleConfirmed ? "complete" : longTitleConfirmed && titleSelectionReached ? "next" : "locked"],
           ["G03", "风格样图", remainingImagesStageReached ? "complete" : styleStageReached ? "next" : "locked"],
           ["G04", "全部分镜", postProductionReached ? "complete" : remainingImagesStageReached ? "next" : "locked"],
           ["G05", "配音后期", waitingForRenderReview || productionComplete ? "complete" : readyForPostProduction ? "next" : "locked"],
@@ -1393,7 +1441,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </section>
       ) : null}
 
-      {readyForStyleSample ? (
+      {titleSelectionReached ? (
         <section className="intake-title-selection-workspace">
           <div className="intake-section-heading">
             <div>
@@ -1402,7 +1450,19 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             </div>
             <span className="intake-dbs-version">dbs-xhs-title</span>
           </div>
-          <TitleSelectionPanel task={data.task} book={bookMeta} busy={busy} reload={load} />
+          <TitleSelectionPanel
+            task={data.task}
+            book={bookMeta}
+            busy={busy}
+            reload={load}
+            locked={![
+              "ready_for_long_titles",
+              "waiting_long_title_confirmation",
+              "ready_for_short_titles",
+              "waiting_short_title_confirmation",
+              "ready_for_style_sample",
+            ].includes(data.task.status)}
+          />
         </section>
       ) : null}
 

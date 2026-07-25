@@ -32,7 +32,7 @@ function asCandidates(value: unknown): Candidate[] {
     .filter((item) => item.text);
 }
 
-export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
+export default function TitleSelectionPanel({ task, book, busy, reload, locked = false }: any) {
   const savedLong = useMemo(() => asCandidates(book.long_title_candidates || book.video_titles), [book.long_title_candidates, book.video_titles]);
   const savedShort = useMemo(() => asCandidates(book.short_title_candidates || book.short_titles), [book.short_title_candidates, book.short_titles]);
   const [longCandidates, setLongCandidates] = useState<Candidate[]>(savedLong);
@@ -87,7 +87,9 @@ export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
 
   const longConfirmed = Boolean(selectedLong);
   const complete = stage === "complete" && Boolean(selectedShort);
-  const sourceTitle = String(task.title || "").trim();
+  const sourceTitle = String(book.title_source_title || task.title || "").trim();
+  const matchedFormulaCount = new Set(longCandidates.map((item) => item.formulaId).filter(Boolean)).size;
+  const matchedTriggerCount = new Set(longCandidates.map((item) => item.trigger).filter(Boolean)).size;
 
   return (
     <div className="title-card-panel">
@@ -100,11 +102,19 @@ export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
           {complete ? "标题已完成" : longConfirmed ? "等待确认短标题" : "等待确认长标题"}
         </span>
       </div>
+      {locked && (
+        <div className="title-readonly-note">
+          已进入 G03 或后续阶段，标题流程保留为只读记录；如需更换长标题，必须先退回标题确认门并使短标题和下游图片失效。
+        </div>
+      )}
 
       <div className="title-source-box">
         <span>抖音原标题</span>
         <strong>{sourceTitle || "尚未获取原标题"}</strong>
         {sourceTitle && <em>{sourceTitle.length} 字符</em>}
+        {longCandidates.length > 0 && (
+          <em>DBS 公式 {matchedFormulaCount} 个 · 心理触发类型 {matchedTriggerCount} 类 · 候选 {longCandidates.length}/10</em>
+        )}
       </div>
 
       <section className="title-choice-stage">
@@ -113,7 +123,7 @@ export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
             <span>第一步</span>
             <h4>选择长标题 · 10 个方案</h4>
           </div>
-          <button className="btn btn-ghost" disabled={busy || Boolean(working)} onClick={() => request("generate_long")}>
+          <button className="btn btn-ghost" disabled={locked || busy || Boolean(working)} onClick={() => request("generate_long")}>
             {working === "generate_long" ? "正在匹配 DBS 公式..." : longCandidates.length ? "重新生成 10 个长标题" : "生成 10 个长标题"}
           </button>
         </div>
@@ -137,7 +147,7 @@ export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
                   )}
                   <button
                     className={`btn ${selected ? "btn-ok" : "btn-ghost"}`}
-                    disabled={busy || Boolean(working) || selected}
+                    disabled={locked || busy || Boolean(working) || selected}
                     onClick={() => request("select_long", candidate.text)}
                   >
                     {selected ? "已确认此长标题" : "确认此长标题"}
@@ -155,7 +165,7 @@ export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
             <span>第二步</span>
             <h4>基于已选长标题生成短标题 · 10 个方案</h4>
           </div>
-          <button className="btn btn-ghost" disabled={busy || Boolean(working) || !longConfirmed} onClick={() => request("generate_short")}>
+          <button className="btn btn-ghost" disabled={locked || busy || Boolean(working) || !longConfirmed} onClick={() => request("generate_short")}>
             {working === "generate_short" ? "正在压缩短标题..." : shortCandidates.length ? "重新生成 10 个短标题" : "生成 10 个短标题"}
           </button>
         </div>
@@ -170,7 +180,7 @@ export default function TitleSelectionPanel({ task, book, busy, reload }: any) {
                 <button
                   key={candidate.id || index}
                   className={`short-title-choice ${selected ? "selected" : ""}`}
-                  disabled={busy || Boolean(working) || selected}
+                  disabled={locked || busy || Boolean(working) || selected}
                   onClick={() => request("select_short", candidate.text)}
                 >
                   <span>{String(index + 1).padStart(2, "0")}</span>

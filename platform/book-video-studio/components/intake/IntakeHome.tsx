@@ -26,6 +26,10 @@ const statusCopy: Record<string, { label: string; tone: string }> = {
   ready_for_weread: { label: "可查热门划线", tone: "ready" },
   highlights_confirmed: { label: "准备生成文案", tone: "run" },
   waiting_script_confirmation: { label: "待确认文案", tone: "wait" },
+  ready_for_long_titles: { label: "正在生成长标题", tone: "run" },
+  waiting_long_title_confirmation: { label: "待确认长标题", tone: "wait" },
+  ready_for_short_titles: { label: "可生成短标题", tone: "ready" },
+  waiting_short_title_confirmation: { label: "待确认短标题", tone: "wait" },
   ready_for_style_sample: { label: "待生成 G03 样图", tone: "ready" },
   generating_style_sample: { label: "G03 样图生成中", tone: "run" },
   waiting_style_confirmation: { label: "待确认 G03 风格", tone: "wait" },
@@ -71,6 +75,8 @@ function gateLabel(task: TaskRow) {
   if (task.status === "ready_for_weread") return "G01 热门划线";
   if (task.status === "waiting_confirmation") return "确认书名作者";
   if (["highlights_confirmed", "waiting_script_confirmation"].includes(task.status)) return "G02 原创口播";
+  if (["ready_for_long_titles", "waiting_long_title_confirmation"].includes(task.status)) return "G02.1 长标题";
+  if (["ready_for_short_titles", "waiting_short_title_confirmation"].includes(task.status)) return "G02.2 短标题";
   if (["ready_for_style_sample", "generating_style_sample", "waiting_style_confirmation"].includes(task.status)) return "G03 风格样图";
   if (["ready_for_remaining_images", "generating_remaining_images", "generating_image_revision", "waiting_images_confirmation"].includes(task.status)) return "G04 分镜审核";
   if (["ready_for_post_production", "waiting_render_review", "done"].includes(task.status)) return "G05/G06 后期审核";

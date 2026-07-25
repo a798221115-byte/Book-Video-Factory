@@ -45,25 +45,28 @@ function writeMeta(taskId: string, meta: Record<string, any>) {
   } else {
     saveArtifact({ taskId, stepName: "rewrite", kind: "json", label: "书籍信息", meta });
   }
+  const longCandidates = (meta.long_title_candidates || []) as TitleCandidate[];
   fs.writeFileSync(path.join(taskDir(taskId), "titles.json"), JSON.stringify({
     sourceTitle: meta.title_source_title || "",
     sourceLength: meta.title_source_length || 0,
     formulaSkill: meta.title_skill || "dbs-xhs-title",
+    matchedFormulaIds: [...new Set(longCandidates.map((item) => item.formulaId).filter(Boolean))],
+    matchedTriggerCategories: [...new Set(longCandidates.map((item) => item.trigger).filter(Boolean))],
     stage: meta.title_stage || "idle",
-    longCandidates: meta.long_title_candidates || [],
+    longCandidates,
     selectedLongTitle: meta.selected_long_title || "",
     shortCandidates: meta.short_title_candidates || [],
     selectedShortTitle: meta.selected_short_title || "",
     hashtags: meta.hashtags || [],
     updatedAt: Date.now(),
   }, null, 2), "utf8");
-  const gateByStage: Record<string, string> = {
-    long_pending: "LONG_TITLE_CONFIRMATION",
-    long_confirmed: "SHORT_TITLE_GENERATION",
-    short_pending: "SHORT_TITLE_CONFIRMATION",
-    complete: "STYLE_SAMPLE_CONFIRMATION",
+  const taskStateByStage: Record<string, { status: string; currentGate: string }> = {
+    long_pending: { status: "waiting_long_title_confirmation", currentGate: "LONG_TITLE_CONFIRMATION" },
+    long_confirmed: { status: "ready_for_short_titles", currentGate: "SHORT_TITLE_GENERATION" },
+    short_pending: { status: "waiting_short_title_confirmation", currentGate: "SHORT_TITLE_CONFIRMATION" },
+    complete: { status: "ready_for_style_sample", currentGate: "STYLE_SAMPLE_CONFIRMATION" },
   };
-  if (gateByStage[meta.title_stage]) updateTask(taskId, { currentGate: gateByStage[meta.title_stage] });
+  if (taskStateByStage[meta.title_stage]) updateTask(taskId, taskStateByStage[meta.title_stage]);
 }
 
 function cleanTitle(value: unknown, maxLength: number) {
@@ -134,6 +137,13 @@ function longFallback(sourceTitle: string, bookTitle: string): TitleCandidate[] 
   });
 }
 
+function hasFormulaCoverage(candidates: TitleCandidate[]) {
+  if (candidates.length !== 10) return false;
+  const formulaIds = new Set(candidates.map((item) => item.formulaId).filter(Boolean));
+  const triggers = new Set(candidates.map((item) => item.trigger).filter(Boolean));
+  return formulaIds.size >= 5 && formulaIds.size <= 8 && triggers.size >= 3;
+}
+
 function shortFallback(longTitle: string) {
   const pool = [
     "这句话值得收藏", "别再忽略关键", "真正重要的选择", "先把自己活明白", "重新理解人生",
@@ -184,6 +194,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const bookAuthor = String(task.bookAuthor || meta.book_author || "");
   const sourceTitle = String(task.title || "");
   const llm = getLLM();
+  const titleEditableStatuses = new Set([
+    "ready_for_long_titles",
+    "waiting_long_title_confirmation",
+    "ready_for_short_titles",
+    "waiting_short_title_confirmation",
+    "ready_for_style_sample",
+  ]);
+  if (!titleEditableStatuses.has(task.status)) {
+    return NextResponse.json({
+      error: "标题流程只能在 G02 文案确认后、G03 风格样图生成前修改",
+    }, { status: 409 });
+  }
+  if (artifacts.some((item) => item.stepName === "storyboard" && item.kind === "style_sample")) {
+    return NextResponse.json({
+      error: "G03 风格样图已经生成；如需更换长标题，必须先执行回退并使现有图片失效",
+    }, { status: 409 });
+  }
 
   if (action === "select_long") {
     const title = cleanTitle(body.title, 86);
@@ -302,7 +329,8 @@ ${formulaText}`,
     });
     const json = parseJson(raw);
     const generated = uniqueCandidates(json.long_titles, 10, 86).filter((item) => item.formulaId);
-    const candidates = uniqueCandidates([...generated, ...longFallback(sourceTitle, bookTitle)], 10, 86);
+    const fallback = longFallback(sourceTitle, bookTitle);
+    const candidates = hasFormulaCoverage(generated) ? generated : fallback;
     const hashtags = uniqueHashtags(json.hashtags, bookTitle);
     const next = {
       ...meta,

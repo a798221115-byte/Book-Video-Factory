@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.0 - 2026-07-25
+
+- Add explicit G02.1 long-title and G02.2 short-title task states between copy approval and G03.
+- Automatically generate exactly 10 traceable long-title candidates after G02 approval, then require one long-title selection before generating exactly 10 short titles.
+- Keep the complete title workflow visible as a read-only audit record after G03 begins, and block all image work until both title selections are confirmed.
+- Persist DBS formula and psychological-trigger coverage in `titles.json`.
+
 ## 1.11.1 - 2026-07-25
 
 - Store Jianying native drafts under `F:\JianyingPro` while keeping the original application path compatible through a directory junction.

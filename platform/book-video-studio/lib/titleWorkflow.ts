@@ -30,12 +30,16 @@ export function isTitleWorkflowComplete(meta: Record<string, any>) {
 
 export function assertTitleWorkflowComplete(taskId: string) {
   if (!isTitleWorkflowComplete(readTitleWorkflowMeta(taskId))) {
-    throw new Error("请先在标题选择中确认长标题，再确认短标题，完成后才能生成场景图");
+    throw new Error("长短标题尚未完成自动生成与采用，完成后才能生成场景图");
   }
 }
 
-export function assertStyleSampleInputsComplete(taskId: string) {
+export function assertStyleSampleInputsComplete(
+  taskId: string,
+  options: { allowExistingSampleRevision?: boolean } = {},
+) {
   assertTitleWorkflowComplete(taskId);
+  if (options.allowExistingSampleRevision) return;
   const textCompliance = getStep(taskId, "text_compliance");
   const voiceTimeline = getStep(taskId, "voice_timeline");
   if (textCompliance?.status !== "done") {

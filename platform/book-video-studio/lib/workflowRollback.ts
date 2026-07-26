@@ -30,14 +30,14 @@ export type RollbackTarget = (typeof ROLLBACK_TARGETS)[number];
 
 const TARGET_STATE: Record<RollbackTarget, { status: string; gate: string; label: string }> = {
   book: { status: "waiting_confirmation", gate: "BOOK_CONFIRMATION", label: "G00 书名与作者" },
-  sources: { status: "ready_for_weread", gate: "WEREAD_HIGHLIGHTS", label: "G01 来源包" },
-  script: { status: "waiting_script_confirmation", gate: "SCRIPT_CONFIRMATION", label: "G02 文稿" },
-  long_title: { status: "waiting_long_title_confirmation", gate: "LONG_TITLE_CONFIRMATION", label: "G02.1 长标题" },
-  short_title: { status: "waiting_short_title_confirmation", gate: "SHORT_TITLE_CONFIRMATION", label: "G02.2 短标题" },
-  style: { status: "waiting_style_confirmation", gate: "STYLE_SAMPLE_CONFIRMATION", label: "G03 风格样图" },
-  images: { status: "waiting_images_confirmation", gate: "ALL_IMAGES_CONFIRMATION", label: "G04 分镜图片" },
+  sources: { status: "ready_for_weread", gate: "WEREAD_HIGHLIGHTS", label: "自动来源包" },
+  script: { status: "waiting_script_confirmation", gate: "SCRIPT_CONFIRMATION", label: "第 1 次确认：文稿" },
+  long_title: { status: "waiting_long_title_confirmation", gate: "LONG_TITLE_CONFIRMATION", label: "自动长标题" },
+  short_title: { status: "waiting_short_title_confirmation", gate: "SHORT_TITLE_CONFIRMATION", label: "自动短标题" },
+  style: { status: "waiting_style_confirmation", gate: "STYLE_SAMPLE_CONFIRMATION", label: "自动风格样图" },
+  images: { status: "waiting_images_confirmation", gate: "ALL_IMAGES_CONFIRMATION", label: "第 2 次确认：分镜图片" },
   post_production: { status: "ready_for_post_production", gate: "POST_PRODUCTION", label: "G05 后期制作" },
-  delivery_review: { status: "waiting_render_review", gate: "RENDER_REVIEW", label: "G06 成片联合审核" },
+  delivery_review: { status: "waiting_render_review", gate: "DELIVERY_REGISTERING", label: "自动交付结果" },
   publication: { status: "waiting_publication_confirmation", gate: "PUBLICATION_CONFIRMATION", label: "G08 人工发布信息" },
 };
 
@@ -266,7 +266,7 @@ export function rollbackImpact(taskId: string, target: RollbackTarget) {
     style: "将重新打开当前风格样图审核，并使其余分镜、成片及发布流程失效。",
     images: "将重新打开全部分镜审核，并使字幕、成片、终审及发布流程失效。",
     post_production: "将重新执行字幕、成片、剪映草稿、封面和发布前审核。",
-    delivery_review: "将返回 G06 重新检查成片、剪映草稿和封面；已上传到视频号的草稿不会自动删除。",
+    delivery_review: "将返回自动交付结果，重新检查成片、剪映草稿和封面；已上传到视频号的草稿不会自动删除。",
     publication: "将返回 G08 重新填写人工发布信息和时间；平台上已经发布的作品不会被撤回。",
   };
   return {

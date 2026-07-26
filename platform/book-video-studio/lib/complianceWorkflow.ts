@@ -137,7 +137,7 @@ async function runAudit(taskId: string, scope: ComplianceScope) {
     fetch(`${internalBaseUrl}/api/tasks/${taskId}/titles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "generate_long" }),
+      body: JSON.stringify({ action: "generate_long", autoSelect: true }),
     }).then(async (response) => {
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
@@ -159,9 +159,25 @@ async function runAudit(taskId: string, scope: ComplianceScope) {
       }));
     return;
   }
-  updateTask(taskId, report.decision === "pass"
-    ? { status: "waiting_render_review", currentGate: "RENDER_REVIEW" }
-    : { status: "media_compliance_blocked", currentGate: "MEDIA_COMPLIANCE" });
+  if (report.decision !== "pass") {
+    updateTask(taskId, { status: "media_compliance_blocked", currentGate: "MEDIA_COMPLIANCE" });
+    return;
+  }
+  updateTask(taskId, { status: "waiting_render_review", currentGate: "DELIVERY_REGISTERING" });
+  const internalBaseUrl = process.env.BOOK_VIDEO_STUDIO_INTERNAL_URL
+    || `http://127.0.0.1:${process.env.PORT || "3000"}`;
+  fetch(`${internalBaseUrl}/api/tasks/${taskId}/delivery-assets`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "confirm", approvalMode: "automatic" }),
+  }).then(async (response) => {
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(String(payload?.error || `HTTP ${response.status}`));
+    }
+  }).catch((error) => {
+    console.error("[automatic-delivery-registration]", error);
+  });
 }
 
 export function enqueueComplianceAudit(taskId: string, scope: ComplianceScope) {

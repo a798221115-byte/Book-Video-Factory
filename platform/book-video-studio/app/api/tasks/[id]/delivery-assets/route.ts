@@ -90,22 +90,22 @@ function collectDeliveryAssets(taskId: string) {
     assets: [
       {
         kind: "review_video",
-        label: "G06 60fps 审核成片",
+        label: "自动交付 60fps 审核成片",
         path: reviewVideo!.path!,
       },
       {
         kind: "cover",
-        label: "G06 视频号独立封面",
+        label: "自动交付 视频号独立封面",
         path: projectArtifactPath(coverPath!),
       },
       {
         kind: "cover_validation",
-        label: "G06 封面验收报告",
+        label: "自动交付 封面验收报告",
         path: projectArtifactPath(coverValidationPath),
       },
       {
         kind: "jianying_draft_report",
-        label: "G06 剪映草稿验收报告",
+        label: "自动交付 剪映草稿验收报告",
         path: projectArtifactPath(draftReportPath),
         meta: {
           workDirectory: draftDirectory,
@@ -114,7 +114,7 @@ function collectDeliveryAssets(taskId: string) {
       },
       {
         kind: "validation_report",
-        label: "G06 成片技术验收报告",
+        label: "自动交付 成片技术验收报告",
         path: projectArtifactPath(validationPath),
       },
     ] satisfies DeliveryAsset[],
@@ -134,14 +134,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     "ready_for_draft_upload",
     "draft_upload_failed",
   ].includes(task.status)) {
-    return NextResponse.json({ error: "成片尚未进入 G06 联合审核" }, { status: 409 });
+    return NextResponse.json({ error: "成片尚未进入自动交付登记" }, { status: 409 });
   }
 
   const body = await req.json().catch(() => ({}));
   const result = collectDeliveryAssets(id);
   if (result.missing.length) {
     return NextResponse.json({
-      error: `G06 产物尚未齐全：${result.missing.join("、")}`,
+      error: `自动交付产物尚未齐全：${result.missing.join("、")}`,
       missing: result.missing,
     }, { status: 409 });
   }

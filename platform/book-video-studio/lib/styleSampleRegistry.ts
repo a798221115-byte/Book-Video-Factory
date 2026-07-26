@@ -11,6 +11,7 @@ import {
   updateTask,
 } from "./pipeline/repo";
 import { assertTitleWorkflowComplete } from "./titleWorkflow";
+import { enqueueCodexRemainingImages } from "./codexRemainingImagesJob";
 
 function fileSha256(filePath: string) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
@@ -64,7 +65,9 @@ export function registerStyleSampleFile(
     prompt,
     promptPath: promptPath && fs.existsSync(promptPath) ? projectArtifactPath(promptPath) : null,
     sha256: fileSha256(imagePath),
-    approvalRequired: true,
+    approvalRequired: false,
+    approvedAt: Date.now(),
+    approvalMode: "automatic",
     revision: Number(input.revision || 1),
     feedback: String(input.feedback || ""),
     registeredAt: Date.now(),
@@ -86,11 +89,14 @@ export function registerStyleSampleFile(
       meta,
     });
   }
-  updateTask(taskId, {
-    status: "waiting_style_confirmation",
-    currentGate: "STYLE_SAMPLE_CONFIRMATION",
-  });
-  return { path: storedPath, sha256: meta.sha256 };
+  const dispatched = enqueueCodexRemainingImages(taskId);
+  return {
+    path: storedPath,
+    sha256: meta.sha256,
+    autoApproved: true,
+    queued: dispatched.manifest.jobs.length,
+    codexJobId: dispatched.job.artifact.id,
+  };
 }
 
 export function replaceConfirmedStyleSampleFile(

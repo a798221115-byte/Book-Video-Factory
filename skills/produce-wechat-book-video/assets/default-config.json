@@ -11,6 +11,16 @@
     "metadataPath": "video_clips/reference-metadata.json"
   },
   "projectRoot": "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/AI视频",
+  "workflow": {
+    "confirmationMode": "two_step",
+    "requiredHumanConfirmations": ["script", "images"],
+    "autoLockSourcePackage": true,
+    "autoSelectTitles": true,
+    "autoApprovePassingStyleSample": true,
+    "autoStartPostProductionAfterImages": true,
+    "autoRegisterDeliveryAfterC02": true,
+    "formalPublicationRequiresExplicitAuthorization": true
+  },
   "fixedIntro": "固定/女版前3秒固定开头.mp4",
   "introVariantDefault": "female",
   "introVariants": {
@@ -38,6 +48,7 @@
     "longCandidateCount": 10,
     "targetSourceLengthRatio": [0.8, 1.2],
     "requireLongSelectionBeforeShortGeneration": true,
+    "selectionMode": "automatic-first-recommendation",
     "shortCandidateCount": 10,
     "shortPreferredChineseCharacters": [4, 12],
     "shortMaximumCharacters": 16,
@@ -110,7 +121,7 @@
     "doNotMutateApprovedVideo": true,
     "requireVerifiedOriginalBookCover": true,
     "preserveOriginalCoverArtworkAndTypography": true,
-    "confirmationRequiredAfterVideoApproval": true
+    "confirmationRequiredAfterVideoApproval": false
   },
   "music": {
     "introGain": 0.63,

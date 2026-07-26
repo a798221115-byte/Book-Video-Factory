@@ -119,7 +119,7 @@ export default function WorkflowExtensionPanel({ taskId, data, reload, onRollbac
         <div className="workflow-action-card">
           <h3>G07 自动上传视频号草稿箱</h3>
           <p>这里只会点击“保存草稿”，不会点击正式发表。</p>
-          <button disabled={busy} onClick={() => onRollback?.("delivery_review")}>返回 G06 重新审核成片</button>
+          <button disabled={busy} onClick={() => onRollback?.("delivery_review")}>返回自动交付结果</button>
           <select value={accountId} onChange={(event) => setAccountId(event.target.value)}>
             <option value="">选择已登录视频号账号</option>
             {accounts.map((account) => <option key={account.id} value={account.id}>{account.label}</option>)}
@@ -135,7 +135,7 @@ export default function WorkflowExtensionPanel({ taskId, data, reload, onRollbac
         <div className="workflow-action-card">
           <h3>G08 人工发布确认</h3>
           <p>草稿：{latestRecord?.draftId || "—"} · 账号：{latestRecord?.accountId || "—"}</p>
-          <button disabled={busy} onClick={() => onRollback?.("delivery_review")}>返回 G06 重新审核</button>
+          <button disabled={busy} onClick={() => onRollback?.("delivery_review")}>返回自动交付结果</button>
           <input placeholder="视频号作品 ID（必填）" value={publication.platformWorkId} onChange={(event) => setPublication({ ...publication, platformWorkId: event.target.value })} />
           <input placeholder="作品链接（可选）" value={publication.url} onChange={(event) => setPublication({ ...publication, url: event.target.value })} />
           <input type="datetime-local" value={publication.publishedAt} onChange={(event) => setPublication({ ...publication, publishedAt: event.target.value })} />

@@ -49,7 +49,15 @@ const compliance = read("lib", "complianceWorkflow.ts");
 assert.match(compliance, /existingThreadId: task\.codexThreadId/);
 assert.match(compliance, /media-publish-check/);
 assert.match(compliance, /action: "generate_long"/, "C01 pass must start the title branch");
+assert.match(compliance, /autoSelect: true/, "C01 pass must automatically adopt long and short titles");
 assert.match(compliance, /continuePostProduction: false/, "C01 pass must start early voice without post-production");
+assert.match(compliance, /delivery-assets/);
+assert.match(compliance, /approvalMode: "automatic"/, "C02 pass must automatically register delivery artifacts");
+
+const styleRegistry = read("lib", "styleSampleRegistry.ts");
+assert.match(styleRegistry, /approvalRequired: false/);
+assert.match(styleRegistry, /approvalMode: "automatic"/);
+assert.match(styleRegistry, /enqueueCodexRemainingImages/, "passing style sample must continue to remaining images");
 
 const rollback = read("lib", "workflowRollback.ts");
 for (const target of [
@@ -66,5 +74,9 @@ const intakeView = read("components", "intake", "IntakeTaskView.tsx");
 for (const label of ["返回修改文稿", "返回重选长标题", "返回重选短标题", "返回修改风格样图", "返回修改分镜图片", "返回重做后期"]) {
   assert.match(intakeView, new RegExp(label), `missing workbench return action: ${label}`);
 }
+assert.match(intakeView, /第 1 次确认：确认文案并自动生产/);
+assert.match(intakeView, /第 2 次确认：确认图片并自动完成后期/);
+assert.match(intakeView, /action: "generate_long", autoSelect: true/);
+assert.doesNotMatch(intakeView, /第三次确认：/);
 
 console.log("workflow-extension-verification-ok");

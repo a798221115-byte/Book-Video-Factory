@@ -37,7 +37,7 @@ Keep all four as editable Jianying text materials and preserve one-line caption 
 
 The production default is `female`. Never infer `male` from legacy assets, filenames, prior projects, or a stale configuration value; select it only from an explicit user request.
 
-Narration starts after C01 copy compliance passes, in parallel with long/short title confirmation. Store every completed segment's measured start/end immediately, update `recipe.json` and storyboard timing fields, and use those values as the caption and image-hold authority. G03 must wait for this real timeline.
+Narration starts after C01 copy compliance passes, in parallel with automatic long/short title generation and selection. Store every completed segment's measured start/end immediately, update `recipe.json` and storyboard timing fields, and use those values as the caption and image-hold authority. G03 must wait for this real timeline.
 
 Read the selected project preset before generation. Both variants use VoxCPM2 / `openbmb/VoxCPM2`, CFG 2.0, 20 inference steps, fixed seed 42 for every segment, normalize false, denoise false, retry bad case false, and native 1.00x generation speed.
 
@@ -134,7 +134,7 @@ Check:
 - one-line captions and forbidden punctuation;
 - image/audio paths and draft ID consistency;
 - sample frames at the intro boundary, middle, and ending.
-- a passing C02 media report before G06 and draft upload;
+- a passing C02 media report before automatic G06 delivery registration and draft upload;
 - draft-only upload mode, selected account, and idempotency record;
 - no automated formal publication action.
 
@@ -142,5 +142,5 @@ Check:
 
 - The approved cover is a standalone 1080x1260 (6:7) upload asset.
 - Preserve the verified original cover artwork and typography; generated imagery may only extend the surrounding background.
-- After explicit cover approval, do not create a 1080x1920 cover frame, insert a silent clip, shift the existing video/audio, regenerate narration, alter captions, update `recipe.json`, or mutate the Jianying draft.
+- After automated cover validation, do not create a 1080x1920 cover frame, insert a silent clip, shift the existing video/audio, regenerate narration, alter captions, update `recipe.json`, or mutate the Jianying draft.
 - Validate the cover dimensions, central safe area, original-cover hash, legibility, and manifest path. Any later embedding or distribution work is a separate explicitly requested workflow.

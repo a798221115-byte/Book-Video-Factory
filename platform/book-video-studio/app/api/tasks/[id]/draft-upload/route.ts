@@ -24,7 +24,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const task = getTask(id);
   if (!task?.projectPath) return NextResponse.json({ error: "任务不存在" }, { status: 404 });
   if (!["ready_for_draft_upload", "draft_upload_failed", "done"].includes(task.status)) {
-    return NextResponse.json({ error: "请先通过 C02 完整审核并确认 G06 成片" }, { status: 409 });
+    return NextResponse.json({ error: "请先通过 C02 完整审核并完成自动交付登记" }, { status: 409 });
   }
   if (getStep(id, "media_compliance")?.status !== "done") {
     return NextResponse.json({ error: "C02 发布前完整审核尚未通过" }, { status: 409 });

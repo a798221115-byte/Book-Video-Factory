@@ -120,14 +120,14 @@ Write `script_sources.md` with:
   - original observations not yet written;
 - a mismatch list for reference-video claims or “book quotes” that WeRead does not verify.
 
-Show the source package to the user and stop at G01. Ask the user to approve the framework and selected WeRead evidence, not merely the book title.
+Show the source package in the workbench, lock the selected evidence when copy generation starts, and continue. G01 is traceable and reversible but does not consume a human confirmation.
 
-## 6. Write the derivative copy after G01 approval
+## 6. Write the derivative copy after G01 evidence lock
 
 Use this sequence:
 
-1. Copy only the approved abstract framework into a scratch outline.
-2. Select three to six approved WeRead ideas or short quotations.
+1. Copy only the verified abstract framework into a scratch outline.
+2. Select three to six verified WeRead ideas or short quotations.
 3. Rebuild every content-bearing sentence from WeRead evidence and original reflection.
 4. Keep the reference only for hook function, tension order, emotional curve, rhythm, and ending function.
 5. Start the body with `《书名》` because the fixed intro already contains `我们今天分享的是`.
@@ -144,13 +144,11 @@ Run an overlap audit before G02:
 
 Save the result as `script.txt`, sync G02 to waiting for confirmation, and stop. Do not create a storyboard or image before explicit approval.
 
-After G02 approval, run the title sub-gates before any storyboard or image work:
+After the first G02 confirmation, run automatic title generation and selection before any storyboard or image work:
 
 - read the TikHub Douyin title;
 - use `dbs-xhs-title` to match 5–8 formulas across at least three trigger categories;
-- generate and present exactly 10 traceable long-title candidates;
-- stop until the user selects one long title;
-- generate exactly 10 short-title candidates only from that selected long title;
-- stop until the user selects one short title;
+- generate and preserve exactly 10 traceable long-title candidates, automatically adopting the first recommendation;
+- generate exactly 10 short-title candidates only from that adopted long title, automatically adopting the first recommendation;
 - persist the full audit trail in `titles.json`;
-- invalidate short-title state whenever the long title is regenerated or changed.
+- invalidate and regenerate short-title state whenever the long title is regenerated or changed.

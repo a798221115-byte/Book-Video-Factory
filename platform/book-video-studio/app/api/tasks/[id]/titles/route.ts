@@ -160,6 +160,34 @@ function shortFallback(longTitle: string) {
   return pool.map((text, index) => ({ id: `fallback-short-${index + 1}`, text }));
 }
 
+async function generateShortCandidates(
+  llm: ReturnType<typeof getLLM>,
+  selectedLong: string,
+  bookTitle: string,
+) {
+  try {
+    const raw = await llm.chat({
+      system: `你是视频号图书短视频的短标题编辑。只基于用户已经确认的长标题，生成 10 个不同的中文短标题。
+要求：每条 4-12 个中文字符为主，最长不超过 16 个字符；保留长标题的核心冲突或情绪；适合封面大字；不添加书名号、话题、标点堆叠；不编造事实；输出严格 JSON：{"short_titles":[{"text":"..."}]}。必须恰好 10 条。`,
+      user: `已确认长标题：${selectedLong}\n书名：${bookTitle || "未知"}\n请生成 10 个短标题。`,
+      temperature: 0.8,
+      json: true,
+    });
+    const generated = uniqueCandidates(parseJson(raw).short_titles, 10, 16);
+    return {
+      candidates: uniqueCandidates([...generated, ...shortFallback(selectedLong)], 10, 16),
+      provider: llm.name,
+      warning: "",
+    };
+  } catch (error: any) {
+    return {
+      candidates: shortFallback(selectedLong),
+      provider: `fallback:${llm.name}`,
+      warning: `AI 短标题生成失败，已使用本地兜底：${String(error?.message || error).slice(0, 180)}`,
+    };
+  }
+}
+
 function uniqueHashtags(values: unknown, bookTitle: string) {
   const source = Array.isArray(values) ? values : [];
   const pool = [...source, "#读书", "#好书推荐", "#人生感悟", "#认知成长", "#自我提升", "#文字的力量", bookTitle ? `#${bookTitle.replace(/[《》#＃\s]/g, "").slice(0, 12)}` : ""];
@@ -181,6 +209,34 @@ function response(meta: Record<string, any>, extra: Record<string, any> = {}) {
     provider: meta.title_provider || "",
     hashtags: meta.hashtags || [],
     ...extra,
+  };
+}
+
+async function completeAutomaticSelection(
+  meta: Record<string, any>,
+  llm: ReturnType<typeof getLLM>,
+  bookTitle: string,
+) {
+  const longCandidates = uniqueCandidates(meta.long_title_candidates, 10, 86);
+  const selectedLong = longCandidates[0]?.text || "";
+  if (!selectedLong) throw new Error("没有可自动采用的长标题");
+  const short = await generateShortCandidates(llm, selectedLong, bookTitle);
+  const selectedShort = short.candidates[0]?.text || "";
+  if (!selectedShort) throw new Error("没有可自动采用的短标题");
+  const now = Date.now();
+  return {
+    ...meta,
+    selected_long_title: selectedLong,
+    short_title_candidates: short.candidates,
+    short_titles: short.candidates.map((item) => item.text),
+    selected_short_title: selectedShort,
+    title_stage: "complete",
+    title_provider: `${meta.title_provider}+${short.provider}`,
+    title_selection_mode: "automatic",
+    title_long_confirmed_at: now,
+    title_short_generated_at: now,
+    title_short_confirmed_at: now,
+    title_completed_at: now,
   };
 }
 
@@ -241,7 +297,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!candidates.some((item) => item.text === title)) {
       return NextResponse.json({ error: "所选长标题不在当前候选列表中，请重新选择" }, { status: 400 });
     }
-    const next = {
+    let next = {
       ...meta,
       selected_long_title: title,
       selected_short_title: "",
@@ -263,7 +319,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!candidates.some((item) => item.text === title)) {
       return NextResponse.json({ error: "所选短标题不在当前候选列表中，请重新选择" }, { status: 400 });
     }
-    const next = {
+    let next: Record<string, any> = {
       ...meta,
       selected_short_title: title,
       title_stage: "complete",
@@ -287,41 +343,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (action === "generate_short") {
     const selectedLong = String(meta.selected_long_title || "").trim();
     if (!selectedLong) return NextResponse.json({ error: "请先确认一个长标题，再生成短标题" }, { status: 409 });
-    try {
-      const raw = await llm.chat({
-        system: `你是视频号图书短视频的短标题编辑。只基于用户已经确认的长标题，生成 10 个不同的中文短标题。
-要求：每条 4-12 个中文字符为主，最长不超过 16 个字符；保留长标题的核心冲突或情绪；适合封面大字；不添加书名号、话题、标点堆叠；不编造事实；输出严格 JSON：{"short_titles":[{"text":"..."}]}。必须恰好 10 条。`,
-        user: `已确认长标题：${selectedLong}\n书名：${bookTitle || "未知"}\n请生成 10 个短标题。`,
-        temperature: 0.8,
-        json: true,
-      });
-      const generated = uniqueCandidates(parseJson(raw).short_titles, 10, 16);
-      const candidates = uniqueCandidates([...generated, ...shortFallback(selectedLong)], 10, 16);
-      const next = {
-        ...meta,
-        short_title_candidates: candidates,
-        short_titles: candidates.map((item) => item.text),
-        selected_short_title: "",
-        title_stage: "short_pending",
-        title_provider: llm.name,
-        title_short_generated_at: Date.now(),
-      };
-      writeMeta(id, next);
-      return NextResponse.json(response(next));
-    } catch (error: any) {
-      const candidates = shortFallback(selectedLong);
-      const next = {
-        ...meta,
-        short_title_candidates: candidates,
-        short_titles: candidates.map((item) => item.text),
-        selected_short_title: "",
-        title_stage: "short_pending",
-        title_provider: `fallback:${llm.name}`,
-        title_short_generated_at: Date.now(),
-      };
-      writeMeta(id, next);
-      return NextResponse.json(response(next, { warning: `AI 短标题生成失败，已使用本地兜底：${String(error?.message || error).slice(0, 180)}` }));
-    }
+    const generated = await generateShortCandidates(llm, selectedLong, bookTitle);
+    let next: Record<string, any> = {
+      ...meta,
+      short_title_candidates: generated.candidates,
+      short_titles: generated.candidates.map((item) => item.text),
+      selected_short_title: "",
+      title_stage: "short_pending",
+      title_provider: generated.provider,
+      title_short_generated_at: Date.now(),
+    };
+    writeMeta(id, next);
+    return NextResponse.json(response(next, generated.warning ? { warning: generated.warning } : {}));
   }
 
   if (action !== "generate_long") return NextResponse.json({ error: "未知标题操作" }, { status: 400 });
@@ -355,7 +388,7 @@ ${formulaText}`,
     const fallback = longFallback(sourceTitle, bookTitle);
     const candidates = hasFormulaCoverage(generated) ? generated : fallback;
     const hashtags = uniqueHashtags(json.hashtags, bookTitle);
-    const next = {
+    let next: Record<string, any> = {
       ...meta,
       long_title_candidates: candidates,
       video_titles: candidates.map((item) => item.text),
@@ -371,11 +404,12 @@ ${formulaText}`,
       title_source_length: sourceLength,
       title_skill: "dbs-xhs-title",
     };
+    if (body.autoSelect === true) next = await completeAutomaticSelection(next, llm, bookTitle);
     writeMeta(id, next);
-    return NextResponse.json(response(next));
+    return NextResponse.json(response(next, body.autoSelect === true ? { automaticSelection: true } : {}));
   } catch (error: any) {
     const candidates = longFallback(sourceTitle, bookTitle);
-    const next = {
+    let next: Record<string, any> = {
       ...meta,
       long_title_candidates: candidates,
       video_titles: candidates.map((item) => item.text),
@@ -391,7 +425,11 @@ ${formulaText}`,
       title_source_length: sourceLength,
       title_skill: "dbs-xhs-title",
     };
+    if (body.autoSelect === true) next = await completeAutomaticSelection(next, llm, bookTitle);
     writeMeta(id, next);
-    return NextResponse.json(response(next, { warning: `AI 长标题生成失败，已使用 DBS 公式兜底：${String(error?.message || error).slice(0, 180)}` }));
+    return NextResponse.json(response(next, {
+      automaticSelection: body.autoSelect === true,
+      warning: `AI 长标题生成失败，已使用 DBS 公式兜底：${String(error?.message || error).slice(0, 180)}`,
+    }));
   }
 }

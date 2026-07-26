@@ -506,52 +506,37 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
-  const confirmHighlights = async () => {
-    const selected = topHighlights.filter((item: any) =>
-      selectedHighlightIds.includes(String(item.id)),
-    );
-    if (!selected.length) {
-      setMessage("请先从已加载的原文候选中至少勾选一条。");
-      return;
-    }
-    if (demoMode) {
-      setMessage("演示任务不会保存真实划线，请在正式任务中操作。");
-      return;
-    }
-    setBusy(true);
-    setMessage("");
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/copy`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "confirm_highlights",
-          sourceType,
-          highlights: selected,
-          highlightsText: selected
-            .map((item: any) => `${item.count == null ? "原书" : Number(item.count)}｜${item.chapter || "章节未返回"}｜${item.text}`)
-            .join("\n"),
-        }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "原文证据确认失败");
-      setMessage(`已确认 ${payload.count || 0} 条原文证据，可以生成 DBS 诊断与二创候选稿。`);
-      await load();
-    } catch (error: any) {
-      setMessage(String(error?.message || error));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const generateDbsCopy = async () => {
     if (demoMode) {
       setMessage("演示任务不会调用 DeepSeek，请在正式任务中操作。");
       return;
     }
+    const selected = topHighlights.filter((item: any) =>
+      selectedHighlightIds.includes(String(item.id)),
+    );
+    if (!highlightsConfirmed && !waitingForScript && !selected.length) {
+      setMessage("请先从已加载的原文候选中至少勾选一条。");
+      return;
+    }
     setBusy(true);
-    setMessage("DeepSeek 正在依次执行传播心理、内容诊断、开头方案和完播风险审校…");
+    setMessage("正在锁定来源证据；DeepSeek 随后会执行传播心理、内容诊断、开头方案和完播风险审校…");
     try {
+      if (!highlightsConfirmed && !waitingForScript) {
+        const evidenceResponse = await fetch(`/api/tasks/${taskId}/copy`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "confirm_highlights",
+            sourceType,
+            highlights: selected,
+            highlightsText: selected
+              .map((item: any) => `${item.count == null ? "原书" : Number(item.count)}｜${item.chapter || "章节未返回"}｜${item.text}`)
+              .join("\n"),
+          }),
+        });
+        const evidencePayload = await evidenceResponse.json().catch(() => ({}));
+        if (!evidenceResponse.ok) throw new Error(evidencePayload.error || "来源证据锁定失败");
+      }
       const response = await fetch(`/api/tasks/${taskId}/copy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -559,7 +544,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "DBS 二创生成失败");
-      setMessage("候选稿与 DBS 审校已完成，请核对后明确确认文案。");
+      setMessage("候选稿与 DBS 审校已完成，请进行第 1 次确认：核对并确认文案。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -612,14 +597,14 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "文案确认失败");
       if (payload.complianceQueued) {
-        setMessage("文案已确认并保留原稿，C01 文案合规初审已启动。审核通过后会自动并行生成长标题和真实配音时间轴。");
+        setMessage("第 1 次确认已完成。C01 通过后将自动选择长短标题、生成真实配音时间轴、风格样图和全部分镜图片。");
         await load();
         return;
       }
       const titleResponse = await fetch(`/api/tasks/${taskId}/titles`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate_long" }),
+        body: JSON.stringify({ action: "generate_long", autoSelect: true }),
       });
       const titlePayload = await titleResponse.json().catch(() => ({}));
       if (!titleResponse.ok) {
@@ -627,7 +612,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         await load();
         return;
       }
-      setMessage("文案已确认并写入 script.txt，已生成 10 个可追溯长标题。请先确认 1 个长标题，再生成短标题。");
+      setMessage("第 1 次确认已完成，文案已写入 script.txt；系统正在自动完成标题、配音时间轴和分镜图片。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -890,7 +875,18 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "全部分镜确认失败");
-      setMessage("全部分镜图片已确认，后期制作门已解锁。");
+      const productionResponse = await fetch(`/api/tasks/${taskId}/post-production`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const productionPayload = await productionResponse.json().catch(() => ({}));
+      if (!productionResponse.ok) {
+        setMessage(`第 2 次确认已完成，但自动后期启动失败：${productionPayload.error || productionResponse.statusText}。可在后期区安全重试。`);
+        await load();
+        return;
+      }
+      setMessage("第 2 次确认已完成；配音、字幕、成片、剪映草稿、封面和 C02 已自动启动。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -928,26 +924,6 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
-  const confirmDelivery = async () => {
-    if (demoMode) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      const response = await fetch(`/api/tasks/${taskId}/delivery-assets`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "confirm" }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "G06 联合审核确认失败");
-      setMessage("成片、剪映草稿、独立封面和验收报告已全部确认，任务已完成。");
-      await load();
-    } catch (error: any) {
-      setMessage(String(error?.message || error));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const generateDeliveryCover = async () => {
     if (demoMode) return;
@@ -1124,7 +1100,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     waitingForImagesConfirmation ||
     postProductionStageReached;
   const currentStageLabel = waitingForRenderReview
-    ? "G06 联合审核"
+    ? "G06 自动交付登记"
     : generatingImageRevision
       ? "G04 单张图片修改"
     : postProductionStageReached
@@ -1147,13 +1123,13 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       : readyForLongTitles
         ? "正在生成长标题"
       : waitingForLongTitleConfirmation
-        ? "等待确认长标题"
+        ? "兼容旧任务：等待选择长标题"
       : readyForShortTitles
         ? "可生成短标题"
       : waitingForShortTitleConfirmation
-        ? "等待确认短标题"
+        ? "兼容旧任务：等待选择短标题"
       : waitingForRenderReview
-        ? "等待成片审核"
+        ? "正在自动登记交付产物"
         : generatingImageRevision
           ? "图片修改生成中"
           : generatingVoice
@@ -1192,7 +1168,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     { id: "workflow-style", code: "G03", label: "风格样图", available: styleStageReached },
     { id: "workflow-images", code: "G04", label: "分镜图片", available: remainingImagesStageReached },
     { id: "workflow-post", code: "G05", label: "配音后期", available: postProductionStageReached },
-    { id: "workflow-delivery", code: "G06", label: "成片审核", available: deliveryStageReached },
+    { id: "workflow-delivery", code: "G06", label: "自动交付", available: deliveryStageReached },
   ];
   const scrollToWorkflow = (id: string) => {
     const target = document.getElementById(id);
@@ -1205,7 +1181,6 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
     window.scrollTo({ top: 0, behavior });
   };
-
   return (
     <main className="intake-detail-shell">
       <nav className="intake-detail-sidebar" aria-label="工作流程导航">
@@ -1279,7 +1254,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           ["G03", "风格样图", remainingImagesStageReached ? "complete" : styleStageReached ? "next" : "locked"],
           ["G04", "全部分镜", postProductionReached ? "complete" : remainingImagesStageReached ? "next" : "locked"],
           ["G05", "配音后期", deliveryStageReached ? "complete" : readyForPostProduction ? "next" : "locked"],
-          ["G06", "联合审核", productionComplete || publishingStageReached ? "complete" : waitingForRenderReview ? "next" : "locked"],
+          ["G06", "自动交付", productionComplete || publishingStageReached ? "complete" : waitingForRenderReview ? "next" : "locked"],
         ].map(([gate, label, state]) => (
           <div className={`detail-production-step ${state}`} key={gate}>
             <span>{gate}</span>
@@ -1440,7 +1415,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
 
           <div className="intake-dbs-grid">
             <article className="intake-dbs-card">
-              <span className="intake-kicker">G01 确认门</span>
+              <span className="intake-kicker">G01 自动来源包</span>
               <h3>{isUploadedBookSource ? "原书相关段落" : "全书热门划线"}{topHighlights.length ? `（已加载 ${topHighlights.length} 条）` : ""}</h3>
               <p>{isUploadedBookSource
                 ? "这些候选来自你上传的原书文件，由 DeepSeek 根据爆款参考文案筛选；不代表微信读书热度。"
@@ -1543,15 +1518,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               ) : (
                 <div className="intake-highlight-empty">可先查询微信读书；没有结果时上传原书文件进行相关性筛选。</div>
               )}
-              <small>已选择 {selectedHighlightIds.length} 条；确认后这些可追溯原句才能进入 DBS 二创阶段。</small>
-              <button
-                type="button"
-                className="intake-confirm-action"
-                disabled={busy || evidenceLocked || !selectedHighlightIds.length}
-                onClick={confirmHighlights}
-              >
-                {highlightsArtifact ? "更新并确认所选原文" : "确认所选原文证据"}
-              </button>
+              <small>已选择 {selectedHighlightIds.length} 条；点击生成候选稿时，系统会自动锁定这些可追溯原句并写入来源包。</small>
             </article>
 
             <article className="intake-dbs-card">
@@ -1561,7 +1528,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <ol>
                 <li>只借鉴参考视频的结构、节奏和情绪机制</li>
                 <li>直接引用只使用已确认且可追溯的微信读书或原书文件原文</li>
-                <li>生成后停在文案确认门，不会制作分镜或图片</li>
+                <li>生成后停在第 1 次确认；确认文案后系统自动推进到全部图片审核</li>
               </ol>
               <label className="intake-copy-direction">
                 <span>微调方向</span>
@@ -1601,7 +1568,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <button
                 type="button"
                 className="intake-confirm-action"
-                disabled={busy || (!highlightsConfirmed && !waitingForScript)}
+                disabled={busy || (!highlightsConfirmed && !waitingForScript && !selectedHighlightIds.length)}
                 onClick={generateDbsCopy}
               >
                 {busy ? "DeepSeek 分析中…" : copyCandidateArtifact ? "重新生成 DBS 候选稿" : "生成 DBS 诊断与二创稿"}
@@ -1647,9 +1614,9 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   disabled={busy || !waitingForScript || !candidateScript.trim()}
                   onClick={confirmScript}
                 >
-                  确认文案并进入标题选择
+                  第 1 次确认：确认文案并自动生产
                 </button>
-                <small>确认后才写入正式 script.txt；下一步必须先确认 1 个长标题和 1 个短标题。</small>
+                <small>确认后写入正式 script.txt；系统自动完成 C01、长短标题推荐与选择、配音时间轴、样图及全部分镜图片。</small>
               </article>
 
               <article className="intake-dbs-output">
@@ -1665,7 +1632,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           {readyForStyleSample ? (
             <div className="intake-next-gate">
               <strong>文案已确认</strong>
-              <span>{titleWorkflowComplete ? "长短标题已确认，当前停在 G03 风格样图门。" : "当前停在标题选择门：先确认长标题，再确认短标题。"}</span>
+              <span>{titleWorkflowComplete ? "长短标题已自动采用，系统正在生成风格样图并继续生产。" : "系统正在生成并自动采用长短标题。"}</span>
             </div>
           ) : null}
         </section>
@@ -1675,8 +1642,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         <section id="workflow-titles" className="intake-title-selection-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
-              <span className="intake-kicker">G02.1 / G02.2 标题确认门</span>
-              <h2>先选长标题，再选短标题</h2>
+              <span className="intake-kicker">G02.1 / G02.2 自动标题</span>
+              <h2>系统推荐并自动采用长短标题</h2>
             </div>
             <div className="intake-section-heading-actions">
               <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("script")}>
@@ -1715,8 +1682,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         <section id="workflow-style" className="intake-style-sample-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
-              <span className="intake-kicker">G03 风格确认门</span>
-              <h2>Codex 代表性风格样图</h2>
+              <span className="intake-kicker">G03 自动风格基准</span>
+              <h2>Codex 代表性风格样图与自动续跑</h2>
             </div>
             <div className="intake-section-heading-actions">
               <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("short_title")}>
@@ -1738,8 +1705,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <figcaption>仅此一张样图；无文字、无书名、无字幕，文字将在后续可编辑轨道中添加。</figcaption>
               </figure>
               <article>
-                <span className="intake-kicker">审核要点</span>
-                <h3>请确认画风、色彩、人物和构图</h3>
+                <span className="intake-kicker">内部质检要点</span>
+                <h3>系统以这张图统一画风、色彩、人物和构图</h3>
                 <ul>
                   <li>文学编辑插画与电影感光线是否合适</li>
                   <li>靛蓝、青绿与暖金色是否符合账号气质</li>
@@ -1818,12 +1785,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   onClick={waitingForStyleConfirmation ? confirmStyleSample : startRemainingImages}
                 >
                   {waitingForStyleConfirmation
-                    ? "确认风格并启动 Codex 生图"
+                    ? "兼容旧任务：采用此风格并继续"
                     : readyForRemainingImages
                       ? "启动 Codex 生成剩余图片"
                       : "风格已确认"}
                 </button>
-                <small>确认后立即创建剩余图片队列；生成结果会逐张回写到下方 G04。</small>
+                <small>新任务会自动采用样图并创建剩余图片队列；生成结果逐张回写到下方图片审核区。</small>
               </article>
             </div>
           ) : (
@@ -1883,7 +1850,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         <section id="workflow-images" className="intake-remaining-images-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
-              <span className="intake-kicker">G04 全部分镜审核门</span>
+              <span className="intake-kicker">第 2 次确认</span>
               <h2>Codex 剩余分镜图片</h2>
             </div>
             <div className="intake-section-heading-actions">
@@ -2030,7 +1997,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 disabled={busy || !waitingForImagesConfirmation}
                 onClick={confirmAllImages}
               >
-                {postProductionReached ? "全部图片已确认" : "确认全部分镜并进入后期"}
+                {postProductionReached ? "第 2 次确认已完成" : "第 2 次确认：确认图片并自动完成后期"}
               </button>
               <small>
                 {generatingImageRevision
@@ -2038,7 +2005,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   : generatingRemainingImages
                   ? "Codex 正在按确认样图生成，完成一张就会在这里出现。"
                   : waitingForImagesConfirmation
-                    ? "请逐张检查语义、人物连续性、构图和肢体；确认前不会进入配音后期。"
+                    ? "请逐张检查语义、人物连续性、构图和肢体；确认后系统自动完成全部后期和交付登记。"
                     : "当前分镜图片状态已保存。"}
               </small>
             </>
@@ -2078,7 +2045,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             const running = generatingVoice || generatingSubtitles || renderingVideo;
             const failed = voiceFailed || postProductionFailed || staleVoice;
             const status = waitingForRenderReview
-              ? "成片已生成，等待 G06 审核"
+              ? "成片已生成，正在自动登记交付产物"
               : productionComplete || publishingStageReached
                 ? "后期制作已完成"
                 : failed
@@ -2126,10 +2093,10 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       {deliveryStageReached ? (
-        <section id="workflow-delivery" className="intake-style-sample-workspace intake-workflow-anchor" aria-label="G06 联合审核">
+        <section id="workflow-delivery" className="intake-style-sample-workspace intake-workflow-anchor" aria-label="G06 自动交付">
           <div className="intake-section-heading">
             <div>
-              <span className="intake-kicker">G06 联合审核</span>
+              <span className="intake-kicker">自动交付结果</span>
               <h2>成片、剪映草稿与独立封面</h2>
             </div>
             <div className="intake-section-heading-actions">
@@ -2140,7 +2107,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 返回重做后期
               </button>
               <button type="button" className="intake-secondary-action" disabled={busy} onClick={refreshDeliveryAssets}>
-                刷新 G06 产物
+                刷新交付产物
               </button>
               <span className="intake-dbs-version">{deliveryReady ? "产物已齐全" : "产物整理中"}</span>
             </div>
@@ -2182,7 +2149,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                     value={coverHeadline1}
                     onChange={(event) => setCoverHeadline1(event.target.value)}
                     maxLength={13}
-                    placeholder="留空则使用已确认短标题"
+                    placeholder="留空则使用系统已采用的短标题"
                   />
                 </label>
                 <label>
@@ -2226,16 +2193,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             </article>
           </div>
 
-          <button
-            type="button"
-            className="intake-confirm-action"
-            disabled={busy || !waitingForRenderReview || !deliveryReady}
-            onClick={confirmDelivery}
-          >
-            {productionComplete ? "G06 已确认，任务完成" : "确认成片、草稿和封面，完成任务"}
-          </button>
           <small>
-            只有成片、剪映草稿、独立封面和两份验收报告全部回传后，按钮才会解锁。
+            C02 通过后，成片、剪映草稿、独立封面和验收报告会自动登记；这里用于查看和返工，不再增加第三次确认。
           </small>
         </section>
       ) : null}

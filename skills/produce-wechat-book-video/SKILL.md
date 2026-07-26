@@ -1,11 +1,11 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, draft-upload, and track a gated WeChat Channels vertical book video from active WeRead topic discovery, a Douyin reference link, book title, or draft topic. Includes evidence sourcing, compliance checks, early real-timeline narration, gated images, post-production, draft-only WeChat Channels upload, human publication confirmation, and 24h/72h/7d review.
+description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from active WeRead topic discovery, a Douyin reference link, book title, or draft topic. Includes evidence sourcing, compliance checks, early real-timeline narration, automated titles and style continuation, image review, post-production, draft-only WeChat Channels upload, human publication confirmation, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
 
-Treat a Douyin link or book title as intake only. Execute through the next mandatory confirmation gate, sync the actual state to Feishu when enabled, and stop until the user explicitly confirms.
+Treat a Douyin link or book title as intake only. The normal production path has exactly two blocking human confirmations: the derivative narration copy, then all storyboard images. Sync actual state to Feishu when enabled. Book ambiguity, compliance blocks, missing required tools/assets, and explicit rollback may pause as exceptions; formal publication remains separately human-authorized.
 
 Every confirmation gate must remain reversible from the workbench. Before returning to an earlier gate, show which downstream approvals and artifacts will become stale. Preserve prior files and audit history, mark downstream records as superseded instead of deleting them, reopen the selected gate for editing, and require all affected checks and confirmations to run again. Never imply that returning locally deletes an already uploaded draft or retracts a published platform post.
 
@@ -34,7 +34,7 @@ Deliver:
 9. Machine-readable C01 copy-compliance and C02 pre-publication review reports.
 10. A draft-only WeChat Channels upload record, human publication record, and 24h/72h/7d metric snapshots when publication is requested.
 
-## Mandatory blocking order
+## Mandatory two-confirmation order
 
 Enforce this exact sequence. A workbench project reuses one persistent Codex task/thread across every node:
 
@@ -42,20 +42,20 @@ Enforce this exact sequence. A workbench project reuses one persistent Codex tas
 2. TikHub downloads a supplied Douyin reference when present.
 3. Codex/local Whisper extracts the reference copy and performs only minimal correction; `dbs-content` diagnoses reusable mechanisms.
 4. `weread-skills` verifies the exact edition and fetches whole-book popular highlights.
-5. Present the transcript, diagnosis, and WeRead evidence as one source package; wait for explicit G01 approval.
-6. Create derivative copy from approved evidence and original reflection; wait for explicit G02 approval.
+5. Build and expose the transcript, diagnosis, and WeRead evidence as one traceable G01 source package. Lock the selected evidence when generating the copy; G01 is not a separate human confirmation.
+6. Create derivative copy from verified evidence and original reflection; wait for the first explicit human confirmation at G02.
 7. Run C01 with `media-publish-check`. Preserve the approved original. A block prevents titles, narration, images, and post-production until the user approves a revision and it passes again.
-8. After C01 passes, run two branches in parallel: G02.1 long title → G02.2 short title, and V01 locked narration → measured segment timing → `recipe.json`/storyboard/caption timeline.
-9. G03 starts only after both titles and V01 real timing are complete. Generate exactly one representative 9:16 style sample; wait for explicit approval.
-10. Generate the remaining images; inspect them and wait for explicit G04 approval.
+8. After C01 passes, run two branches in parallel: automatically generate 10 traceable long-title candidates, adopt the first recommendation, generate 10 short-title candidates from it, adopt the first recommendation; and V01 locked narration → measured segment timing → `recipe.json`/storyboard/caption timeline. Preserve all candidates and allow explicit rollback/reselection.
+9. G03 starts only after automatic title selection and V01 real timing are complete. Generate exactly one representative 9:16 style sample, run automatic visual QA, adopt it as the style baseline, and continue without a human stop.
+10. Generate and inspect the remaining images; wait for the second explicit human confirmation at G04.
 11. Create captions, HyperFrames review MP4, editable Jianying draft, validation report, and separate cover using the existing real voice timeline.
-12. Run C02 full media review. High-risk findings block G06 and G07 until corrected and re-reviewed.
-13. Wait for explicit combined G06 approval of the MP4, draft, and cover.
+12. After the second confirmation, automatically create captions, review MP4, editable Jianying draft, validation report, and separate cover using the existing real voice timeline.
+13. Run C02 full media review. High-risk findings block automatic delivery registration and G07 until corrected and re-reviewed. After C02 passes, automatically register the MP4, draft, cover, and reports; do not add a third production confirmation.
 14. In G07, use the pinned `dreammis/social-auto-upload` adapter in draft-only mode. Never click or automate formal publication.
 15. In G08, record the human-confirmed account, work ID, URL, and actual publication time.
 16. In G09, store 24h, 72h, and 7d metric snapshots and produce a traceable review with the next-video experiment.
 
-Never infer approval from a supplied title or link, Agent self-review, local files, downstream artifacts, or Feishu status.
+Never infer either of the two human confirmations from a supplied title or link, Agent self-review, local files, downstream artifacts, or Feishu status.
 
 ## Reference acquisition and evidence rules
 
@@ -75,13 +75,13 @@ Never infer approval from a supplied title or link, Agent self-review, local fil
 - Treat the reference video and WeRead as separate evidence classes.
 - Never present a reference-video sentence as a book quotation unless WeRead independently verifies it.
 - Save book metadata, candidate highlights, chapter names, highlight counts, selected excerpts, and quotation boundaries in `script_sources.md`.
-- At G01, show:
+- In the G01 source package, expose:
   - the cleaned reference transcript;
   - the DBS diagnosis;
   - the exact WeRead title, author, translator, publisher, edition, and deep link;
   - ranked popular highlights with chapter names and counts;
   - any reference claim that WeRead does not verify.
-- At G02, keep only the approved abstract framework: hook type, tension, information order, emotional curve, rhythm, and closing function.
+- At G02, keep only the verified abstract framework: hook type, tension, information order, emotional curve, rhythm, and closing function.
 - Replace the reference video's wording, examples, claims, and distinctive expressions with verified WeRead ideas plus original reflection.
 - Use direct quotations sparingly and label them. Never invent, silently paraphrase, or misattribute a quotation.
 - Before presenting the draft, compare it with the reference transcript and rewrite distinctive overlaps that are not necessary book titles or verified short quotations.
@@ -123,16 +123,16 @@ Copy reusable media from `assets/`; never move originals.
 ## Image gates
 
 - Do not create a storyboard or any image before G02 copy approval.
-- After G02, block image generation until title selection is complete:
+- After the first G02 confirmation, block image generation until automatic title selection is complete:
   - match 5–8 `dbs-xhs-title` formulas spanning at least three trigger categories;
   - generate exactly 10 long titles that imitate the Douyin source title's length, oral rhythm, emotional strength, and punctuation without copying distinctive wording;
   - preserve formula ID, trigger, template, original proven example, and recommendation reason for every long-title candidate;
-  - stop for one explicit long-title selection;
-  - generate exactly 10 short titles from the selected long title only, normally 4–12 Chinese characters and never more than 16;
-  - stop for one explicit short-title selection;
-  - regenerating or changing the long title invalidates all short-title candidates and approval.
+  - automatically adopt the first recommended long title while preserving all candidates for optional reselection;
+  - generate exactly 10 short titles from the adopted long title only, normally 4–12 Chinese characters and never more than 16;
+  - automatically adopt the first recommended short title while preserving all candidates;
+  - regenerating or changing the long title invalidates all short-title candidates and the previous automatic selection.
 - Generate exactly one style sample at G03.
-- Generate remaining images only after explicit style approval.
+- Run automatic full-frame and anatomy QA on the style sample, adopt a passing sample as the style baseline, and immediately continue to the remaining images.
 - Derive the total storyboard-image count from the approved copy. Do not set a default, minimum, maximum, or one-minute image count.
 - Split first at meaningful changes in idea, action, scene, emotion, or narrative function. Use roughly eight seconds per image only as a soft pacing check after semantic segmentation; allow shorter or longer holds when the copy requires them.
 - Never split a complete causal statement, contrast, or emotional unit merely to approach eight seconds, and never add filler images to reach a target count.
@@ -145,7 +145,7 @@ Copy reusable media from `assets/`; never move originals.
 
 ## Narration, captions, render, and draft
 
-- Start locked narration immediately after C01 passes, in parallel with title selection. Persist each segment's measured start/end and do not regenerate it merely because images are not ready.
+- Start locked narration immediately after C01 passes, in parallel with automatic title generation and selection. Persist each segment's measured start/end and do not regenerate it merely because images are not ready.
 - Apply exactly one still-image motion to each storyboard image: centered zoom-out from 120% to 100%, centered zoom-in from 100% to 120%, fixed-120% left-to-right pan, or fixed-120% right-to-left pan. Never combine zoom and pan on the same image or reverse direction inside a shot.
 - Assign motions with reproducible pseudo-random selection and exclude the immediately previous motion from the next shot's candidates, so adjacent images do not repeat the same effect.
 - Normalize each motion across the image's actual narration-aligned hold. Use the approved slow 8-second reference pace, monotonic smoothstep easing, 60fps, and 2x supersampled motion before downscaling to delivery size to suppress pixel stepping and shake.
@@ -171,7 +171,7 @@ Copy reusable media from `assets/`; never move originals.
 - Preserve the original cover artwork and typography; never ask an image model to redraw it.
 - Keep the cover separate from the MP4.
 - Run C02 after G05 and label its output as automated risk assessment, not a platform-approval guarantee.
-- After explicit combined G06 approval, upload only to the selected WeChat Channels account's draft box with an idempotency key.
+- After C02 passes and delivery artifacts are automatically registered, upload only to the selected WeChat Channels account's draft box when the user explicitly requests draft upload and selects an account; use an idempotency key.
 - Formal publication remains manual. Do not enter G09 until G08 records the real work ID, URL, account, and publication time.
 - Save 24h/72h/7d snapshots without overwriting earlier snapshots and sync the derived review to Feishu when enabled.
 
@@ -203,5 +203,5 @@ Do not call the task complete until:
 - Every visible person passes anatomy inspection.
 - The Jianying draft opens from a unique folder and all media paths exist.
 - The validation report passes or lists unresolved issues.
-- The separate 1080x1260 cover preserves the verified original edition and is explicitly approved.
+- The separate 1080x1260 cover preserves the verified original edition and passes automated validation.
 - Feishu project, gate, and task records reflect the actual local state and evidence paths.

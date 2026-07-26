@@ -13,22 +13,22 @@ Use this integration only when `<project-root>/integrations/feishu-book-pipeline
 
 | Key | Gate | Confirmation |
 | --- | --- | --- |
-| G01 | WeRead popular highlights | explicit user approval |
-| G02 | narration copy | explicit user approval |
+| G01 | WeRead popular highlights and source package | system evidence lock |
+| G02 | narration copy | first explicit user confirmation |
 | C01 | copy compliance review | system PASS after G02 |
 | V01 | locked narration and measured timeline | system PASS |
-| G03 | exactly one style sample | explicit user approval |
-| G04 | all remaining images | explicit user approval |
+| G03 | exactly one style sample | automatic QA PASS and adoption |
+| G04 | all remaining images | second explicit user confirmation |
 | G05 | post-production technical validation | system PASS |
 | C02 | complete pre-publication media review | system PASS |
-| G06 | review MP4, Jianying draft, and WeChat Channels cover | explicit user approval |
-| G07 | WeChat Channels draft-only upload | explicit G06 approval plus selected account |
+| G06 | register MP4, Jianying draft, cover, and reports | automatic after C02 PASS |
+| G07 | WeChat Channels draft-only upload | explicit upload request plus selected account |
 | G08 | human publication confirmation | recorded account, work ID, URL, and actual time |
 | G09 | 24h/72h/7d analytics review | three traceable snapshots |
 
 Formal publication is always manual. G07 may create a platform draft only; it must never click the platform publish action.
 
-Never infer a user-confirmed gate from existing files. Historical projects may use `已完成（倒推）`, but new projects must use explicit confirmation.
+Never infer G02 or G04 confirmation from existing files. Historical projects may use legacy gates, but new projects use only these two production confirmations.
 
 ## Sync points
 
@@ -47,8 +47,8 @@ Example commands:
 ```powershell
 node scripts/sync_feishu_pipeline.mjs queue --binding "<project-root>/integrations/feishu-book-pipeline.json"
 node scripts/sync_feishu_pipeline.mjs bootstrap --binding "<project-root>/integrations/feishu-book-pipeline.json" --project-id "BK-20260720-001" --book "书名" --author "作者"
-node scripts/sync_feishu_pipeline.mjs step --binding "<binding>" --project-id "BK-20260720-001" --gate G01 --gate-status "待确认" --stage "微信读书热门划线确认" --work-status "待用户确认" --waiting "确认热门划线" --evidence "work/.../script_sources.md"
-node scripts/sync_feishu_pipeline.mjs step --binding "<binding>" --project-id "BK-20260720-001" --gate G01 --gate-status "已确认" --stage "文案审核" --work-status "制作中"
+node scripts/sync_feishu_pipeline.mjs step --binding "<binding>" --project-id "BK-20260720-001" --gate G01 --gate-status "已锁定（自动）" --stage "文案审核" --work-status "制作中" --evidence "work/.../script_sources.md"
+node scripts/sync_feishu_pipeline.mjs step --binding "<binding>" --project-id "BK-20260720-001" --gate G02 --gate-status "待确认" --stage "文案审核" --work-status "待用户确认" --waiting "第一次确认：文案"
 ```
 
 The recurring automation must call `queue` first. It may claim one new row per run, or resume an existing project only when the current required user gate is explicitly `已确认`. `已完成（倒推）`, `提前产出待确认`, local files, and inferred downstream progress are never automation approval.

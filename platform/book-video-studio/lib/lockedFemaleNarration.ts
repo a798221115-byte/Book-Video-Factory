@@ -470,7 +470,7 @@ export async function startLockedFemaleNarration(
       finishedAt: Date.now(),
     });
     if (options.early && isTitleWorkflowComplete(readTitleWorkflowMeta(taskId))) {
-      updateTask(taskId, { status: "ready_for_style_sample", currentGate: "STYLE_SAMPLE_CONFIRMATION" });
+      updateTask(taskId, { status: "ready_for_style_sample", currentGate: "STYLE_SAMPLE_AUTOMATION" });
     }
     if (options.continuePostProduction !== false) {
       updateTask(taskId, { status: "generating_subtitles", currentGate: "CAPTIONS_GENERATING" });

@@ -216,7 +216,7 @@ async function runJob(taskId: string, jobArtifactId: string) {
   updateJob(jobArtifactId, {
     status: "succeeded",
     phase: "completed",
-    message: "G03 样图已生成并自动写回工作台，等待你的风格确认",
+    message: "G03 样图已生成、自动采用，并已启动剩余分镜图片",
     progress: 1,
     heartbeatAt: Date.now(),
     finishedAt: Date.now(),
@@ -245,13 +245,25 @@ function launch(taskId: string, jobArtifactId: string) {
   runningJobs.set(jobArtifactId, promise);
 }
 
-export function enqueueCodexStyleSample(taskId: string, options: { force?: boolean; feedback?: string } = {}) {
+export function enqueueCodexStyleSample(taskId: string, options: {
+  force?: boolean;
+  feedback?: string;
+  allowExistingSampleRevision?: boolean;
+} = {}) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
-  assertStyleSampleInputsComplete(taskId);
   const sample = getArtifacts(taskId).find(
     (item) => item.stepName === "storyboard" && item.kind === "style_sample" && !isInvalidated(item.meta),
   );
+  const isExistingSampleRevision = Boolean(
+    options.allowExistingSampleRevision
+      && options.force
+      && task.status === "waiting_style_confirmation"
+      && sample,
+  );
+  assertStyleSampleInputsComplete(taskId, {
+    allowExistingSampleRevision: isExistingSampleRevision,
+  });
   if (sample && !options.force) {
     return { job: getLatestCodexStyleSampleJob(taskId), alreadyCompleted: true };
   }

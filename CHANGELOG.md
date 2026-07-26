@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0 - 2026-07-26
+
+- Replace the legacy multi-gate happy path with two human confirmations: derivative copy and all storyboard images.
+- Automatically lock the G01 evidence package, generate and adopt long/short titles, validate and adopt the style sample, and continue through remaining-image generation.
+- Automatically start post-production after image confirmation and register delivery artifacts after C02 passes; formal publication remains separately authorized.
+- Preserve candidate choices, artifacts, audit history, compatibility states, and explicit rollback actions.
+
 ## 1.15.0 - 2026-07-26
 
 - Generate the separate 1080×1260 WeChat Channels cover automatically after G05 rendering, using the verified WeRead edition cover and deterministic local composition.

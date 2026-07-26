@@ -71,7 +71,7 @@ The diagnosis must identify the hook, content promise, tension, information orde
 
 Read `references/intake-copy-pipeline.md` for the artifact contract and templates.
 
-## 3. Gate G01: source-package confirmation
+## 3. G01: automatically locked source package
 
 Use `weread-skills` to:
 
@@ -90,15 +90,13 @@ Write `script_sources.md` containing:
 - quotation boundaries;
 - reference claims that WeRead does not verify.
 
-Present the source package to the user. Ask them to confirm the reusable framework and selected WeRead evidence. Sync `G01=待确认`, set the project to waiting for source-package confirmation, and stop.
+Expose the source package in the workbench and lock the selected evidence when copy generation starts. Sync `G01=已锁定（自动）` and continue to the derivative-copy candidate. G01 is auditable and reversible but is not a separate human confirmation.
 
 If TikHub or WeRead is unavailable, expose that exact blocker. Do not silently replace either source.
 
-Only an explicit user response can change G01 to confirmed.
+## 4. First confirmation G02: derivative copy
 
-## 4. Gate G02: derivative copy
-
-Start only after explicit G01 approval.
+Start after G01 evidence is verified and locked.
 
 Create the narration by:
 
@@ -119,7 +117,7 @@ Use source wording sparingly. Never fabricate, silently paraphrase, or misattrib
 
 Save the draft as `script.txt`, sync `G02=待确认`, set the project to waiting for copy approval, and stop. Do not create a storyboard or image before explicit approval.
 
-## 4.1 Title sub-gates: long title, then short title
+## 4.1 Automatic title generation and selection
 
 Start only after explicit G02 approval.
 
@@ -127,10 +125,10 @@ Start only after explicit G02 approval.
 2. Use `dbs-xhs-title` as a formula matcher. Select 5–8 formulas across at least three psychological trigger categories.
 3. Generate exactly 10 WeChat Channels long titles. Imitate the source title's approximate length (normally within about ±20%), oral rhythm, emotional strength, and punctuation pattern, but do not copy its distinctive wording, examples, or sentence sequence.
 4. For every candidate, record the formula ID, trigger category, formula template, original proven example, and one-sentence recommendation reason.
-5. Save the candidates and source-title evidence to `titles.json`, present all 10, and stop for one explicit selection.
-6. Only after the long-title selection, generate exactly 10 short titles from the selected long title. Prefer 4–12 Chinese characters and cap at 16.
-7. Save the short candidates to `titles.json`, present all 10, and stop for one explicit selection.
-8. If long candidates are regenerated or the selected long title changes, clear short candidates and short-title approval.
+5. Save the candidates and source-title evidence to `titles.json`, automatically adopt the first recommendation, and retain all 10 for optional rollback/reselection.
+6. Generate exactly 10 short titles from the adopted long title. Prefer 4–12 Chinese characters and cap at 16.
+7. Save the short candidates, automatically adopt the first recommendation, and retain all 10.
+8. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection.
 
 The workbench UI and the server-side image executor must both reject image generation until one long title and one short title are confirmed.
 
@@ -151,11 +149,11 @@ Record:
 - continuity rules;
 - actual voice start/end after narration exists.
 
-Generate exactly one representative original 9:16 style sample. Do not reproduce recognizable reference-video characters, compositions, or cover artwork. Sync `G03=待确认` and stop.
+Generate exactly one representative original 9:16 style sample. Do not reproduce recognizable reference-video characters, compositions, or cover artwork. Run automatic full-frame, anatomy, relevance, continuity, and flat-block QA. A passing sample becomes the style baseline and immediately unlocks the remaining images.
 
 ## 6. Gate G04: remaining images and review
 
-Start only after explicit G03 approval.
+Start only after the G03 sample passes automatic QA.
 
 Generate remaining images with the approved style, palette, identity, period, light, and composition rules. Inspect:
 
@@ -174,7 +172,7 @@ Immediately after explicit G02 approval, run `media-publish-check` against the a
 
 After C01 passes, start two branches in parallel:
 
-- G02.1 long-title confirmation followed by G02.2 short-title confirmation;
+- automatic long-title generation/adoption followed by short-title generation/adoption;
 - V01 locked narration, measured segment timing, `voice/` artifacts, `recipe.json`, storyboard timing fields, and caption timing basis.
 
 G03 cannot start until both branches finish. The measured narration is the timing authority; roughly eight seconds per image remains only a semantic pacing check.
@@ -217,15 +215,15 @@ Create a new editable draft after timing is stable. Copy intro, images, voice, m
 
 Validate content, timing, audio peaks, paths, anatomy, typography, IDs, media ranges, and editability. Sync `G05=已通过` only after technical validation passes.
 
-## 9. C02 and Gate G06: publication review, combined review, and cover
+## 9. C02 and G06: automatic delivery registration and cover
 
 Verify the exact original cover from WeRead or another authoritative public listing. Do not substitute a similar edition.
 
 Create one separate 1080x1260 cover with `scripts/compose_wechat_cover.py`. Preserve the original cover artwork and typography. Generated imagery may be used only around it.
 
-Before G06, run C02 across copy/captions, images/cover, final video/audio, technical properties, copyright/AI-label considerations, platform-fit items, and Jianying editability. Save the full report. High-risk findings block G06 and draft upload; any correction requires a new C02 report. State clearly that this is automated risk assessment and not a platform guarantee.
+Run C02 across copy/captions, images/cover, final video/audio, technical properties, copyright/AI-label considerations, platform-fit items, and Jianying editability. Save the full report. High-risk findings block automatic delivery registration and draft upload; any correction requires a new C02 report. State clearly that this is automated risk assessment and not a platform guarantee.
 
-After C02 passes, sync `G06=待确认` and ask the user to review:
+After C02 passes, automatically register and expose:
 
 - opening audio and transition;
 - first body sentence;
@@ -236,11 +234,11 @@ After C02 passes, sync `G06=待确认` and ask the user to review:
 - draft openability and editable text;
 - cover edition, legibility, safe area, and separation from the MP4.
 
-Stop until explicit combined approval.
+Do not add a third production confirmation. The user may explicitly roll back any listed artifact for revision.
 
 ## 10. G07–G09: draft upload, human publication, and review
 
-After explicit G06 approval:
+After C02 passes, delivery artifacts are registered, and the user explicitly requests a draft upload:
 
 1. G07 selects an existing logged-in WeChat Channels account and calls the pinned `dreammis/social-auto-upload` adapter with `is_draft=True`.
 2. Use one deterministic idempotency key per task/account/final-video version. On retry, resume or return the existing upload record instead of creating an uncontrolled duplicate.

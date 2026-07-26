@@ -3,12 +3,38 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   getTask,
+  getArtifacts,
+  patchArtifact,
   projectArtifactPath,
   renameTaskWorkDirForBook,
   saveArtifact,
   taskDir,
   updateTask,
 } from "@/lib/pipeline/repo";
+
+function parseArtifactMeta(raw: string | null) {
+  try {
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function invalidateBookDependentArtifacts(taskId: string) {
+  const invalidatedAt = Date.now();
+  for (const artifact of getArtifacts(taskId)) {
+    if (artifact.stepName !== "weread") continue;
+    const meta = parseArtifactMeta(artifact.meta);
+    if (meta.invalidatedAt) continue;
+    patchArtifact(artifact.id, {
+      meta: JSON.stringify({
+        ...meta,
+        invalidatedAt,
+        invalidationReason: "book_confirmation_changed",
+      }),
+    });
+  }
+}
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -24,6 +50,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   const projectPath = renameTaskWorkDirForBook(id, bookTitle);
+  invalidateBookDependentArtifacts(id);
   updateTask(id, {
     bookTitle,
     bookAuthor,

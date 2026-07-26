@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import WorkflowExtensionPanel from "./WorkflowExtensionPanel";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import TitleSelectionPanel from "../task-view/TitleSelectionPanel";
 
 type Step = {
@@ -145,6 +145,10 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   } | null>(null);
   const [activeWorkflowId, setActiveWorkflowId] = useState("workflow-overview");
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(140);
+  const [resizingSidebar, setResizingSidebar] = useState(false);
+  const sidebarResizeRef = useRef({ startX: 0, startWidth: 140 });
+  const sidebarWidthRef = useRef(140);
 
   const load = useCallback(async () => {
     if (demoMode) return;
@@ -177,6 +181,36 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const savedWidth = Number(window.localStorage.getItem("book-video-detail-sidebar-width"));
+    if (Number.isFinite(savedWidth) && savedWidth >= 120 && savedWidth <= 240) {
+      sidebarWidthRef.current = savedWidth;
+      setSidebarWidth(savedWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!resizingSidebar) return;
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = Math.min(
+        240,
+        Math.max(120, sidebarResizeRef.current.startWidth + event.clientX - sidebarResizeRef.current.startX),
+      );
+      sidebarWidthRef.current = nextWidth;
+      setSidebarWidth(nextWidth);
+    };
+    const stopResizing = () => {
+      setResizingSidebar(false);
+      window.localStorage.setItem("book-video-detail-sidebar-width", String(sidebarWidthRef.current));
+    };
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResizing, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResizing);
+    };
+  }, [resizingSidebar]);
 
   const artifacts = (data?.artifacts || []).filter(
     (item) => !parseJson(item.meta).invalidatedAt,
@@ -1181,9 +1215,30 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
     window.scrollTo({ top: 0, behavior });
   };
+  const updateSidebarWidth = (value: number) => {
+    const nextWidth = Math.min(240, Math.max(120, value));
+    sidebarWidthRef.current = nextWidth;
+    setSidebarWidth(nextWidth);
+    window.localStorage.setItem("book-video-detail-sidebar-width", String(nextWidth));
+  };
+  const startSidebarResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    sidebarResizeRef.current = { startX: event.clientX, startWidth: sidebarWidthRef.current };
+    setResizingSidebar(true);
+  };
+  const handleSidebarResizeKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      updateSidebarWidth(sidebarWidthRef.current + (event.key === "ArrowRight" ? 8 : -8));
+    }
+    if (event.key === "Home") updateSidebarWidth(120);
+    if (event.key === "End") updateSidebarWidth(240);
+  };
+  const detailShellStyle = { "--intake-sidebar-width": `${sidebarWidth}px` } as CSSProperties;
+
   return (
-    <main className="intake-detail-shell">
-      <nav className="intake-detail-sidebar" aria-label="工作流程导航">
+    <main className={`intake-detail-shell ${resizingSidebar ? "is-resizing" : ""}`} style={detailShellStyle}>
+      <nav className={`intake-detail-sidebar ${resizingSidebar ? "resizing" : ""}`} aria-label="工作流程导航">
         <Link className="intake-sidebar-home" href="/">
           <span aria-hidden="true">⌂</span>
           返回首页
@@ -1204,6 +1259,21 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <small>{item.available ? "查看" : "待解锁"}</small>
             </button>
           ))}
+        </div>
+        <div
+          className="intake-sidebar-resize-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuemin={120}
+          aria-valuemax={240}
+          aria-valuenow={sidebarWidth}
+          aria-label="调整导航栏宽度"
+          title="拖动调整导航栏宽度"
+          tabIndex={0}
+          onPointerDown={startSidebarResize}
+          onKeyDown={handleSidebarResizeKeyDown}
+        >
+          <span aria-hidden="true" />
         </div>
       </nav>
       <header className="intake-detail-header">

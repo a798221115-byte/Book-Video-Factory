@@ -378,16 +378,18 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
 
   useEffect(() => {
     if (!data) return;
-    if (data.task.bookTitle || data.task.bookAuthor) {
-      setBookTitle(data.task.bookTitle || "");
-      setBookAuthor(data.task.bookAuthor || "");
+    const confirmedTitle = data.task.bookTitle || "";
+    const confirmedAuthor = data.task.bookAuthor || "";
+    if (confirmedTitle || confirmedAuthor) {
+      setBookTitle(confirmedTitle);
+      setBookAuthor(confirmedAuthor);
       return;
     }
-    if (candidates[0] && !bookTitle && !bookAuthor) {
-      setBookTitle(String(candidates[0].title || ""));
-      setBookAuthor(String(candidates[0].author || ""));
+    if (candidates[0]) {
+      setBookTitle((current) => current || String(candidates[0].title || ""));
+      setBookAuthor((current) => current || String(candidates[0].author || ""));
     }
-  }, [data, candidates, bookTitle, bookAuthor]);
+  }, [data?.task.bookTitle, data?.task.bookAuthor, candidates]);
 
   useEffect(() => {
     const confirmed = parseJson(highlightsArtifact?.meta);

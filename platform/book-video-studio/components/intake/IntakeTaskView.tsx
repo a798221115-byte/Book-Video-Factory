@@ -143,6 +143,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     tone: "working" | "success" | "error";
     text: string;
   } | null>(null);
+  const [activeWorkflowId, setActiveWorkflowId] = useState("workflow-overview");
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const load = useCallback(async () => {
     if (demoMode) return;
@@ -168,6 +170,13 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     const timer = window.setInterval(() => load().catch(() => {}), 1800);
     return () => window.clearInterval(timer);
   }, [data, load]);
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 480);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const artifacts = (data?.artifacts || []).filter(
     (item) => !parseJson(item.meta).invalidatedAt,
@@ -1175,9 +1184,53 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     !hasRunningIntake &&
     !waitingForBook &&
     !readyForWeread;
+  const workflowNavigation = [
+    { id: "workflow-overview", code: "总览", label: "任务概览", available: true },
+    { id: "workflow-evidence", code: "G01", label: "来源证据", available: true },
+    { id: "workflow-copy", code: "G02", label: "二创文案", available: evidenceStageReached },
+    { id: "workflow-titles", code: "G02.1/2", label: "长短标题", available: titleSelectionReached },
+    { id: "workflow-style", code: "G03", label: "风格样图", available: styleStageReached },
+    { id: "workflow-images", code: "G04", label: "分镜图片", available: remainingImagesStageReached },
+    { id: "workflow-post", code: "G05", label: "配音后期", available: postProductionStageReached },
+    { id: "workflow-delivery", code: "G06", label: "成片审核", available: deliveryStageReached },
+  ];
+  const scrollToWorkflow = (id: string) => {
+    const target = document.getElementById(id);
+    if (!target) return;
+    setActiveWorkflowId(id);
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    target.scrollIntoView({ behavior, block: "start" });
+  };
+  const scrollToTop = () => {
+    const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+    window.scrollTo({ top: 0, behavior });
+  };
 
   return (
     <main className="intake-detail-shell">
+      <nav className="intake-detail-sidebar" aria-label="工作流程导航">
+        <Link className="intake-sidebar-home" href="/">
+          <span aria-hidden="true">⌂</span>
+          返回首页
+        </Link>
+        <div className="intake-sidebar-title">流程导航</div>
+        <div className="intake-sidebar-links">
+          {workflowNavigation.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              className={`intake-sidebar-link ${activeWorkflowId === item.id ? "active" : ""}`}
+              disabled={!item.available}
+              aria-current={activeWorkflowId === item.id ? "location" : undefined}
+              onClick={() => scrollToWorkflow(item.id)}
+            >
+              <span>{item.code}</span>
+              <strong>{item.label}</strong>
+              <small>{item.available ? "查看" : "待解锁"}</small>
+            </button>
+          ))}
+        </div>
+      </nav>
       <header className="intake-detail-header">
         <div>
           <Link href="/">← 返回任务列表</Link>
@@ -1193,7 +1246,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         </div>
       </header>
 
-      <section className="intake-stage-strip" aria-label="第一版流程进度">
+      <section id="workflow-overview" className="intake-stage-strip intake-workflow-anchor" aria-label="第一版流程进度">
         {intakeSteps.map((item, index) => {
           const step = data.steps.find((value) => value.name === item.key);
           return (
@@ -1248,7 +1301,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
 
       {message ? <div className="intake-message" role="status">{message}</div> : null}
 
-      <div className="intake-evidence-layout">
+      <div id="workflow-evidence" className="intake-evidence-layout intake-workflow-anchor">
         <section className="intake-primary-column">
           <div className="intake-section-heading">
             <div><span className="intake-kicker">来源证据</span><h2>参考视频与口播</h2></div>
@@ -1366,7 +1419,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       </div>
 
       {evidenceStageReached ? (
-        <section className="intake-dbs-workspace">
+        <section id="workflow-copy" className="intake-dbs-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G01 → G02</span>
@@ -1619,7 +1672,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       {titleSelectionReached ? (
-        <section className="intake-title-selection-workspace">
+        <section id="workflow-titles" className="intake-title-selection-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G02.1 / G02.2 标题确认门</span>
@@ -1659,7 +1712,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       {((readyForStyleSample && titleWorkflowComplete) || generatingStyleSample || waitingForStyleConfirmation || readyForRemainingImages || generatingRemainingImages || waitingForImagesConfirmation || postProductionReached) ? (
-        <section className="intake-style-sample-workspace">
+        <section id="workflow-style" className="intake-style-sample-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G03 风格确认门</span>
@@ -1827,7 +1880,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       {(readyForRemainingImages || generatingRemainingImages || generatingImageRevision || waitingForImagesConfirmation || postProductionReached) ? (
-        <section className="intake-remaining-images-workspace">
+        <section id="workflow-images" className="intake-remaining-images-workspace intake-workflow-anchor">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G04 全部分镜审核门</span>
@@ -2001,7 +2054,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       {postProductionStageReached ? (
-        <section className="intake-style-sample-workspace" aria-label="G05 配音后期">
+        <section id="workflow-post" className="intake-style-sample-workspace intake-workflow-anchor" aria-label="G05 配音后期">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G05 配音后期</span>
@@ -2073,7 +2126,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       {deliveryStageReached ? (
-        <section className="intake-style-sample-workspace" aria-label="G06 联合审核">
+        <section id="workflow-delivery" className="intake-style-sample-workspace intake-workflow-anchor" aria-label="G06 联合审核">
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">G06 联合审核</span>
@@ -2188,6 +2241,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       ) : null}
 
       <WorkflowExtensionPanel taskId={taskId} data={data} reload={load} onRollback={rollbackWorkflow} />
+      {showBackToTop ? (
+        <button type="button" className="intake-back-to-top" onClick={scrollToTop} aria-label="返回顶部">
+          <span aria-hidden="true">↑</span>
+          返回顶部
+        </button>
+      ) : null}
     </main>
   );
 }

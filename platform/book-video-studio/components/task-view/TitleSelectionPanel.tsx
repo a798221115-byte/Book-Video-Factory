@@ -42,6 +42,7 @@ export default function TitleSelectionPanel({ task, book, busy, reload, locked =
   const [stage, setStage] = useState(String(book.title_stage || (selectedShort ? "complete" : selectedLong ? "long_confirmed" : "idle")));
   const [working, setWorking] = useState("");
   const [warning, setWarning] = useState("");
+  const [copiedTitleKey, setCopiedTitleKey] = useState("");
   const [provider, setProvider] = useState(String(book.title_provider || ""));
   const [hashtags, setHashtags] = useState<string[]>(Array.isArray(book.hashtags) ? book.hashtags : []);
 
@@ -83,6 +84,20 @@ export default function TitleSelectionPanel({ task, book, busy, reload, locked =
     } finally {
       setWorking("");
     }
+  };
+
+  const copyTitle = async (kind: "long" | "short", candidate: Candidate) => {
+    const key = `${kind}:${candidate.id}`;
+    const copied = await copyTextToClipboard(candidate.text);
+    if (!copied) {
+      setWarning(`复制${kind === "long" ? "长" : "短"}标题失败，请重试。`);
+      return;
+    }
+    setWarning("");
+    setCopiedTitleKey(key);
+    window.setTimeout(() => {
+      setCopiedTitleKey((current) => current === key ? "" : current);
+    }, 1800);
   };
 
   const longConfirmed = Boolean(selectedLong);
@@ -145,13 +160,24 @@ export default function TitleSelectionPanel({ task, book, busy, reload, locked =
                       <p>{candidate.reason}</p>
                     </div>
                   )}
-                  <button
-                    className={`btn ${selected ? "btn-ok" : "btn-ghost"}`}
-                    disabled={locked || busy || Boolean(working) || selected}
-                    onClick={() => request("select_long", candidate.text)}
-                  >
-                    {selected ? "已确认此长标题" : "确认此长标题"}
-                  </button>
+                  <div className="title-candidate-actions">
+                    <button
+                      type="button"
+                      className="btn btn-ghost title-copy-button"
+                      onClick={() => copyTitle("long", candidate)}
+                      aria-label={`复制长标题：${candidate.text}`}
+                    >
+                      {copiedTitleKey === `long:${candidate.id}` ? "已复制长标题" : "复制长标题"}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${selected ? "btn-ok" : "btn-ghost"}`}
+                      disabled={locked || busy || Boolean(working) || selected}
+                      onClick={() => request("select_long", candidate.text)}
+                    >
+                      {selected ? "已确认此长标题" : "确认此长标题"}
+                    </button>
+                  </div>
                 </article>
               );
             })}
@@ -177,16 +203,26 @@ export default function TitleSelectionPanel({ task, book, busy, reload, locked =
             {shortCandidates.map((candidate, index) => {
               const selected = candidate.text === selectedShort;
               return (
-                <button
-                  key={candidate.id || index}
-                  className={`short-title-choice ${selected ? "selected" : ""}`}
-                  disabled={locked || busy || Boolean(working) || selected}
-                  onClick={() => request("select_short", candidate.text)}
-                >
-                  <span>{String(index + 1).padStart(2, "0")}</span>
-                  <strong>{candidate.text}</strong>
-                  <em>{selected ? "已确认" : "确认"}</em>
-                </button>
+                <article key={candidate.id || index} className="short-title-card">
+                  <button
+                    type="button"
+                    className={`short-title-choice ${selected ? "selected" : ""}`}
+                    disabled={locked || busy || Boolean(working) || selected}
+                    onClick={() => request("select_short", candidate.text)}
+                  >
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <strong>{candidate.text}</strong>
+                    <em>{selected ? "已确认" : "确认"}</em>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost title-copy-button"
+                    onClick={() => copyTitle("short", candidate)}
+                    aria-label={`复制短标题：${candidate.text}`}
+                  >
+                    {copiedTitleKey === `short:${candidate.id}` ? "已复制短标题" : "复制短标题"}
+                  </button>
+                </article>
               );
             })}
           </div>

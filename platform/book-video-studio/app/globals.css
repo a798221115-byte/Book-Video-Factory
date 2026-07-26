@@ -2658,6 +2658,29 @@ textarea.dashboard-input {
   line-height: 1.55;
 }
 
+.title-candidate-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 8px;
+}
+
+.title-copy-button {
+  min-height: 40px;
+  padding: 7px 10px;
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.short-title-card {
+  display: grid;
+  gap: 7px;
+}
+
+.short-title-card .title-copy-button {
+  width: 100%;
+}
+
 .title-formula-meta {
   display: grid;
   gap: 4px;
@@ -2705,6 +2728,10 @@ textarea.dashboard-input {
   color: #302b26;
   text-align: left;
   cursor: pointer;
+}
+
+.short-title-choice:disabled {
+  cursor: not-allowed;
 }
 
 .short-title-choice.selected {

@@ -136,6 +136,11 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const [bookSourceFile, setBookSourceFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [styleAction, setStyleAction] = useState<"revise" | "sync" | null>(null);
+  const [styleActionNotice, setStyleActionNotice] = useState<{
+    tone: "working" | "success" | "error";
+    text: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (demoMode) return;
@@ -708,12 +713,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     const feedback = styleFeedback.trim();
     if (!feedback) {
       setMessage("请先填写这张样图需要修改的地方。");
+      setStyleActionNotice({ tone: "error", text: "请先填写这张样图需要修改的地方。" });
       return;
     }
     if (demoMode) {
       setMessage("演示任务不会重新生成真实样图。");
+      setStyleActionNotice({ tone: "error", text: "演示任务不会重新生成真实样图。" });
       return;
     }
+    setStyleAction("revise");
+    setStyleActionNotice({ tone: "working", text: "正在提交修改意见并创建新的 Codex 样图任务，请稍候…" });
     setBusy(true);
     setMessage("已提交修改意见，正在创建新的 Codex G03 样图任务…");
     try {
@@ -726,16 +735,25 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       if (!response.ok) throw new Error(payload.error || "G03 样图修改任务创建失败");
       setStyleFeedback("");
       setMessage(`已创建第 ${Number(payload.revision || 2)} 版 G03 样图任务，页面会持续回传进度。`);
+      setStyleActionNotice({
+        tone: "success",
+        text: `第 ${Number(payload.revision || 2)} 版样图任务已创建，接下来会持续显示生成进度。`,
+      });
       await load();
     } catch (error: any) {
-      setMessage(String(error?.message || error));
+      const errorMessage = String(error?.message || error);
+      setMessage(errorMessage);
+      setStyleActionNotice({ tone: "error", text: errorMessage });
     } finally {
+      setStyleAction(null);
       setBusy(false);
     }
   };
 
   const syncStyleSample = async () => {
     if (demoMode) return;
+    setStyleAction("sync");
+    setStyleActionNotice({ tone: "working", text: "正在检查 Codex 当前任务并同步最新样图，请稍候…" });
     setBusy(true);
     setMessage("正在检查并同步 Codex 当前 G03 样图…");
     try {
@@ -746,11 +764,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "G03 样图同步失败");
-      setMessage(payload.message || "已同步 Codex 当前 G03 样图。");
+      const successMessage = payload.message || "已同步 Codex 当前 G03 样图。";
+      setMessage(successMessage);
+      setStyleActionNotice({ tone: "success", text: successMessage });
       await load();
     } catch (error: any) {
-      setMessage(String(error?.message || error));
+      const errorMessage = String(error?.message || error);
+      setMessage(errorMessage);
+      setStyleActionNotice({ tone: "error", text: errorMessage });
     } finally {
+      setStyleAction(null);
       setBusy(false);
     }
   };
@@ -1627,20 +1650,53 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                     </label>
                     <button
                       type="button"
-                      className="intake-confirm-action"
+                      className="intake-confirm-action intake-style-action-button"
                       disabled={busy || !styleFeedback.trim()}
                       onClick={reviseStyleSample}
                     >
-                      按意见重新生成样图
+                      {styleAction === "revise" ? (
+                        <>
+                          <span className="inline-spinner" aria-hidden="true" />
+                          正在提交修改…
+                        </>
+                      ) : "按意见重新生成样图"}
                     </button>
                     <button
                       type="button"
-                      className="intake-secondary-action"
+                      className="intake-secondary-action intake-style-action-button"
                       disabled={busy}
                       onClick={syncStyleSample}
                     >
-                      同步 Codex 当前样图
+                      {styleAction === "sync" ? (
+                        <>
+                          <span className="inline-spinner intake-style-action-spinner" aria-hidden="true" />
+                          正在同步样图…
+                        </>
+                      ) : "同步 Codex 当前样图"}
                     </button>
+                    {styleActionNotice ? (
+                      <div
+                        className={`intake-style-action-status ${styleActionNotice.tone}`}
+                        role={styleActionNotice.tone === "error" ? "alert" : "status"}
+                        aria-live="polite"
+                      >
+                        <div className="intake-style-action-status-copy">
+                          <strong>
+                            {styleActionNotice.tone === "working"
+                              ? "请求处理中"
+                              : styleActionNotice.tone === "success"
+                                ? "操作已完成"
+                                : "操作未完成"}
+                          </strong>
+                          <span>{styleActionNotice.text}</span>
+                        </div>
+                        {styleActionNotice.tone === "working" ? (
+                          <div className="intake-style-action-progress" aria-label="操作正在进行">
+                            <span />
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 <button

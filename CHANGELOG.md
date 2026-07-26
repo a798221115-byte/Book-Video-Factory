@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.15.0 - 2026-07-26
+
+- Generate the separate 1080×1260 WeChat Channels cover automatically after G05 rendering, using the verified WeRead edition cover and deterministic local composition.
+- Add direct G06 controls to generate or regenerate the cover, edit its two headline lines, inspect generation failures, and open the cover validation report.
+- Prefer the verified WeRead `t9_` high-resolution cover asset with a safe fallback to the original returned URL.
+- Add a G06 artifact refresh action that reports the exact remaining video, cover, Jianying, or validation deliverables instead of leaving the review gate silently locked.
+
 ## 1.12.0 - 2026-07-25
 
 - Add explicit G02.1 long-title and G02.2 short-title task states between copy approval and G03.

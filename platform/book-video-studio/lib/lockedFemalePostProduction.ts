@@ -13,6 +13,7 @@ import {
   taskDir,
   updateTask,
 } from "./pipeline/repo";
+import { generateDeliveryCover, recordDeliveryCoverFailure } from "./deliveryCover";
 
 const execFileP = promisify(execFile);
 const FFMPEG = process.env.FFMPEG_BIN?.trim() || "ffmpeg";
@@ -614,6 +615,12 @@ export async function startLockedFemalePostProduction(taskId: string) {
     upsertArtifact({ taskId, stepName: "render", kind: "review_video", label: "G05 女声双语字幕审核成片", path: projectArtifactPath(finalPath), meta: validation });
     upsertArtifact({ taskId, stepName: "render", kind: "video", label: "G05 女声双语字幕审核成片", path: projectArtifactPath(finalPath), meta: validation });
     upsertArtifact({ taskId, stepName: "render", kind: "validation_report", label: "G05 技术验证报告", path: projectArtifactPath(validationPath), meta: validation });
+    try {
+      await generateDeliveryCover(taskId);
+    } catch (coverError) {
+      recordDeliveryCoverFailure(taskId, coverError);
+      console.error("[delivery-cover]", coverError);
+    }
     setStepStatus(taskId, "render", {
       status: "done",
       progress: 1,

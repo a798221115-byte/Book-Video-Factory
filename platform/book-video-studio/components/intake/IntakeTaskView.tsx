@@ -134,6 +134,8 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const [imageFeedback, setImageFeedback] = useState<Record<string, string>>({});
   const [candidateScript, setCandidateScript] = useState("");
   const [bookSourceFile, setBookSourceFile] = useState<File | null>(null);
+  const [coverHeadline1, setCoverHeadline1] = useState("");
+  const [coverHeadline2, setCoverHeadline2] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [styleAction, setStyleAction] = useState<"revise" | "sync" | null>(null);
@@ -938,6 +940,56 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
+  const generateDeliveryCover = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("正在使用微信读书核验书封生成 1080×1260 视频号独立封面…");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/delivery-cover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headline1: coverHeadline1.trim(),
+          headline2: coverHeadline2.trim(),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "独立封面生成失败");
+      setMessage("独立封面已生成并完成基础验收。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+      await load().catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refreshDeliveryAssets = async () => {
+    if (demoMode) return;
+    setBusy(true);
+    setMessage("正在重新检查 G06 成片、封面、剪映草稿和验收报告…");
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/delivery-assets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "collect" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const missing = Array.isArray(payload.missing) ? payload.missing.join("、") : "";
+        throw new Error(missing ? `仍缺少：${missing}` : payload.error || "G06 产物检查失败");
+      }
+      setMessage("G06 产物已重新检查并登记。");
+      await load();
+    } catch (error: any) {
+      setMessage(String(error?.message || error));
+      await load().catch(() => {});
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!data) {
     return <main className="intake-detail-shell"><div className="intake-loading">正在读取任务…</div></main>;
   }
@@ -988,6 +1040,13 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const deliveryCoverArtifact = artifacts.find(
     (item) => item.stepName === "delivery" && item.kind === "cover" && item.path,
   );
+  const deliveryCoverValidationArtifact = artifacts.find(
+    (item) => item.stepName === "delivery" && item.kind === "cover_validation" && item.path,
+  );
+  const deliveryCoverStatusArtifact = artifacts.find(
+    (item) => item.stepName === "delivery" && item.kind === "cover_generation_status",
+  );
+  const deliveryCoverStatusMeta = parseJson(deliveryCoverStatusArtifact?.meta);
   const deliveryDraftArtifact = artifacts.find(
     (item) => item.stepName === "delivery" && item.kind === "jianying_draft_report" && item.path,
   );
@@ -2027,6 +2086,9 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("post_production")}>
                 返回重做后期
               </button>
+              <button type="button" className="intake-secondary-action" disabled={busy} onClick={refreshDeliveryAssets}>
+                刷新 G06 产物
+              </button>
               <span className="intake-dbs-version">{deliveryReady ? "产物已齐全" : "产物整理中"}</span>
             </div>
           </div>
@@ -2053,7 +2115,42 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                     打开封面原图
                   </a>
                 </>
-              ) : <small>独立封面仍在整理。</small>}
+              ) : (
+                <small>
+                  {deliveryCoverStatusMeta.status === "failed"
+                    ? `上次生成失败：${deliveryCoverStatusArtifact?.content || "请重试并查看错误"}`
+                    : "尚未生成独立封面。可在这里直接生成，不必返回前面的流程。"}
+                </small>
+              )}
+              <div className="intake-cover-generator">
+                <label>
+                  <span>封面标题第一行</span>
+                  <input
+                    value={coverHeadline1}
+                    onChange={(event) => setCoverHeadline1(event.target.value)}
+                    maxLength={13}
+                    placeholder="留空则使用已确认短标题"
+                  />
+                </label>
+                <label>
+                  <span>封面标题第二行</span>
+                  <input
+                    value={coverHeadline2}
+                    onChange={(event) => setCoverHeadline2(event.target.value)}
+                    maxLength={13}
+                    placeholder="留空则自动生成克制副标题"
+                  />
+                </label>
+                <button type="button" className="intake-confirm-action" disabled={busy} onClick={generateDeliveryCover}>
+                  {deliveryCoverArtifact?.path ? "重新生成独立封面" : "生成独立封面"}
+                </button>
+                <small>使用微信读书核验的原版书封，外围背景和中文标题由本地脚本确定性合成。</small>
+                {deliveryCoverValidationArtifact?.path ? (
+                  <a href={fileUrl(deliveryCoverValidationArtifact.path)} target="_blank" rel="noreferrer">
+                    查看封面验收报告
+                  </a>
+                ) : null}
+              </div>
             </article>
 
             <article className="intake-delivery-card intake-delivery-files">

@@ -42,7 +42,11 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       return NextResponse.json({ error: "请先填写风格修改意见" }, { status: 400 });
     }
     try {
-      const result = enqueueCodexStyleSample(id, { force: true, feedback });
+      const result = enqueueCodexStyleSample(id, {
+        force: true,
+        feedback,
+        allowExistingSampleRevision: true,
+      });
       return NextResponse.json({
         ok: true,
         revision: result.job?.meta?.revision || null,

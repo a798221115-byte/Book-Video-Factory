@@ -158,6 +158,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const [imageRevisionSubmitting, setImageRevisionSubmitting] = useState<string | null>(null);
   const [candidateScript, setCandidateScript] = useState("");
   const [bookSourceFile, setBookSourceFile] = useState<File | null>(null);
+  const [wereadUrl, setWereadUrl] = useState("");
   const [coverHeadline1, setCoverHeadline1] = useState("");
   const [coverHeadline2, setCoverHeadline2] = useState("");
   const [busy, setBusy] = useState(false);
@@ -337,6 +338,11 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const hasMoreHighlights = topHighlights.length >= 10 && topHighlightsMeta.hasMore !== false;
   const wereadStatus = parseJson(wereadStatusArtifact?.meta);
   const bookSourceStatus = parseJson(bookSourceStatusArtifact?.meta);
+
+  useEffect(() => {
+    const sourceUrl = String(topHighlightsMeta.sourceUrl || "").trim();
+    if (sourceUrl) setWereadUrl(sourceUrl);
+  }, [topHighlightsMeta.sourceUrl]);
 
   useEffect(() => {
     if (
@@ -532,11 +538,13 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     }
   };
 
-  const fetchTopHighlights = async (mode: "reset" | "append" = "reset") => {
+  const fetchTopHighlights = async (mode: "reset" | "append" = "reset", directSourceUrl = "") => {
     if (demoMode) {
       setMessage("演示任务不会调用微信读书，请在正式任务中操作。");
       return;
     }
+    const sourceUrl = directSourceUrl.trim()
+      || (mode === "append" && sourceType === "weread_url" ? wereadUrl.trim() : "");
     setBusy(true);
     setMessage(mode === "append"
       ? "正在按热度继续获取后 10 条热门划线…"
@@ -549,6 +557,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           offset: mode === "append" ? topHighlights.length : 0,
           limit: 10,
           reset: mode === "reset",
+          ...(sourceUrl ? { wereadUrl: sourceUrl } : {}),
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -1553,6 +1562,28 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                 <div className="intake-source-status unavailable">
                   <strong>微信读书未获取到这本书或热门划线</strong>
                   <span>{wereadStatus.detail || wereadStatusArtifact?.content}</span>
+                  <div className="intake-weread-url-fallback">
+                    <strong>有微信读书地址？可按地址获取</strong>
+                    <span>粘贴这本书的微信读书网页链接，系统会直接读取该书版本和热门划线。</span>
+                    <div className="intake-weread-url-actions">
+                      <input
+                        type="url"
+                        value={wereadUrl}
+                        disabled={busy || evidenceLocked}
+                        onChange={(event) => setWereadUrl(event.target.value)}
+                        placeholder="https://weread.qq.com/web/reader/..."
+                        aria-label="微信读书地址"
+                      />
+                      <button
+                        type="button"
+                        disabled={busy || evidenceLocked || !wereadUrl.trim()}
+                        onClick={() => fetchTopHighlights("reset", wereadUrl)}
+                      >
+                        按地址获取热门划线
+                      </button>
+                    </div>
+                    <small>支持微信读书网页阅读链接，也可以直接粘贴包含 bookId 的地址。</small>
+                  </div>
                   <small>可改用下方原书文件来源；候选将按与爆款参考文案的相关性排序。</small>
                 </div>
               ) : null}

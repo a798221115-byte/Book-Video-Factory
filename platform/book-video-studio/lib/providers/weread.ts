@@ -68,6 +68,50 @@ function selectVerifiedBook(books: any[], title: string, author: string) {
   return ranked[0].item;
 }
 
+export function extractWeReadBookId(input: string) {
+  const value = String(input || "").trim();
+  if (!value) return "";
+
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const parsed = new URL(value);
+      if (!/(^|\.)weread\.qq\.com$/i.test(parsed.hostname)) return "";
+    } catch {
+      return "";
+    }
+  }
+
+  const candidates = [
+    value.match(/[?&#](?:bookId|bookid|book_id)=([^&#/?]+)/i)?.[1],
+    value.match(/\/(?:reader|bookDetail|book)\/([^/?#]+)/i)?.[1],
+    value.match(/^weread:(?:\/\/)?(?:book\/)?([^/?#]+)/i)?.[1],
+  ];
+  for (const candidate of candidates) {
+    try {
+      const decoded = decodeURIComponent(String(candidate || "")).trim();
+      if (/^[A-Za-z0-9_-]{6,160}$/.test(decoded)) return decoded;
+    } catch {
+      // Ignore malformed URL encoding and continue checking the other forms.
+    }
+  }
+  return /^[A-Za-z0-9_-]{6,160}$/.test(value) ? value : "";
+}
+
+function normalizeBookInfo(raw: any, fallbackBookId = "") {
+  const info = raw?.bookInfo || raw?.book || raw || {};
+  const bookId = String(info.bookId || raw?.bookId || fallbackBookId || "").trim();
+  const title = String(info.title || "").trim();
+  if (!bookId || !title) return null;
+  return {
+    bookId,
+    title,
+    author: String(info.author || "").trim(),
+    cover: String(info.cover || info.coverUrl || "").trim(),
+    deepLink: String(info.deepLink || info.url || "").trim(),
+    publisher: String(info.publisher || "").trim(),
+  };
+}
+
 export type PopularHighlight = {
   id: string;
   text: string;
@@ -81,6 +125,8 @@ export type PopularHighlight = {
 type PopularHighlightPageOptions = {
   offset?: number;
   limit?: number;
+  bookId?: string;
+  sourceUrl?: string;
 };
 
 type HighlightCacheEntry = {
@@ -188,6 +234,36 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+async function fetchPopularForBook(book: any, key: string, sourceUrl = "") {
+  const cached = getFreshCache(baseHighlightCache, key);
+  if (cached) return cached;
+
+  const popular = await wereadRequest({
+    api_name: "/book/bestbookmarks",
+    bookId: String(book.bookId),
+    chapterUid: 0,
+    synckey: 0,
+  });
+  const highlights = mergeRankedHighlights([mapPopularHighlights(popular)]);
+  if (!highlights.length) throw new Error(`微信读书暂未返回《${book.title}》的热门划线`);
+
+  const entry = {
+    expiresAt: Date.now() + HIGHLIGHT_CACHE_TTL_MS,
+    book: {
+      bookId: String(book.bookId),
+      title: String(book.title || ""),
+      author: String(book.author || ""),
+      cover: String(book.cover || ""),
+      deepLink: String(book.deepLink || sourceUrl || ""),
+      publisher: String(book.publisher || ""),
+    },
+    popular,
+    highlights,
+  };
+  baseHighlightCache.set(key, entry);
+  return entry;
+}
+
 async function fetchBaseHighlights(bookTitle: string, bookAuthor: string) {
   const key = cacheKey(bookTitle, bookAuthor);
   const cached = getFreshCache(baseHighlightCache, key);
@@ -200,31 +276,19 @@ async function fetchBaseHighlights(bookTitle: string, bookAuthor: string) {
     count: 10,
   });
   const matched = selectVerifiedBook(searchBooks(search), bookTitle, bookAuthor);
-  const book = matched.bookInfo;
-  const popular = await wereadRequest({
-    api_name: "/book/bestbookmarks",
-    bookId: String(book.bookId),
-    chapterUid: 0,
-    synckey: 0,
-  });
-  const highlights = mergeRankedHighlights([mapPopularHighlights(popular)]);
-  if (!highlights.length) throw new Error(`微信读书暂未返回《${bookTitle}》的热门划线`);
+  const book = normalizeBookInfo(matched.bookInfo);
+  if (!book) throw new Error(`微信读书未返回《${bookTitle}》的完整版本信息`);
+  return fetchPopularForBook(book, key);
+}
 
-  const entry = {
-    expiresAt: Date.now() + HIGHLIGHT_CACHE_TTL_MS,
-    book: {
-      bookId: String(book.bookId),
-      title: String(book.title || ""),
-      author: String(book.author || ""),
-      cover: String(book.cover || ""),
-      deepLink: String(book.deepLink || ""),
-      publisher: String(book.publisher || ""),
-    },
-    popular,
-    highlights,
-  };
-  baseHighlightCache.set(key, entry);
-  return entry;
+async function fetchBaseHighlightsByBookId(bookId: string, sourceUrl = "") {
+  const key = `book:${bookId}`;
+  const cached = getFreshCache(baseHighlightCache, key);
+  if (cached) return cached;
+  const info = await wereadRequest({ api_name: "/book/info", bookId });
+  const book = normalizeBookInfo(info, bookId);
+  if (!book) throw new Error("微信读书地址未返回可用的书籍信息");
+  return fetchPopularForBook(book, key, sourceUrl);
 }
 
 async function fetchExpandedHighlights(
@@ -277,8 +341,11 @@ export async function fetchTopPopularHighlights(
 ) {
   const offset = Math.max(0, Math.floor(Number(options.offset) || 0));
   const limit = Math.min(50, Math.max(1, Math.floor(Number(options.limit) || 10)));
-  const key = cacheKey(bookTitle, bookAuthor);
-  const base = await fetchBaseHighlights(bookTitle, bookAuthor);
+  const explicitBookId = String(options.bookId || "").trim();
+  const key = explicitBookId ? `book:${explicitBookId}` : cacheKey(bookTitle, bookAuthor);
+  const base = explicitBookId
+    ? await fetchBaseHighlightsByBookId(explicitBookId, options.sourceUrl)
+    : await fetchBaseHighlights(bookTitle, bookAuthor);
   const requestedEnd = offset + limit;
   const source = requestedEnd > base.highlights.length
     ? await fetchExpandedHighlights(key, base)

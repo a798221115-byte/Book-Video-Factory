@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchTopPopularHighlights } from "@/lib/providers/weread";
+import { extractWeReadBookId, fetchTopPopularHighlights } from "@/lib/providers/weread";
 import { getArtifacts, getTask, patchArtifact, saveArtifact } from "@/lib/pipeline/repo";
 
 function parseMeta(value: unknown) {
@@ -41,8 +41,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "缺少已确认的书名或作者" }, { status: 409 });
   }
 
+  const body = await req.json().catch(() => ({}));
+  const sourceUrl = String(body.wereadUrl || "").trim();
+  const directBookId = sourceUrl ? extractWeReadBookId(sourceUrl) : "";
+  if (sourceUrl && !directBookId) {
+    return NextResponse.json({ error: "无法识别微信读书地址，请粘贴包含 bookId 的微信读书书籍链接" }, { status: 400 });
+  }
+
   try {
-    const body = await req.json().catch(() => ({}));
     const existing = getArtifacts(id).find(
       (item) => item.stepName === "weread" && item.kind === "top_highlight_candidates",
     );
@@ -56,6 +62,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const result = await fetchTopPopularHighlights(task.bookTitle, task.bookAuthor, {
       offset,
       limit: 10,
+      bookId: directBookId || undefined,
+      sourceUrl: sourceUrl || undefined,
     });
     const merged = new Map<string, any>();
     for (const item of [...previousHighlights, ...result.highlights]) {
@@ -70,6 +78,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       highlights,
       loadedCount: highlights.length,
       nextOffset: highlights.length,
+      sourceType: directBookId ? "weread_url" : "weread",
+      sourceUrl: sourceUrl || String(result.book.deepLink || ""),
     };
     const content = highlights
       .map((item: any, index: number) => `${index + 1}. ${item.count} 人｜${item.chapter || "章节未返回"}｜${item.text}`)

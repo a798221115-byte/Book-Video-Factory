@@ -71,6 +71,29 @@ function statusLabel(status: string) {
   return "等待";
 }
 
+function imageRevisionStatusLabel(status: string) {
+  if (status === "succeeded") return "修改完成";
+  if (status === "failed") return "修改失败";
+  if (status === "queued") return "已提交，等待 Codex 启动";
+  if (status === "starting") return "Codex 正在启动";
+  return "Codex 正在修改";
+}
+
+function imageRevisionPhaseLabel(phase: string) {
+  const labels: Record<string, string> = {
+    queued: "排队中",
+    starting: "启动任务",
+    thread_created: "已创建 Codex 任务",
+    planning: "读取图片和修改意见",
+    generating_image: "重新生成图片",
+    saving: "写回工作台",
+    registering: "登记图片版本",
+    completed: "已完成",
+    failed: "处理失败",
+  };
+  return labels[phase] || phase || "处理中";
+}
+
 function demoTaskData(): TaskData {
   const transcript = "你有没有发现，真正让一个人变得强大的，从来不是他能控制多少事情，而是他开始允许一些事情发生。允许关系有聚有散，允许计划偶尔失控，也允许自己在某些时刻不那么完美。";
   const cleanedText = "真正让一个人变得强大的，不是他能控制多少事情，而是开始允许一些事情发生。允许关系有聚有散，允许计划偶尔失控，也允许自己在某些时刻不那么完美。";
@@ -132,6 +155,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const [copyDirection, setCopyDirection] = useState("");
   const [styleFeedback, setStyleFeedback] = useState("");
   const [imageFeedback, setImageFeedback] = useState<Record<string, string>>({});
+  const [imageRevisionSubmitting, setImageRevisionSubmitting] = useState<string | null>(null);
   const [candidateScript, setCandidateScript] = useState("");
   const [bookSourceFile, setBookSourceFile] = useState<File | null>(null);
   const [coverHeadline1, setCoverHeadline1] = useState("");
@@ -821,6 +845,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
       return;
     }
     setBusy(true);
+    setImageRevisionSubmitting(sceneJobId);
     setMessage(`已提交 ${sceneJobId} 的修改意见，正在创建 Codex 单张图片任务…`);
     try {
       const response = await fetch(`/api/tasks/${taskId}/remaining-images`, {
@@ -836,6 +861,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     } catch (error: any) {
       setMessage(String(error?.message || error));
     } finally {
+      setImageRevisionSubmitting(null);
       setBusy(false);
     }
   };
@@ -2012,6 +2038,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   const revisionJob = imageRevisionJobsByScene.get(sceneJobId);
                   const revisionStatus = String(revisionJob?.status || "");
                   const revisionBusy = ["queued", "starting", "running"].includes(revisionStatus);
+                  const revisionProgress = Math.max(0, Math.min(1, Number(revisionJob?.progress || 0)));
                   const canRevise = waitingForImagesConfirmation || readyForPostProduction || waitingForRenderReview;
                   return (
                     <figure className={job.status === "done" ? "done" : "pending"} key={job.id}>
@@ -2027,11 +2054,30 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                         <strong>{job.id} · {job.label}</strong>
                         <span>{job.status === "done" ? "已生成并回写" : "队列中"}</span>
                       </figcaption>
-                      {canRevise && job.status === "done" ? (
-                        <div className="intake-image-feedback">
+                      {job.status === "done" && (revisionJob || imageRevisionSubmitting === sceneJobId) ? (
+                        <div
+                          className={`intake-image-revision-status ${revisionStatus || "queued"}`}
+                          role={revisionStatus === "failed" ? "alert" : "status"}
+                          aria-live="polite"
+                        >
+                          <div className="intake-image-revision-status-head">
+                            <span className={`intake-codex-state ${revisionStatus || "queued"}`}>
+                              {revisionJob ? imageRevisionStatusLabel(revisionStatus) : "正在提交修改"}
+                            </span>
+                            <strong>
+                              {revisionJob?.message || "修改意见正在提交，后台任务即将开始"}
+                            </strong>
+                          </div>
                           {revisionJob ? (
                             <>
-                              <small>{revisionStatus === "succeeded" ? "上一版修改已回写" : revisionStatus === "failed" ? "上一版修改失败，可重新提交意见" : `Codex 单张修改：${revisionStatus || "已创建"}`}</small>
+                              <div className="intake-image-revision-progress" aria-label={`${sceneJobId} 单张修改进度`}>
+                                <span style={{ width: `${Math.round(revisionProgress * 100)}%` }} />
+                              </div>
+                              <div className="intake-image-revision-meta">
+                                <span>阶段：{imageRevisionPhaseLabel(String(revisionJob.phase || ""))}</span>
+                                <span>进度：{Math.round(revisionProgress * 100)}%</span>
+                                {revisionJob.artifact?.id ? <span>任务：{revisionJob.artifact.id}</span> : null}
+                              </div>
                               {revisionJob.threadId ? (
                                 <a href={`codex://threads/${revisionJob.threadId}`} className="intake-codex-thread-link">
                                   在 Codex 中打开这张图的修改任务
@@ -2039,7 +2085,16 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                               ) : null}
                               {revisionJob.error ? <small className="intake-codex-error">{revisionJob.error}</small> : null}
                             </>
-                          ) : null}
+                          ) : (
+                            <div className="intake-image-revision-submitting">
+                              <span className="inline-spinner" aria-hidden="true" />
+                              页面会自动刷新这张图片的处理进度
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                      {canRevise && job.status === "done" ? (
+                        <div className="intake-image-feedback">
                           <textarea
                             value={imageFeedback[sceneJobId] || ""}
                             maxLength={1000}
@@ -2055,7 +2110,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                             disabled={busy || revisionBusy || !(imageFeedback[sceneJobId] || "").trim()}
                             onClick={() => reviseStoryboardImage(sceneJobId)}
                           >
-                            按意见修改这张图
+                            {imageRevisionSubmitting === sceneJobId ? (
+                              <>
+                                <span className="inline-spinner" aria-hidden="true" />
+                                正在提交修改…
+                              </>
+                            ) : "按意见修改这张图"}
                           </button>
                         </div>
                       ) : null}
@@ -2073,7 +2133,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
               </button>
               <small>
                 {generatingImageRevision
-                  ? "Codex 正在修改单张分镜图片，完成后会自动回写并重新进入 G04 审核。"
+                  ? "单张修改已提交；请查看对应图片卡片的阶段和百分比，完成并显示“修改完成”后再继续 G04 审核。页面会自动刷新进度。"
                   : generatingRemainingImages
                   ? "Codex 正在按确认样图生成，完成一张就会在这里出现。"
                   : waitingForImagesConfirmation

@@ -52,6 +52,14 @@ Composition rules:
 - Avoid adjacent scenes with nearly identical composition or meaning.
 - Preserve identity continuity when recurring characters are used.
 
+## Mirror and human-reflection quality gate
+
+- Avoid mirrors and human-bearing reflections by default, including reflective glass, water, polished metal, screens, framed reflective surfaces, and compositions that visually duplicate a person.
+- For self-observation or introspection, prefer non-reflective storytelling devices such as breathing, posture, hands, an unmarked journal, spatial thresholds, natural light, or meaningful objects.
+- Include `no mirror, no human reflection, no duplicate person or face` in every character-image prompt and negative prompt unless the user explicitly requests a reflective composition.
+- When the user explicitly requests a mirror or human reflection, inspect the real subject and reflection together for identity, pose, gaze, limb count, handedness, object placement, perspective, and lighting consistency.
+- A reflection mismatch is a release blocker. Regenerate or edit the image; never conceal the mismatch with cropping, captions, blur, darkness, or motion.
+
 ## Human anatomy quality gate
 
 Inspect every generated frame twice: once at full-frame scale for silhouette and center of gravity, and once enlarged for joints, hands, and overlaps. Reject and regenerate or edit the frame when any check fails.

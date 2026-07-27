@@ -169,6 +169,8 @@ Generate remaining images with the approved style, palette, identity, period, li
 - title and caption safe areas;
 - visual grammar variety;
 - subject-mix audit result and justification for any all-character storyboard.
+- default avoidance of mirrors and human-bearing reflections;
+- when a reflection was explicitly requested, consistency of identity, pose, gaze, limb count, handedness, object placement, perspective, and lighting.
 
 Sync `G04=待确认` and stop for all-image approval.
 

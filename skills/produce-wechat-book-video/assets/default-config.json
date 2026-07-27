@@ -75,7 +75,13 @@
     "allCharacterStoryboardPolicy": "review_and_replan_unless_every_scene_is_justified",
     "fixedCharacterQuota": null,
     "forbidDecorativePersonForContinuity": true,
-    "forbidUnrelatedSceneryFiller": true
+    "forbidUnrelatedSceneryFiller": true,
+    "mirrorPolicy": "avoid_by_default",
+    "allowHumanReflectionOnlyWhenExplicitlyRequested": true,
+    "humanReflectionSurfaces": ["mirror", "reflective_glass", "water", "polished_metal", "screen"],
+    "requireReflectionConsistencyAudit": true,
+    "reflectionConsistencyChecks": ["identity", "pose", "gaze", "limb_count", "handedness", "object_placement", "perspective", "lighting"],
+    "reflectionMismatchIsBlocking": true
   },
   "stillImageMotion": {
     "enabled": true,

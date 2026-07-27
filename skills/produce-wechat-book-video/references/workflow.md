@@ -128,9 +128,10 @@ Start only after explicit G02 approval.
 5. Save the candidates and source-title evidence to `titles.json`, automatically adopt the first recommendation, and retain all 10 for optional rollback/reselection.
 6. Generate exactly 10 short titles from the adopted long title. Prefer 4–12 Chinese characters and cap at 16.
 7. Save the short candidates, automatically adopt the first recommendation, and retain all 10.
-8. Immediately send a non-blocking title feedback card in the current conversation. Show the adopted long title, adopted short title, `titles.json` path, and state that 10 long plus 10 short candidates are preserved and can be expanded or reselected. Do not wait for confirmation; continue the title-independent production branch.
-9. Do not defer this feedback to the final delivery message and do not treat a file path, Feishu update, log line, or workbench-only state as user-visible title feedback.
-10. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection. Send a new feedback card for the replacement pair and mark the earlier pair superseded.
+8. Save the publication topics `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《书名》` in `titles.json`. Resolve `书名` from the verified edition for each project, for example `#《通透》`; never leave the placeholder in a deliverable.
+9. Immediately send a non-blocking title feedback card in the current conversation. Show the adopted long title, adopted short title, `titles.json` path, and state that 10 long plus 10 short candidates are preserved and can be expanded or reselected. Do not wait for confirmation; continue the title-independent production branch.
+10. Do not defer this feedback to the final delivery message and do not treat a file path, Feishu update, log line, or workbench-only state as user-visible title feedback.
+11. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection. Send a new feedback card for the replacement pair and mark the earlier pair superseded.
 
 The workbench UI and the server-side image executor must both reject image generation until one long title and one short title are confirmed.
 
@@ -243,9 +244,9 @@ After C02 passes, automatically register and expose:
 - final fade-out;
 - draft openability and editable text;
 - cover edition, legibility, safe area, and separation from the MP4;
-- `titles.json` with all 10 long candidates, all 10 short candidates, formula traceability, and the adopted pair.
+- `titles.json` with all 10 long candidates, all 10 short candidates, formula traceability, the adopted pair, and resolved publication topics.
 
-Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`. In the final conversation handoff, provide its clickable path and repeat the adopted long and short titles. Do not call delivery complete if either the manifest entry or the user-facing title-document link is missing.
+Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`. In the final conversation handoff, provide its clickable path and repeat the adopted long and short titles plus `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《当前书名》`. Do not call delivery complete if the manifest entry, user-facing title-document link, or resolved topics are missing.
 
 Do not add a third production confirmation. The user may explicitly roll back any listed artifact for revision.
 

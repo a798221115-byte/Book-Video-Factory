@@ -33,7 +33,7 @@ Deliver:
 8. A separate 1080x1260 WeChat Channels cover using the verified original book cover.
 9. Machine-readable C01 copy-compliance and C02 pre-publication review reports.
 10. A draft-only WeChat Channels upload record, human publication record, and 24h/72h/7d metric snapshots when publication is requested.
-11. The complete `titles.json` candidate document containing all 10 long titles, all 10 short titles, formula traceability, and the adopted pair. Register it in the delivery manifest and surface it as a clickable final-delivery link.
+11. The complete `titles.json` candidate document containing all 10 long titles, all 10 short titles, formula traceability, the adopted pair, and resolved publication topics. Register it in the delivery manifest and surface it as a clickable final-delivery link.
 
 ## Mandatory two-confirmation order
 
@@ -51,7 +51,7 @@ Enforce this exact sequence. A workbench project reuses one persistent Codex tas
 10. Generate and inspect the remaining images; wait for the second explicit human confirmation at G04.
 11. Create captions, HyperFrames review MP4, editable Jianying draft, validation report, and separate cover using the existing real voice timeline.
 12. After the second confirmation, automatically create captions, review MP4, editable Jianying draft, validation report, and separate cover using the existing real voice timeline.
-13. Run C02 full media review. High-risk findings block automatic delivery registration and G07 until corrected and re-reviewed. After C02 passes, automatically register the MP4, draft, cover, reports, and complete `titles.json`; do not add a third production confirmation. In the final conversation handoff, include a clickable `titles.json` link and repeat the adopted long and short titles. Do not call delivery complete when the title candidate document is absent from either the delivery manifest or the user-facing handoff.
+13. Run C02 full media review. High-risk findings block automatic delivery registration and G07 until corrected and re-reviewed. After C02 passes, automatically register the MP4, draft, cover, reports, and complete `titles.json`; do not add a third production confirmation. In the final conversation handoff, include a clickable `titles.json` link, repeat the adopted long and short titles, and show the resolved publication topics. Do not call delivery complete when the title candidate document or publication topics are absent from either the delivery manifest or the user-facing handoff.
 14. In G07, use the pinned `dreammis/social-auto-upload` adapter in draft-only mode. Never click or automate formal publication.
 15. In G08, record the human-confirmed account, work ID, URL, and actual publication time.
 16. In G09, store 24h, 72h, and 7d metric snapshots and produce a traceable review with the next-video experiment.
@@ -134,6 +134,7 @@ Copy reusable media from `assets/`; never move originals.
   - immediately send a visible non-blocking feedback card containing `已采用长标题`, `已采用短标题`, the `titles.json` path, and a concise note that the user may request expansion or reselection while production continues;
   - do not hide title selection inside files, Feishu, logs, or a later final handoff; the current conversation must receive the feedback card as soon as both automatic selections are saved;
   - keep the card concise by default: show the adopted pair and state that 10 long plus 10 short candidates are preserved; list all 20 only when the user asks to expand or reselect;
+  - save the publication topics `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《书名》` in `titles.json`; replace `书名` with the verified current title, preserving the Chinese book-title brackets;
   - regenerating or changing the long title invalidates all short-title candidates and the previous automatic selection.
 - Generate exactly one style sample at G03.
 - Run automatic full-frame and anatomy QA on the style sample, adopt a passing sample as the style baseline, and immediately continue to the remaining images.
@@ -214,5 +215,5 @@ Do not call the task complete until:
 - The Jianying draft opens from a unique folder and all media paths exist.
 - The validation report passes or lists unresolved issues.
 - The separate 1080x1260 cover preserves the verified original edition and passes automated validation.
-- The delivery manifest registers `titles.json`, its 10 long and 10 short candidates, and the adopted pair; the final conversation handoff exposes a clickable document link and repeats both adopted titles.
+- The delivery manifest registers `titles.json`, its 10 long and 10 short candidates, the adopted pair, and the resolved publication topics; the final conversation handoff exposes a clickable document link and repeats both adopted titles and all topics.
 - Feishu project, gate, and task records reflect the actual local state and evidence paths.

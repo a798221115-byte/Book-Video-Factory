@@ -128,7 +128,9 @@ Start only after explicit G02 approval.
 5. Save the candidates and source-title evidence to `titles.json`, automatically adopt the first recommendation, and retain all 10 for optional rollback/reselection.
 6. Generate exactly 10 short titles from the adopted long title. Prefer 4–12 Chinese characters and cap at 16.
 7. Save the short candidates, automatically adopt the first recommendation, and retain all 10.
-8. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection.
+8. Immediately send a non-blocking title feedback card in the current conversation. Show the adopted long title, adopted short title, `titles.json` path, and state that 10 long plus 10 short candidates are preserved and can be expanded or reselected. Do not wait for confirmation; continue the title-independent production branch.
+9. Do not defer this feedback to the final delivery message and do not treat a file path, Feishu update, log line, or workbench-only state as user-visible title feedback.
+10. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection. Send a new feedback card for the replacement pair and mark the earlier pair superseded.
 
 The workbench UI and the server-side image executor must both reject image generation until one long title and one short title are confirmed.
 

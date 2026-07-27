@@ -45,7 +45,7 @@ Enforce this exact sequence. A workbench project reuses one persistent Codex tas
 5. Build and expose the transcript, diagnosis, and WeRead evidence as one traceable G01 source package. Lock the selected evidence when generating the copy; G01 is not a separate human confirmation.
 6. Create derivative copy from verified evidence and original reflection; wait for the first explicit human confirmation at G02.
 7. Run C01 with `media-publish-check`. Preserve the approved original. A block prevents titles, narration, images, and post-production until the user approves a revision and it passes again.
-8. After C01 passes, run two branches in parallel: automatically generate 10 traceable long-title candidates, adopt the first recommendation, generate 10 short-title candidates from it, adopt the first recommendation; and V01 locked narration → measured segment timing → `recipe.json`/storyboard/caption timeline. Preserve all candidates and allow explicit rollback/reselection.
+8. After C01 passes, run two branches in parallel: automatically generate 10 traceable long-title candidates, adopt the first recommendation, generate 10 short-title candidates from it, adopt the first recommendation; and V01 locked narration → measured segment timing → `recipe.json`/storyboard/caption timeline. Preserve all candidates and allow explicit rollback/reselection. Immediately after both title selections are saved, send a non-blocking title feedback card in the current conversation showing the adopted long title, adopted short title, `titles.json` path, and rollback/reselection hint. Continue production without waiting for a reply.
 9. G03 starts only after automatic title selection and V01 real timing are complete. Generate exactly one representative 9:16 style sample, run automatic visual QA, adopt it as the style baseline, and continue without a human stop.
 10. Generate and inspect the remaining images; wait for the second explicit human confirmation at G04.
 11. Create captions, HyperFrames review MP4, editable Jianying draft, validation report, and separate cover using the existing real voice timeline.
@@ -130,6 +130,9 @@ Copy reusable media from `assets/`; never move originals.
   - automatically adopt the first recommended long title while preserving all candidates for optional reselection;
   - generate exactly 10 short titles from the adopted long title only, normally 4–12 Chinese characters and never more than 16;
   - automatically adopt the first recommended short title while preserving all candidates;
+  - immediately send a visible non-blocking feedback card containing `已采用长标题`, `已采用短标题`, the `titles.json` path, and a concise note that the user may request expansion or reselection while production continues;
+  - do not hide title selection inside files, Feishu, logs, or a later final handoff; the current conversation must receive the feedback card as soon as both automatic selections are saved;
+  - keep the card concise by default: show the adopted pair and state that 10 long plus 10 short candidates are preserved; list all 20 only when the user asks to expand or reselect;
   - regenerating or changing the long title invalidates all short-title candidates and the previous automatic selection.
 - Generate exactly one style sample at G03.
 - Run automatic full-frame and anatomy QA on the style sample, adopt a passing sample as the style baseline, and immediately continue to the remaining images.

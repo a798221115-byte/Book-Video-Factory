@@ -1,5 +1,15 @@
 # Technical specification
 
+## Contents
+
+- Video, still-image motion, and typography
+- Locked narration
+- Voice and intro variant binding
+- Final mix
+- Jianying draft requirements
+- Validation
+- Standalone cover
+
 ## Video
 
 - Canvas: 9:16.

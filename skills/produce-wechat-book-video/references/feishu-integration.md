@@ -51,7 +51,7 @@ node scripts/sync_feishu_pipeline.mjs step --binding "<binding>" --project-id "B
 node scripts/sync_feishu_pipeline.mjs step --binding "<binding>" --project-id "BK-20260720-001" --gate G02 --gate-status "待确认" --stage "文案审核" --work-status "待用户确认" --waiting "第一次确认：文案"
 ```
 
-The recurring automation must call `queue` first. It may claim one new row per run, or resume an existing project only when the current required user gate is explicitly `已确认`. `已完成（倒推）`, `提前产出待确认`, local files, and inferred downstream progress are never automation approval.
+The recurring automation must call `queue` first. It may claim one new row per run, or resume an existing project only when G02 or G04 is explicitly `已确认`; automatic nodes resume from their recorded system status. `已完成（倒推）`, `提前产出待确认`, local files, and inferred downstream progress are never user approval.
 
 ## Field contract
 

@@ -2,6 +2,15 @@
 
 Use this reference for the stages before storyboard production.
 
+## Contents
+
+- 1. Download through TikHub
+- 2. Extract and transcribe
+- 3. Diagnose with `dbs-content`
+- 4. Verify with `weread-skills`
+- 5. Build the G01 source package
+- 6. Write and confirm the derivative copy
+
 ## 1. Download through TikHub
 
 Require `TIKHUB_API_KEY`. Do not print the key.

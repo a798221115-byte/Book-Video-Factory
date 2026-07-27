@@ -3,7 +3,7 @@
 ## Derivative-copy construction
 
 - Diagnose the reference with `dbs-content` before writing. Reuse only abstract mechanisms: hook type, tension, information order, emotional curve, sentence rhythm, and closing function.
-- Build content-bearing claims from approved WeRead highlights and original reflection, not from the reference transcript.
+- Build content-bearing claims from verified WeRead highlights and original reflection, not from the reference transcript.
 - Treat reference wording as non-transferable unless it is an independently verified short quotation from the selected WeRead edition.
 - Preserve a quotation ledger in `script_sources.md` and label direct quotations in the user review.
 - Audit the draft against `reference-transcript.txt`. Rewrite distinctive shared phrases, matching sentence sequences, copied examples, and unverified claims.
@@ -34,7 +34,7 @@ Storyboard segmentation:
 
 Composition rules:
 
-- Reserve only a compact upper region for column, title, and author, normally no more than about 15% of frame height.
+- Reserve a low-interference fixed-header band at roughly 18%–30% of frame height for column, title, and author, matching the technical typography baseline.
 - A safe area is not an empty color block. Continue the scene's wall texture, architecture, sky, foliage, weather, atmosphere, or light through title and caption regions at low contrast.
 - Do not use a large pure-color, near-solid, monochrome, or empty gradient field to manufacture negative space anywhere in the frame. This prohibition includes the title band, caption safe area, corners, and lower frame.
 - Require every low-information area to retain scene-coherent low-contrast texture, spatial depth, environmental detail, or natural light and shadow. Low detail is allowed; visually inactive flat fill is not.

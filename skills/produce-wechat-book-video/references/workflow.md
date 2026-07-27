@@ -141,9 +141,10 @@ Start only after explicit G02 approval.
 6. Generate exactly 10 short titles from the adopted long title. Prefer 4–12 Chinese characters and cap at 16.
 7. Save the short candidates, automatically adopt the first recommendation, and retain all 10.
 8. Save the publication topics `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《书名》` in `titles.json`. Resolve `书名` from the verified edition for each project, for example `#《通透》`; never leave the placeholder in a deliverable.
-9. Immediately send a non-blocking title feedback card in the current conversation. Show the adopted long title, adopted short title, `titles.json` path, and state that 10 long plus 10 short candidates are preserved and can be expanded or reselected. Do not wait for confirmation; continue the title-independent production branch.
-10. Do not defer this feedback to the final delivery message and do not treat a file path, Feishu update, log line, or workbench-only state as user-visible title feedback.
-11. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection. Send a new feedback card for the replacement pair and mark the earlier pair superseded.
+9. Immediately send one non-blocking title feedback message in the current conversation after both candidate sets exist. Attach or link the current `titles.json`, then visibly list all 10 long titles as `L01–L10` and all 10 short titles as `S01–S10`. Mark the automatically adopted long and short titles inline.
+10. End the message with the exact reselection syntax: `长标题 L04，短标题 S07`. State that selecting only a different short title applies immediately; selecting a different long title invalidates the current short set, regenerates 10 short titles from that long title, and sends a replacement file plus full replacement list.
+11. Never send only the adopted pair, candidate counts, a file path, a Feishu update, a log line, or a workbench-only state. Do not require the user to ask for expansion. Do not defer the complete list to final delivery, and do not wait for confirmation before continuing the title-independent production branch.
+12. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection. Send the complete replacement 10+10 feedback, mark the earlier file and pair superseded, and preserve both versions for audit.
 
 The workbench UI and the server-side image executor must both reject image generation until one long title and one short title are automatically adopted or explicitly reselected.
 

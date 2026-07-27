@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.0 - 2026-07-28
+
+- Send the complete `titles.json` plus all 10 long and all 10 short candidates in the current conversation immediately after automatic selection.
+- Number candidates `L01–L10` and `S01–S10`, mark the adopted pair, and accept direct reselection by number without adding a normal-path confirmation gate.
+- Regenerate and resend the complete short-title set whenever the selected long title changes.
+
 ## 3.0.0 - 2026-07-27
 
 - Remove Jianying draft generation from the default production path, technical validation, delivery registration, and workbench UI.

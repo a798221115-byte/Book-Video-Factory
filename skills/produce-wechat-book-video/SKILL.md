@@ -42,7 +42,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 6. After C01 passes, run in parallel:
    - generate 10 traceable long titles, adopt the first recommendation, generate 10 short titles from it, and adopt the first recommendation;
    - generate locked narration and persist measured timing to `recipe.json`, storyboard timing fields, and caption timing.
-7. Immediately send a non-blocking title feedback card with the adopted pair, `titles.json` path, candidate counts, and rollback hint. Continue without waiting.
+7. Immediately send one non-blocking title feedback message that attaches or links `titles.json` and visibly lists all 10 long titles plus all 10 short titles, numbered `L01–L10` and `S01–S10`. Mark the adopted pair, include the exact reply syntax for reselection, and never show only the adopted pair. Continue without waiting.
 8. After titles and real timing are complete, build the semantic storyboard, generate exactly one G03 style sample, run automatic visual QA, adopt a passing sample, and continue to the remaining images.
 9. Inspect all images and stop for the second confirmation at G04. Regenerate only failing images when practical.
 10. After G04 confirmation, create captions, final mix, 1080x1920 60fps review MP4, validation report, and separate 1080x1260 cover. Do not create a Jianying draft.
@@ -63,6 +63,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Treat completed narration duration as the timing authority.
 - Keep the standalone cover separate from the MP4 and preserve the verified original edition artwork.
 - Preserve candidates, adopted titles, formula traceability, and resolved publication topics in `titles.json`.
+- Make the complete 10+10 title set user-visible in the current conversation as soon as automatic selection finishes. A file path alone, candidate counts alone, or only the adopted pair is insufficient.
 
 ## Supporting skills and tools
 
@@ -82,7 +83,7 @@ Do not call production complete until required evidence, the two confirmations, 
 In the final handoff:
 
 - link the MP4, cover, validation reports, and `titles.json`;
-- repeat the adopted long and short titles;
+- repeat the adopted long and short titles and keep the complete 10+10 candidate document linked;
 - show all resolved publication topics;
 - expose missing or low-confidence items;
 - report Feishu state when enabled;

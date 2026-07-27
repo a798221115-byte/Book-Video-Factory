@@ -242,7 +242,10 @@ After C02 passes, automatically register and expose:
 - image continuity and anatomy;
 - final fade-out;
 - draft openability and editable text;
-- cover edition, legibility, safe area, and separation from the MP4.
+- cover edition, legibility, safe area, and separation from the MP4;
+- `titles.json` with all 10 long candidates, all 10 short candidates, formula traceability, and the adopted pair.
+
+Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`. In the final conversation handoff, provide its clickable path and repeat the adopted long and short titles. Do not call delivery complete if either the manifest entry or the user-facing title-document link is missing.
 
 Do not add a third production confirmation. The user may explicitly roll back any listed artifact for revision.
 

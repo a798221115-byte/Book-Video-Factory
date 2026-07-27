@@ -58,6 +58,9 @@
     "feedbackCardIncludes": ["adopted_long_title", "adopted_short_title", "titles_json_path", "candidate_counts", "rollback_hint"],
     "feedbackCardCandidateDisplay": "adopted_pair_only_unless_user_requests_expansion",
     "productionContinuesAfterFeedback": true,
+    "includeCandidateDocumentInFinalDelivery": true,
+    "includeAdoptedPairInFinalDelivery": true,
+    "requireTitlesArtifactInDeliveryManifest": true,
     "artifact": "titles.json"
   },
   "storyboardSegmentation": {

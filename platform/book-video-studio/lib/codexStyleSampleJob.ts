@@ -133,7 +133,7 @@ function buildPrompt(taskId: string, imageFileName: string, promptFileName: stri
     `7. 图片路径：${imagePath}`,
     `8. 提示词路径：${promptPath}`,
     "9. 完成后检查图片文件确实存在、可读取，并在最终回复中明确写出保存路径。",
-    "10. 不进入 G04，不生成配音、字幕、视频、剪映草稿、封面，不发布，不归档。",
+    "10. 不进入 G04，不生成配音、字幕、视频、封面，不发布，不归档。",
   ].join("\n");
 }
 

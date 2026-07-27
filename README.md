@@ -5,7 +5,7 @@
 ## 目录
 
 - `platform/`：Book Video Studio 源码、项目规范、飞书集成模板和运维文档。
-- `skills/produce-wechat-book-video/`：从抖音参考链接到微信读书取证、二创文案、分镜、默认女声后期、剪映草稿和封面的完整 Codex skill。
+- `skills/produce-wechat-book-video/`：从抖音参考链接到微信读书取证、二创文案、分镜、默认女声后期、成片和独立封面的完整 Codex skill。
 
 ## 版本
 

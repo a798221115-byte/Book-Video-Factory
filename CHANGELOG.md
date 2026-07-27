@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0 - 2026-07-27
+
+- Remove Jianying draft generation from the default production path, technical validation, delivery registration, and workbench UI.
+- Deliver the MP4, standalone cover, title document, and validation reports after the second confirmation; retain explicit WeChat Channels platform-draft upload as a separate action.
+- Stop creating new `jianying_draft/` directories while preserving all historical files.
+
 ## 2.0.5 - 2026-07-27
 
 - Use the identified or confirmed book title as the workbench project title and persistent Codex task title.

@@ -32,7 +32,6 @@ function initializeWorkDir(id: string) {
     "material",
     "voice",
     "render",
-    "jianying_draft",
     "cover",
   ]) {
     fs.mkdirSync(path.join(dir, rel), { recursive: true });

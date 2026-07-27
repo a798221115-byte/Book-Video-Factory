@@ -16,7 +16,6 @@ SUBDIRS = (
     "material",
     "voice",
     "render",
-    "jianying_draft",
 )
 
 

@@ -957,7 +957,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         await load();
         return;
       }
-      setMessage("第 2 次确认已完成；配音、字幕、成片、剪映草稿、封面和 C02 已自动启动。");
+      setMessage("第 2 次确认已完成；配音、字幕、成片、封面和 C02 已自动启动。");
       await load();
     } catch (error: any) {
       setMessage(String(error?.message || error));
@@ -1024,7 +1024,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
   const refreshDeliveryAssets = async () => {
     if (demoMode) return;
     setBusy(true);
-    setMessage("正在重新检查 G06 成片、封面、剪映草稿和验收报告…");
+    setMessage("正在重新检查 G06 成片、封面和验收报告…");
     try {
       const response = await fetch(`/api/tasks/${taskId}/delivery-assets`, {
         method: "POST",
@@ -1103,17 +1103,12 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
     (item) => item.stepName === "delivery" && item.kind === "cover_generation_status",
   );
   const deliveryCoverStatusMeta = parseJson(deliveryCoverStatusArtifact?.meta);
-  const deliveryDraftArtifact = artifacts.find(
-    (item) => item.stepName === "delivery" && item.kind === "jianying_draft_report" && item.path,
-  );
   const deliveryValidationArtifact = artifacts.find(
     (item) => item.stepName === "delivery" && item.kind === "validation_report" && item.path,
   );
-  const deliveryDraftMeta = parseJson(deliveryDraftArtifact?.meta);
   const deliveryReady = Boolean(
     reviewVideoArtifact?.path &&
     deliveryCoverArtifact?.path &&
-    deliveryDraftArtifact?.path &&
     deliveryValidationArtifact?.path,
   );
   const copyReviewStageReached = [
@@ -2260,7 +2255,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
           <div className="intake-section-heading">
             <div>
               <span className="intake-kicker">自动交付结果</span>
-              <h2>成片、剪映草稿与独立封面</h2>
+              <h2>成片、独立封面与验收报告</h2>
             </div>
             <div className="intake-section-heading-actions">
               <button type="button" className="intake-secondary-action" disabled={busy} onClick={() => rollbackWorkflow("images")}>
@@ -2337,27 +2332,17 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
             </article>
 
             <article className="intake-delivery-card intake-delivery-files">
-              <strong>可编辑剪映草稿与验收</strong>
-              {deliveryDraftArtifact?.path ? (
-                <a className="intake-confirm-action" href={fileUrl(deliveryDraftArtifact.path)} target="_blank" rel="noreferrer">
-                  查看剪映草稿验收报告
-                </a>
-              ) : <small>剪映草稿仍在创建。</small>}
+              <strong>成片技术验收</strong>
               {deliveryValidationArtifact?.path ? (
                 <a className="intake-confirm-action" href={fileUrl(deliveryValidationArtifact.path)} target="_blank" rel="noreferrer">
                   查看成片技术验收报告
                 </a>
-              ) : null}
-              {deliveryDraftMeta.nativeDirectory ? (
-                <small className="intake-delivery-path">
-                  剪映原生草稿：{String(deliveryDraftMeta.nativeDirectory)}
-                </small>
-              ) : null}
+              ) : <small>验收报告仍在生成。</small>}
             </article>
           </div>
 
           <small>
-            C02 通过后，成片、剪映草稿、独立封面和验收报告会自动登记；这里用于查看和返工，不再增加第三次确认。
+            C02 通过后，成片、独立封面和验收报告会自动登记；这里用于查看和返工，不再增加第三次确认。
           </small>
         </section>
       ) : null}

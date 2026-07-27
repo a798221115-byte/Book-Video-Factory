@@ -82,7 +82,7 @@ Inspect every generated frame twice: once at full-frame scale for silhouette and
 
 Typography quality gate:
 
-- Keep generated background images free of text; create all required text on deterministic render and editable Jianying text tracks.
+- Keep generated background images free of text; create all required text in the deterministic render.
 - Verify column, title, and author share the intended center axis and vertical rhythm; reject baseline drift, uneven spacing, accidental rotation, or hierarchy reversal.
 - Verify Chinese and English captions remain paired, centered, separated consistently, and inside the safe area without colliding with the person, hands, face, or key action.
 - Inspect representative frames at the first body frame, every scene containing a person, the longest caption, the tightest safe-area composition, and the final frame.

@@ -190,7 +190,7 @@ async function bootstrap(projectId, book, author, existingProject) {
     "当前阶段": args.stage || "书目与来源核验", "进度": Number(args.progress || 10),
     "工作状态": args["work-status"] || "待用户确认", "当前待确认": args.waiting || "确认微信读书热门划线",
     "确认负责人": "用户", "文案状态": "未开始", "风格样图状态": "未开始", "分镜图状态": "未开始",
-    "配音状态": "未开始", "字幕状态": "未开始", "成片状态": "未开始", "剪映草稿状态": "未开始",
+    "配音状态": "未开始", "字幕状态": "未开始", "成片状态": "未开始",
     "发布状态": "未发布", "下一步动作": args["next-action"] || "展示热门划线并等待确认",
     "最近更新": now, "生产模式": args.mode || "标准全流程", "Codex状态": "等待用户确认",
     "执行指令": "自动", "任务优先级": args.priority || "普通", "Codex运行ID": task.runId,
@@ -258,10 +258,10 @@ async function runMergeGates() {
     ? "修改中"
     : (isApprovedStatus(reviewStatus) && isApprovedStatus(coverStatus) ? "已确认"
       : (reviewStatus === "待确认" || coverStatus === "待确认" ? "待确认" : "未开始"));
-  const combinedNote = [joinNotes(review, cover), "G06 已合并成片、剪映草稿与视频号封面审核"].filter(Boolean).join("；");
+  const combinedNote = [joinNotes(review, cover), "G06 已合并成片与视频号封面审核"].filter(Boolean).join("；");
   await updateRecord(tables.gates, review.record_id, {
-    "节点ID": `${projectId}-G06`, "顺序": 6, "确认节点": "成片、剪映草稿与视频号封面审核",
-    "节点类型": "用户确认", "是否强制": "是", "节点状态": combinedStatus, "负责人": "用户",
+    "节点ID": `${projectId}-G06`, "顺序": 6, "确认节点": "成片与视频号封面审核",
+    "节点类型": "系统记录", "是否强制": "否", "节点状态": combinedStatus, "负责人": "系统",
     "证据与文件": joinEvidence(review, cover), "下一阶段": "准备发布", "备注": combinedNote
   });
   await updateRecord(tables.gates, publication.record_id, {
@@ -347,7 +347,6 @@ async function runStep() {
     "配音状态": args["voice-status"],
     "字幕状态": args["caption-status"] ?? args["captions-status"],
     "成片状态": args["video-status"],
-    "剪映草稿状态": args["draft-status"],
     "发布状态": args["publish-status"],
     "成片时长(秒)": args.duration === undefined ? undefined : Number(args.duration),
     "下一步动作": args["next-action"],

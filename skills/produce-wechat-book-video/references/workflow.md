@@ -11,7 +11,7 @@
 - 7. C01 and V01 compliance, narration, and timing
 - 8. G05 technical post-production
 - 9. C02 and G06 automatic delivery registration
-- 10. G07–G09 draft upload, publication, and review
+- 10. G07–G09 platform draft upload, publication, and review
 
 ## 1. Intake, Feishu, and workspace
 
@@ -47,7 +47,6 @@ work/YYYY-MM-DD-book-slug-NN/
     fragmentNN/
   voice/
   render/
-  jianying_draft/
   cover/
 ```
 
@@ -233,11 +232,7 @@ Prepend the matched fixed intro and preserve its audio. Mix BGM at 0.63 and duck
 
 Use `assets/default-config.json` and `scripts/finalize_mix.py`.
 
-### Jianying draft
-
-Create a new editable draft after timing is stable. Copy intro, images, voice, music, captions, and metadata into the draft bundle. Keep separate tracks for intro, images, voice, music, fixed text, Chinese captions, and English captions.
-
-Validate content, timing, audio peaks, paths, anatomy, typography, IDs, media ranges, and editability. Sync `G05=已通过` only after technical validation passes.
+Validate content, timing, audio peaks, paths, anatomy, typography, and media ranges. Sync `G05=已通过` only after technical validation passes.
 
 ## 9. C02 and G06: automatic delivery registration and cover
 
@@ -245,7 +240,7 @@ Verify the exact original cover from WeRead or another authoritative public list
 
 Create one separate 1080x1260 cover with `scripts/compose_wechat_cover.py`. Preserve the original cover artwork and typography. Generated imagery may be used only around it.
 
-Run C02 across copy/captions, images/cover, final video/audio, technical properties, copyright/AI-label considerations, platform-fit items, and Jianying editability. Save the full report. High-risk findings block automatic delivery registration and draft upload; any correction requires a new C02 report. State clearly that this is automated risk assessment and not a platform guarantee.
+Run C02 across copy/captions, images/cover, final video/audio, technical properties, copyright/AI-label considerations, and platform-fit items. Save the full report. High-risk findings block automatic delivery registration and platform draft upload; any correction requires a new C02 report. State clearly that this is automated risk assessment and not a platform guarantee.
 
 After C02 passes, automatically register and expose:
 
@@ -255,7 +250,6 @@ After C02 passes, automatically register and expose:
 - caption timing and obstruction;
 - image continuity and anatomy;
 - final fade-out;
-- draft openability and editable text;
 - cover edition, legibility, safe area, and separation from the MP4;
 - `titles.json` with all 10 long candidates, all 10 short candidates, formula traceability, the adopted pair, and resolved publication topics.
 
@@ -263,7 +257,7 @@ Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`
 
 Do not add a third production confirmation. The user may explicitly roll back any listed artifact for revision.
 
-## 10. G07–G09: draft upload, human publication, and review
+## 10. G07–G09: platform draft upload, human publication, and review
 
 After C02 passes, delivery artifacts are registered, and the user explicitly requests a draft upload:
 

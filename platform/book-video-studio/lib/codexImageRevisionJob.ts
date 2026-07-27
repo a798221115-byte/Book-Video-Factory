@@ -104,7 +104,7 @@ function buildPrompt(taskId: string, scene: any, currentImagePath: string, outpu
     "1. 先阅读当前项目 AGENTS.md、storyboard/storyboard.json、当前分镜提示词和当前图片。",
     "2. 使用内置 image_gen/imagegen，基于当前图片进行单张修改；只修改用户指出的内容，保留文案语义和整体画风。",
     "3. 输出仍为 9:16 竖屏；无中文、无英文、无书名、无字幕、无标志、无水印。",
-    "4. 不修改其他分镜，不进入配音、字幕、视频、剪映草稿、封面、发布或归档。",
+    "4. 不修改其他分镜，不进入配音、字幕、视频、封面、发布或归档。",
     `5. 将修改后的图片保存到：${outputImagePath}`,
     `6. 将本次实际提示词保存到：${outputPromptPath}`,
     "7. 完成后检查图片存在且可读取，并在最终回复中明确写出保存路径。",

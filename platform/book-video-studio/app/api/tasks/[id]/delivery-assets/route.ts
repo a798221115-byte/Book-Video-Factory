@@ -47,29 +47,12 @@ function newestFile(directory: string, predicate: (name: string) => boolean) {
     .sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0] || null;
 }
 
-function newestDirectory(directory: string) {
-  if (!fs.existsSync(directory)) return null;
-  return fs.readdirSync(directory, { withFileTypes: true })
-    .filter((item) => item.isDirectory())
-    .map((item) => path.join(directory, item.name))
-    .sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0] || null;
-}
-
 function collectDeliveryAssets(taskId: string) {
   const task = getTask(taskId);
   if (!task?.projectPath) throw new Error("任务工作目录不存在");
   const projectDir = path.resolve(task.projectPath);
-  const workRoot = path.resolve(projectDir, "jianying_draft");
-  const nativeRoot = path.resolve(
-    "F:\\JianyingPro\\User Data\\Projects\\com.lveditor.draft",
-  );
   const coverPath = newestFile(path.join(projectDir, "cover"), (name) => /-cover\.png$/i.test(name));
   const coverValidationPath = path.join(projectDir, "cover", "validation.md");
-  const draftReportPath = path.join(workRoot, "draft_check_report.json");
-  const draftDirectory = newestDirectory(workRoot);
-  const nativeDirectory = draftDirectory
-    ? path.join(nativeRoot, path.basename(draftDirectory))
-    : null;
   const validationPath = path.join(projectDir, "render", "validation-report.json");
   const reviewVideo = getArtifacts(taskId).find(
     (item) => item.stepName === "render" && item.kind === "review_video" && item.path,
@@ -79,9 +62,6 @@ function collectDeliveryAssets(taskId: string) {
   if (!reviewVideo?.path) missing.push("审核成片");
   if (!coverPath || !fs.existsSync(coverPath)) missing.push("独立封面");
   if (!fs.existsSync(coverValidationPath)) missing.push("封面验收报告");
-  if (!fs.existsSync(draftReportPath)) missing.push("剪映草稿验收报告");
-  if (!draftDirectory || !fs.existsSync(draftDirectory)) missing.push("剪映工作副本");
-  if (!nativeDirectory || !fs.existsSync(nativeDirectory)) missing.push("剪映原生草稿");
   if (!fs.existsSync(validationPath)) missing.push("成片技术验收报告");
   if (missing.length) return { missing, assets: [] as DeliveryAsset[] };
 
@@ -102,15 +82,6 @@ function collectDeliveryAssets(taskId: string) {
         kind: "cover_validation",
         label: "自动交付 封面验收报告",
         path: projectArtifactPath(coverValidationPath),
-      },
-      {
-        kind: "jianying_draft_report",
-        label: "自动交付 剪映草稿验收报告",
-        path: projectArtifactPath(draftReportPath),
-        meta: {
-          workDirectory: draftDirectory,
-          nativeDirectory,
-        },
       },
       {
         kind: "validation_report",

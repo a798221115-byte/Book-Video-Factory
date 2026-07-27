@@ -47,7 +47,6 @@ function buildPrompt(taskId: string, scope: ComplianceScope, outputPath: string)
         `封面：${cover?.path || path.join(projectDir, "cover")}`,
         `字幕与音频目录：${path.join(projectDir, "render")}；${path.join(projectDir, "voice")}`,
         `分镜图片目录：${path.join(projectDir, "storyboard", "images")}`,
-        `剪映草稿目录：${path.join(projectDir, "jianying_draft")}`,
       ];
   return [
     `【Book Video Studio｜${title}｜${task.bookTitle || taskId}】`,
@@ -56,7 +55,7 @@ function buildPrompt(taskId: string, scope: ComplianceScope, outputPath: string)
       ? "这是文本层面初审。不得声称已经检查视频、画面或音轨。"
       : "这是发布前完整审核。检查文案、字幕、封面、关键画面、音轨、AI 标识、权利来源和发布页适配。",
     scope === "media"
-      ? "审核成片、独立封面、剪映草稿、字幕或音频任一必需产物不存在时，decision 必须为 block，并精确列出缺失项；不得在模态不完整时给 pass。"
+      ? "审核成片、独立封面、字幕或音频任一必需产物不存在时，decision 必须为 block，并精确列出缺失项；不得在模态不完整时给 pass。"
       : "若存在阻断级文案风险，decision 必须为 block。",
     "检查医疗健康表达、极限词、夸大承诺、虚假疗效、导流、商业关系、版权、肖像隐私和 AI 内容标识。",
     "不得自动改写或覆盖原稿。发现高风险问题必须给出精确位置和替换建议。",

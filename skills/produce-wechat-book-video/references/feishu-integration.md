@@ -21,7 +21,7 @@ Use this integration only when `<project-root>/integrations/feishu-book-pipeline
 | G04 | all remaining images | second explicit user confirmation |
 | G05 | post-production technical validation | system PASS |
 | C02 | complete pre-publication media review | system PASS |
-| G06 | register MP4, Jianying draft, cover, and reports | automatic after C02 PASS |
+| G06 | register MP4, cover, and reports | automatic after C02 PASS |
 | G07 | WeChat Channels draft-only upload | explicit upload request plus selected account |
 | G08 | human publication confirmation | recorded account, work ID, URL, and actual time |
 | G09 | 24h/72h/7d analytics review | three traceable snapshots |

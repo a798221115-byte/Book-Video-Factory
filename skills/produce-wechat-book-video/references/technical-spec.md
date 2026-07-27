@@ -6,7 +6,6 @@
 - Locked narration
 - Voice and intro variant binding
 - Final mix
-- Jianying draft requirements
 - Validation
 - Standalone cover
 
@@ -39,9 +38,9 @@ Use these rendered canvas字号 for standard videos unless the user explicitly o
 | Chinese captions | 58 |
 | English captions | 30 |
 
-Color hierarchy: book title is light orange; author name is light blue. Keep the same mapping in the rendered video and editable Jianying text materials.
+Color hierarchy: book title is light orange; author name is light blue.
 
-Keep all four as editable Jianying text materials and preserve one-line caption layout and safe-area spacing.
+Keep one-line caption layout and safe-area spacing.
 
 ## Locked narration
 
@@ -75,7 +74,7 @@ Never substitute references, modes, seeds, or mastering chains between variants.
 
 ## Voice and intro variant binding
 
-Resolve one production variant before narration, caption timing, mixing, or Jianying generation:
+Resolve one production variant before narration, caption timing, or mixing:
 
 | Variant | Voice preset | Fixed intro | Expected duration |
 | --- | --- | --- | --- |
@@ -116,20 +115,6 @@ Ducking:
 
 These are baseline values derived from the approved benchmark comparison. Re-measure when the narration source changes materially.
 
-## Jianying draft requirements
-
-- Inspect a readable local draft matching the installed Jianying version before generating.
-- Use a new unique uppercase UUID.
-- Use the same UUID for content ID, metadata ID, and root-index ID when the project rule requires it.
-- Never reuse an existing native draft folder or ID.
-- Use absolute paths that exist.
-- Copy all media into `Resources/` inside the draft folder before writing paths.
-- Keep source ranges within real media duration.
-- Keep `draft_content.json`, `.bak`, and `template-2.tmp` identical.
-- Use editable text materials for column, title, author, Chinese captions, and English captions.
-- Validate no same-track overlaps and all referenced material IDs.
-- Install one copy under the Jianying native draft root and retain one archival copy under `work/.../jianying_draft/`.
-
 ## Validation
 
 Check:
@@ -142,7 +127,7 @@ Check:
 - decoded peak no higher than about -0.8dBFS;
 - final one-second music fade;
 - one-line captions and forbidden punctuation;
-- image/audio paths and draft ID consistency;
+- image and audio paths;
 - sample frames at the intro boundary, middle, and ending.
 - a passing C02 media report before automatic G06 delivery registration and draft upload;
 - draft-only upload mode, selected account, and idempotency record;
@@ -152,5 +137,5 @@ Check:
 
 - The approved cover is a standalone 1080x1260 (6:7) upload asset.
 - Preserve the verified original cover artwork and typography; generated imagery may only extend the surrounding background.
-- After automated cover validation, do not create a 1080x1920 cover frame, insert a silent clip, shift the existing video/audio, regenerate narration, alter captions, update `recipe.json`, or mutate the Jianying draft.
+- After automated cover validation, do not create a 1080x1920 cover frame, insert a silent clip, shift the existing video/audio, regenerate narration, alter captions, or update `recipe.json`.
 - Validate the cover dimensions, central safe area, original-cover hash, legibility, and manifest path. Any later embedding or distribution work is a separate explicitly requested workflow.

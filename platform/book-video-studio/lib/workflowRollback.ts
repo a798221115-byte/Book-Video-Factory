@@ -265,8 +265,8 @@ export function rollbackImpact(taskId: string, target: RollbackTarget) {
     short_title: "将清空已选短标题，并使 G03 之后的图片、成片及发布流程失效；已完成配音保留。",
     style: "将重新打开当前风格样图审核，并使其余分镜、成片及发布流程失效。",
     images: "将重新打开全部分镜审核，并使字幕、成片、终审及发布流程失效。",
-    post_production: "将重新执行字幕、成片、剪映草稿、封面和发布前审核。",
-    delivery_review: "将返回自动交付结果，重新检查成片、剪映草稿和封面；已上传到视频号的草稿不会自动删除。",
+    post_production: "将重新执行字幕、成片、封面和发布前审核。",
+    delivery_review: "将返回自动交付结果，重新检查成片和封面；已上传到视频号平台的草稿不会自动删除。",
     publication: "将返回 G08 重新填写人工发布信息和时间；平台上已经发布的作品不会被撤回。",
   };
   return {

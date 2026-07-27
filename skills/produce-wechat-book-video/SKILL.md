@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a Douyin reference, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic titles, locked narration, storyboard images, post-production, editable Jianying drafts, standalone covers, delivery validation, optional draft upload, human publication recording, and 24h/72h/7d review.
+description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a Douyin reference, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic titles, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -26,7 +26,7 @@ Use this file as the single orchestration entrypoint. Load detailed references o
 | Full state machine, artifacts, rollback, delivery, or publication tracking | `references/workflow.md` |
 | Douyin download, Whisper transcript, DBS diagnosis, WeRead evidence, or derivative copy | `references/intake-copy-pipeline.md` |
 | Copy voice, storyboard semantics, image prompts, anatomy, reflections, or typography | `references/creative-standards.md` |
-| Narration, timing, motion, render, audio mix, Jianying, or technical validation | `references/technical-spec.md` |
+| Narration, timing, motion, render, audio mix, or technical validation | `references/technical-spec.md` |
 | Standalone WeChat Channels cover | `references/cover-style-spec.md` |
 | Feishu-bound or Feishu-originated work | `references/feishu-integration.md` |
 
@@ -45,8 +45,8 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 7. Immediately send a non-blocking title feedback card with the adopted pair, `titles.json` path, candidate counts, and rollback hint. Continue without waiting.
 8. After titles and real timing are complete, build the semantic storyboard, generate exactly one G03 style sample, run automatic visual QA, adopt a passing sample, and continue to the remaining images.
 9. Inspect all images and stop for the second confirmation at G04. Regenerate only failing images when practical.
-10. After G04 confirmation, create captions, final mix, 1080x1920 60fps review MP4, editable Jianying draft, validation report, and separate 1080x1260 cover.
-11. Run C02. Block delivery registration on high risk; after a pass, automatically register the MP4, draft, cover, reports, and complete `titles.json` without adding a third production confirmation.
+10. After G04 confirmation, create captions, final mix, 1080x1920 60fps review MP4, validation report, and separate 1080x1260 cover. Do not create a Jianying draft.
+11. Run C02. Block delivery registration on high risk; after a pass, automatically register the MP4, cover, reports, and complete `titles.json` without adding a third production confirmation.
 12. Upload to a selected WeChat Channels draft box only on explicit request. Never automate formal publication. Record real publication and 24h/72h/7d metrics only when supplied.
 
 ## Hard invariants
@@ -57,7 +57,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Reuse only abstract reference mechanisms; rebuild content-bearing sentences from verified evidence and original reflection.
 - Do not create a storyboard or images before G02 confirmation and completed automatic title selection.
 - Derive image count from semantic changes, not a fixed total. Treat roughly eight seconds per image only as a soft pacing check.
-- Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render and editable Jianying tracks.
+- Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render.
 - Run subject-mix, flat-block, anatomy, continuity, and reflection checks defined in `references/creative-standards.md`.
 - Default to `female-book-narrator-locked-v1` with the matching female intro. Use the male pair only when explicitly requested.
 - Treat completed narration duration as the timing authority.
@@ -77,11 +77,11 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 
 ## Completion handoff
 
-Do not call production complete until required evidence, the two confirmations, passing or explicitly disclosed validation, final media, editable draft, standalone cover, and delivery manifest exist.
+Do not call production complete until required evidence, the two confirmations, passing or explicitly disclosed validation, final media, standalone cover, and delivery manifest exist.
 
 In the final handoff:
 
-- link the MP4, Jianying draft, cover, validation reports, and `titles.json`;
+- link the MP4, cover, validation reports, and `titles.json`;
 - repeat the adopted long and short titles;
 - show all resolved publication topics;
 - expose missing or low-confidence items;

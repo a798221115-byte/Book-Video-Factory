@@ -280,7 +280,9 @@ export default function IntakeHome({ tasks }: { tasks: TaskRow[] }) {
                       <td className="studio-number">{visibleTasks.length - index}</td>
                       <td><span className="studio-source-badge">抖音</span></td>
                       <td className="studio-title-cell">
-                        <Link href={`/tasks/${task.id}`}>{task.title || "正在读取抖音信息"}</Link>
+                        <Link href={`/tasks/${task.id}`}>
+                          {task.bookTitle ? `《${task.bookTitle}》` : task.title || "正在读取抖音信息"}
+                        </Link>
                         <small>{task.sourceUrl}</small>
                       </td>
                       <td>

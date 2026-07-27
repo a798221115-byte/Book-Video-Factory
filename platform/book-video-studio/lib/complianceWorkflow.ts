@@ -82,7 +82,7 @@ async function runAudit(taskId: string, scope: ComplianceScope) {
     status: "running", progress: 0.05, error: "", startedAt: Date.now(),
   });
   await runVisibleCodexTask({
-    title: `Book Video Studio｜${task.bookTitle || taskId}`,
+    title: task.bookTitle || task.title || taskId,
     prompt: buildPrompt(taskId, scope, outputPath),
     projectRoot: path.resolve(taskDir(taskId), "..", ".."),
     existingThreadId: task.codexThreadId,

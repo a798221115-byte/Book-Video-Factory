@@ -1317,7 +1317,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
         <div>
           <Link href="/">← 返回任务列表</Link>
           <span className="intake-kicker">抖音采集任务</span>
-          <h1>{data.task.title || "正在分析抖音视频"}</h1>
+          <h1>{data.task.bookTitle ? `《${data.task.bookTitle}》` : data.task.title || "正在分析抖音视频"}</h1>
           <p>{data.task.author || "账号信息待获取"} · {data.task.projectPath || "工作目录待建立"}</p>
         </div>
         <div className="detail-header-actions">

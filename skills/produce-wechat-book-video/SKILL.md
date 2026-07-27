@@ -16,6 +16,7 @@ Use this file as the single orchestration entrypoint. Load detailed references o
 - Allow extra pauses only for ambiguous book identity, unavailable required evidence or tools, compliance blocks, explicit rollback, or another genuine exception.
 - Keep formal publication separately human-authorized; draft upload is not publication.
 - Reuse one persistent Codex task/thread per project.
+- Once a book title is identified, use it as the workbench project title and persistent Codex task/thread title; keep the source-video title unchanged as evidence. Apply corrected book titles to both titles and the dated project directory.
 - Keep every human gate reversible. Before rollback, show downstream impact; preserve prior files and audit history, mark stale artifacts superseded, and rerun affected checks.
 
 ## Load references by stage

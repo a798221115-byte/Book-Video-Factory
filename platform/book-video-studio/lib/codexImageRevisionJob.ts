@@ -153,7 +153,7 @@ async function runJob(taskId: string, jobArtifactId: string) {
   const outputPromptPath = path.join(taskDir(taskId), "storyboard", "prompts", initial.expectedPromptFileName);
   const task = getTask(taskId);
   await runVisibleCodexTask({
-    title: `Book Video Studio｜单张图片修改｜${initial.sceneJobId}｜${getTask(taskId)?.bookTitle || taskId}`,
+    title: task?.bookTitle || task?.title || taskId,
     prompt: buildPrompt(taskId, scene, initial.currentImagePath, outputImagePath, outputPromptPath, initial.feedback, initial.revision),
     projectRoot,
     existingThreadId: task?.codexThreadId || initial.threadId,

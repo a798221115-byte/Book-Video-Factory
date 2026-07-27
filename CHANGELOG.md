@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.5 - 2026-07-27
+
+- Use the identified or confirmed book title as the workbench project title and persistent Codex task title.
+- Keep the original source-video title unchanged as evidence, and keep corrected book titles synchronized with the dated project directory.
+
 ## 2.0.0 - 2026-07-26
 
 - Replace the legacy multi-gate happy path with two human confirmations: derivative copy and all storyboard images.

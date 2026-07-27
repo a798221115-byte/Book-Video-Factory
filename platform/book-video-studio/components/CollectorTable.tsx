@@ -57,7 +57,7 @@ function statusLabel(status: string) {
 }
 
 function titleOf(t: TaskRow) {
-  return t.title || t.bookTitle || t.sourceUrl;
+  return t.bookTitle ? `《${t.bookTitle}》` : t.title || t.sourceUrl;
 }
 
 async function writeClipboard(text: string) {

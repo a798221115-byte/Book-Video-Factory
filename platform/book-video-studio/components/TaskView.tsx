@@ -519,7 +519,7 @@ export default function TaskView({ taskId }: { taskId: string }) {
     (name !== "images" || titleWorkflowComplete)
   );
   const extractMeta = parseJson(artifacts.find((a: any) => a.stepName === "extract" && a.kind === "json")?.meta);
-  const title = task.title || extractMeta.title || task.sourceUrl;
+  const title = task.bookTitle ? `《${task.bookTitle}》` : task.title || extractMeta.title || task.sourceUrl;
   const author = task.author || extractMeta.author || "-";
   const required = ["extract", "transcribe", "rewrite", "tts", "images", "subtitle", "render"];
   const completed = required.filter((name) => stepMap.get(name)?.status === "done").length;

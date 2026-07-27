@@ -162,7 +162,7 @@ async function runJob(taskId: string, jobArtifactId: string) {
   const projectRoot = path.resolve(path.join(taskDir(taskId), "..", ".."));
   const task = getTask(taskId);
   await runVisibleCodexTask({
-    title: `Book Video Studio｜G04 剩余分镜｜${task?.bookTitle || taskId}`,
+    title: task?.bookTitle || task?.title || taskId,
     prompt: buildPrompt(taskId),
     projectRoot,
     existingThreadId: task?.codexThreadId || initial.threadId,

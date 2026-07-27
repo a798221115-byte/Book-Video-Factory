@@ -180,7 +180,7 @@ async function runJob(taskId: string, jobArtifactId: string) {
     initial.revision,
   );
   await runVisibleCodexTask({
-    title: `Book Video Studio｜G03 风格样图｜${task.bookTitle || taskId}`,
+    title: task.bookTitle || task.title || taskId,
     prompt,
     projectRoot,
     existingThreadId: task.codexThreadId || initial.threadId,

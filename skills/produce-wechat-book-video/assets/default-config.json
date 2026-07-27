@@ -66,6 +66,17 @@
     "preserveWholeUnits": ["causal_statement", "contrast", "emotional_unit"],
     "forbidFillerToReachCount": true
   },
+  "visualGrammar": {
+    "personIsDefaultSubject": false,
+    "subjectModes": ["character", "space", "landscape", "object", "architecture", "weather"],
+    "characterNecessityValues": ["required", "helpful", "not_needed"],
+    "requireCharacterJustificationWhenRequired": true,
+    "preferNonCharacterWhenMorePrecise": true,
+    "allCharacterStoryboardPolicy": "review_and_replan_unless_every_scene_is_justified",
+    "fixedCharacterQuota": null,
+    "forbidDecorativePersonForContinuity": true,
+    "forbidUnrelatedSceneryFiller": true
+  },
   "stillImageMotion": {
     "enabled": true,
     "assignment": "deterministic-random",

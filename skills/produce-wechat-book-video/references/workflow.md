@@ -144,10 +144,15 @@ Record:
 
 - narration range;
 - visual subject and action;
+- `subjectMode`: `character`, `space`, `landscape`, `object`, `architecture`, or `weather`;
+- `characterNecessity`: `required`, `helpful`, or `not_needed`;
+- `characterJustification` when `characterNecessity=required`;
 - composition safe zones;
 - generated-image prompt;
 - continuity rules;
 - actual voice start/end after narration exists.
+
+Run a subject-mix audit before generating the G03 sample. A person is not the default subject: use space, scenery, architecture, weather, or meaningful objects when they carry the narration more precisely. If every scene uses a character, replan suitable scenes as non-character shots unless every character scene has a narration-specific justification. Do not enforce a fixed quota and do not add unrelated scenery as filler.
 
 Generate exactly one representative original 9:16 style sample. Do not reproduce recognizable reference-video characters, compositions, or cover artwork. Run automatic full-frame, anatomy, relevance, continuity, and flat-block QA. A passing sample becomes the style baseline and immediately unlocks the remaining images.
 
@@ -162,7 +167,8 @@ Generate remaining images with the approved style, palette, identity, period, li
 - character continuity;
 - duplicate or near-duplicate composition;
 - title and caption safe areas;
-- visual grammar variety.
+- visual grammar variety;
+- subject-mix audit result and justification for any all-character storyboard.
 
 Sync `G04=待确认` and stop for all-image approval.
 

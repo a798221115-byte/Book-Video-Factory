@@ -41,8 +41,11 @@ Composition rules:
 - Include this constraint explicitly in every G03 and G04 image-generation prompt and negative prompt.
 - Inspect the entire frame before approval. Reject and regenerate frames where a pure-color or visually inactive flat block is visible, the subject is forced too low, or the meaningful scene occupies too little of the canvas. Do not conceal a failing block with cropping, captions, title cards, blur, or motion.
 - Let the subject and environmental storytelling occupy most of the frame while preserving readable low-detail landing areas for deterministic text.
-- Vary visual grammar across a video. Mix character action with meaningful empty environments, object close-ups, architecture, weather, and natural landscapes; do not default every line to a person standing or looking away.
-- Use a character only when identity, action, relationship, or emotion materially carries the sentence. Use non-character frames when space, light, objects, or nature can express the meaning more precisely.
+- Do not default every line to a person standing, walking, reading, or looking away. Before prompt writing, classify every scene with `subjectMode` (`character`, `space`, `landscape`, `object`, `architecture`, or `weather`) and `characterNecessity` (`required`, `helpful`, or `not_needed`).
+- Use a character only when identity, action, relationship, or emotion materially carries the sentence. Every `characterNecessity=required` scene must record a narration-specific `characterJustification`; visual continuity alone is not a valid justification.
+- Vary visual grammar across a video by mixing character action with meaningful empty space, object close-ups, architecture, weather, and natural landscapes. Prefer a non-character frame when space, light, scenery, architecture, weather, or an object expresses the meaning more precisely.
+- Treat an all-character storyboard as a review warning. Before G03, run a subject-mix audit and convert suitable beats to non-character frames unless every character scene is individually justified. Do not enforce a fixed character/non-character quota and do not add unrelated scenery as filler.
+- Preserve style, palette, period, atmosphere, and light across non-character frames. Character continuity applies only when the recurring character is present; never add a decorative person solely to maintain continuity.
 - Keep caption landing areas low-detail.
 - Place faces, hands, and actions toward lower-middle or sides without colliding with captions.
 - Keep critical information away from the bottom edge.

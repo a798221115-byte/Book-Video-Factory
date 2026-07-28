@@ -211,7 +211,16 @@ function escapeAss(text: string) {
   return text.replaceAll("\\", "\\\\").replaceAll("{", "\\{").replaceAll("}", "\\}");
 }
 
-function buildAss(cards: CaptionCard[], duration: number, title: string, author: string) {
+function buildAss(
+  cards: CaptionCard[],
+  duration: number,
+  title: string,
+  author: string,
+  headerPositions: { column?: number; bookTitle?: number; author?: number } = {},
+) {
+  const columnTop = Number(headerPositions.column ?? 287);
+  const bookTitleTop = Number(headerPositions.bookTitle ?? 357);
+  const authorTop = Number(headerPositions.author ?? 467);
   const lines = [
     "[Script Info]",
     "ScriptType: v4.00+",
@@ -222,9 +231,9 @@ function buildAss(cards: CaptionCard[], duration: number, title: string, author:
     "",
     "[V4+ Styles]",
     "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-    "Style: Column,Microsoft YaHei,32,&H00E8E8E8,&H00FFFFFF,&H80000000,&H00000000,0,0,0,0,100,100,2,0,1,1.5,0,8,40,40,95,1",
-    "Style: Title,Microsoft YaHei,88,&H002A82ED,&H00FFFFFF,&H90000000,&H00000000,1,0,0,0,100,100,0,0,1,2.2,0,8,60,60,165,1",
-    "Style: Author,Microsoft YaHei,48,&H00FFD6A8,&H00FFFFFF,&H90000000,&H00000000,1,0,0,0,100,100,1,0,1,1.8,0,8,40,40,255,1",
+    `Style: Column,Microsoft YaHei,32,&H00E8E8E8,&H00FFFFFF,&H80000000,&H00000000,0,0,0,0,100,100,2,0,1,1.5,0,8,40,40,${columnTop},1`,
+    `Style: Title,Microsoft YaHei,88,&H002A82ED,&H00FFFFFF,&H90000000,&H00000000,1,0,0,0,100,100,0,0,1,2.2,0,8,60,60,${bookTitleTop},1`,
+    `Style: Author,Microsoft YaHei,48,&H00FFD6A8,&H00FFFFFF,&H90000000,&H00000000,1,0,0,0,100,100,1,0,1,1.8,0,8,40,40,${authorTop},1`,
     "Style: CN,Microsoft YaHei,58,&H00FFFFFF,&H00FFFFFF,&HA0000000,&H00000000,1,0,0,0,100,100,0,0,1,3.0,0,2,38,38,560,1",
     "Style: EN,Arial,30,&H00FFFFFF,&H00FFFFFF,&HA0000000,&H00000000,0,0,0,0,100,100,0,0,1,2.2,0,2,55,55,505,1",
     "",
@@ -448,13 +457,15 @@ export async function startLockedFemalePostProduction(taskId: string) {
     const translations = await translateCards(chineseCards);
     const cards = buildCaptionCards(timeline, translations);
 
+    const config = JSON.parse(fs.readFileSync(path.join("F:\\Codex\\.codex\\skills\\produce-wechat-book-video", "assets", "default-config.json"), "utf8"));
+    const headerPositions = config.captions?.typography?.headerPositionsPx || {};
     const cnSrtPath = path.join(dir, "captions-cn-female.srt");
     const enSrtPath = path.join(dir, "captions-en-female.srt");
     const assPath = path.join(dir, "captions-female.ass");
     const recipePath = path.join(dir, "recipe.json");
     fs.writeFileSync(cnSrtPath, buildSrt(cards, "chinese"), "utf8");
     fs.writeFileSync(enSrtPath, buildSrt(cards, "english"), "utf8");
-    fs.writeFileSync(assPath, buildAss(cards, duration, task.bookTitle || "图书", task.bookAuthor || ""), "utf8");
+    fs.writeFileSync(assPath, buildAss(cards, duration, task.bookTitle || "图书", task.bookAuthor || "", headerPositions), "utf8");
 
     const storyboard = JSON.parse(fs.readFileSync(storyboardPath, "utf8"));
     const legacyBeats = false ? (storyboard.beats || []).map((beat: any) => {
@@ -476,7 +487,6 @@ export async function startLockedFemalePostProduction(taskId: string) {
       throw new Error("storyboard.json 缺少真实配音镜头时长");
     }
     const beats = resolveRenderShots(taskId, dir, storyboard, timeline);
-    const config = JSON.parse(fs.readFileSync(path.join("F:\\Codex\\.codex\\skills\\produce-wechat-book-video", "assets", "default-config.json"), "utf8"));
     const introPath = path.resolve(projectRoot, config.introVariants.female.path);
     const musicPath = path.resolve(projectRoot, config.backgroundMusic);
     for (const required of [introPath, musicPath]) {

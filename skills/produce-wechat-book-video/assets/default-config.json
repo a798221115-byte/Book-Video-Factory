@@ -173,11 +173,12 @@
     "normalize": false,
     "denoise": false,
     "retryBadcase": false,
-    "speechSpeed": 1.0,
-    "timeStretchMethod": "none",
-    "bookNamePauseSeconds": 1.8,
-    "ordinaryPauseSeconds": [0.5, 0.6],
-    "finalPauseSeconds": 0.3
+    "speechSpeed": 0.92,
+    "timeStretchMethod": "ffmpeg-atempo-pitch-preserving",
+    "bookNamePauseSeconds": 2.3,
+    "ordinaryPauseSeconds": [0.85, 0.85],
+    "finalPauseSeconds": 0.5,
+    "prosodyProfile": "gentle-reflective"
   },
   "voiceClarity": {
     "variant": "female-locked-v1",
@@ -208,6 +209,12 @@
       "englishCaptionSize": 30,
       "bookTitleColor": "浅橙色",
       "authorColor": "浅蓝色",
+      "headerGroupVerticalShiftRatio": 0.1,
+      "headerPositionsPx": {
+        "column": 287,
+        "bookTitle": 357,
+        "author": 467
+      },
       "unit": "rendered_canvas_font_size"
     }
   },

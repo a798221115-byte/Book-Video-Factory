@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.2.0 - 2026-07-28
+
+- Move the deterministic `读书分享` / book-title / author header group down by 10% of the 1080×1920 canvas, preserve its internal spacing, and read the positions from the shared skill configuration.
+
+## 3.1.1 - 2026-07-28
+
+- Default locked narration to a gentle, reflective 0.92× delivery with longer title, ordinary, and final pauses; regenerate all timing-dependent artifacts from the measured slowed narration.
+- Keep the fixed opening three seconds clean by default: do not overlay AI notices, subtitles, or other newly generated text. The publisher still selects the current platform's AI disclosure at upload time.
+
 ## 3.1.0 - 2026-07-28
 
 - Send the complete `titles.json` plus all 10 long and all 10 short candidates in the current conversation immediately after automatic selection.

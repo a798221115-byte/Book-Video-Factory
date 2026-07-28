@@ -93,16 +93,33 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function readVoiceGenerationConfig() {
+  const defaults = JSON.parse(fs.readFileSync(DEFAULT_CONFIG, "utf8"));
+  const config = defaults.voiceGeneration || {};
+  const ordinary: number[] = Array.isArray(config.ordinaryPauseSeconds)
+    ? config.ordinaryPauseSeconds.map(Number).filter(Number.isFinite)
+    : [Number(config.ordinaryPauseSeconds)];
+  return {
+    speechSpeed: Number(config.speechSpeed ?? 0.92),
+    bookNamePauseSeconds: Number(config.bookNamePauseSeconds ?? 2.3),
+    ordinaryPauseSeconds: ordinary.length
+      ? ordinary.reduce((sum, value) => sum + value, 0) / ordinary.length
+      : 0.85,
+    finalPauseSeconds: Number(config.finalPauseSeconds ?? 0.5),
+  };
+}
+
 function prepareSegments(taskId: string) {
   const task = getTask(taskId);
   if (!task) throw new Error("任务不存在");
   const { filePath, value: storyboard } = readStoryboard(taskId);
   const beats = Array.isArray(storyboard.beats) ? storyboard.beats : [];
   if (!beats.length) throw new Error("storyboard.json 没有可用分镜");
+  const voiceConfig = readVoiceGenerationConfig();
   const title = `《${task.bookTitle || storyboard.book?.title || ""}》`;
   const segments: { text: string; beatId: string; pauseAfterSeconds: number }[] = [];
   if (title !== "《》") {
-    segments.push({ text: title, beatId: String(beats[0]?.id || "title"), pauseAfterSeconds: 1.8 });
+    segments.push({ text: title, beatId: String(beats[0]?.id || "title"), pauseAfterSeconds: voiceConfig.bookNamePauseSeconds });
   }
   const duplicateShareLine = title === "《》"
     ? null
@@ -113,19 +130,19 @@ function prepareSegments(taskId: string) {
     const beatId = String(beat.id);
     if (title !== "《》" && text.startsWith(title)) text = text.slice(title.length).replace(/^[。！？!?\s]+/, "").trim();
     if (duplicateShareLine) text = text.replace(duplicateShareLine, "").trim();
-    if (text) segments.push({ text, beatId, pauseAfterSeconds: 0.55 });
+    if (text) segments.push({ text, beatId, pauseAfterSeconds: voiceConfig.ordinaryPauseSeconds });
   }
   if (!segments.length) throw new Error("分镜中缺少 script_text");
-  segments[segments.length - 1].pauseAfterSeconds = 0.3;
-  return { task, storyboard, storyboardPath: filePath, segments };
+  segments[segments.length - 1].pauseAfterSeconds = voiceConfig.finalPauseSeconds;
+  return { task, storyboard, storyboardPath: filePath, segments, speechSpeed: voiceConfig.speechSpeed };
 }
 
-function timelineMatchesSegments(timelinePath: string, segments: { text: string; pauseAfterSeconds: number }[]) {
+function timelineMatchesSegments(timelinePath: string, segments: { text: string; pauseAfterSeconds: number }[], speechSpeed: number) {
   if (!fs.existsSync(timelinePath)) return false;
   try {
     const previousTimeline = JSON.parse(fs.readFileSync(timelinePath, "utf8"));
     const previousSegments = Array.isArray(previousTimeline.timeline) ? previousTimeline.timeline : [];
-    return previousSegments.length === segments.length && previousSegments.every(
+    return Number(previousTimeline.speechSpeed ?? 1) === speechSpeed && previousSegments.length === segments.length && previousSegments.every(
       (item: any, index: number) =>
         String(item.text || "") === segments[index].text &&
         Number(item.pauseAfterSeconds || 0) === segments[index].pauseAfterSeconds,
@@ -137,11 +154,11 @@ function timelineMatchesSegments(timelinePath: string, segments: { text: string;
 
 export function lockedFemaleNarrationNeedsRegeneration(taskId: string) {
   try {
-    const { segments } = prepareSegments(taskId);
+    const { segments, speechSpeed } = prepareSegments(taskId);
     const voiceDir = path.join(taskDir(taskId), "voice");
     const timelinePath = path.join(voiceDir, "voice-timeline-female-locked-v1.json");
     const masterOutput = path.join(voiceDir, "narration-female-locked-v1-master.wav");
-    return !fs.existsSync(masterOutput) || !timelineMatchesSegments(timelinePath, segments);
+    return !fs.existsSync(masterOutput) || !timelineMatchesSegments(timelinePath, segments, speechSpeed);
   } catch {
     return true;
   }
@@ -281,7 +298,7 @@ export async function startLockedFemaleNarration(
     running.delete(taskId);
     throw error;
   }
-  const { task, storyboard, storyboardPath, segments } = prepared;
+  const { task, storyboard, storyboardPath, segments, speechSpeed } = prepared;
   const projectRoot = path.resolve(taskDir(taskId), "..", "..");
   const voiceDir = path.join(taskDir(taskId), "voice");
   const segmentDir = path.join(voiceDir, "segments-female-locked-v1");
@@ -341,7 +358,7 @@ export async function startLockedFemaleNarration(
       cfgValue: 2.0,
       inferenceTimesteps: 20,
       seed: 42,
-      speechSpeed: 1.0,
+      speechSpeed,
     });
     setStepStatus(taskId, "tts", {
       progress: 0.08,
@@ -357,7 +374,7 @@ export async function startLockedFemaleNarration(
     const reusableSegments = fs.existsSync(segmentDir)
       ? fs.readdirSync(segmentDir).filter((name) => /^segment\d+\.wav$/i.test(name)).length
       : 0;
-    const timelineMatches = timelineMatchesSegments(timelinePath, segments);
+    const timelineMatches = timelineMatchesSegments(timelinePath, segments, speechSpeed);
     const canReuseSynthesis =
       fs.existsSync(rawOutput) &&
       fs.existsSync(timelinePath) &&
@@ -388,7 +405,11 @@ export async function startLockedFemaleNarration(
     }
 
     const preset = JSON.parse(fs.readFileSync(PRESET_PATH, "utf8"));
-    const filters = [preset.mastering?.stage1, preset.mastering?.stage2].filter(Boolean).join(",");
+    const filters = [
+      speechSpeed === 1 ? "" : `atempo=${speechSpeed.toFixed(3)}`,
+      preset.mastering?.stage1,
+      preset.mastering?.stage2,
+    ].filter(Boolean).join(",");
     setStepStatus(taskId, "tts", {
       progress: 0.92,
       output: JSON.stringify({
@@ -410,6 +431,28 @@ export async function startLockedFemaleNarration(
 
     const timeline = JSON.parse(fs.readFileSync(timelinePath, "utf8"));
     const durationSeconds = probeWavDuration(masterOutput);
+    const nativeTimeline = Array.isArray(timeline.timeline) ? timeline.timeline : [];
+    const retimed = nativeTimeline.map((item: any) => {
+      const startSeconds = Number(item.startSeconds || 0) / speechSpeed;
+      const speechDurationSeconds = Number(item.speechDurationSeconds || 0) / speechSpeed;
+      const pauseAfterSeconds = Number(item.pauseAfterSeconds || 0) / speechSpeed;
+      return {
+        ...item,
+        startSeconds: Number(startSeconds.toFixed(3)),
+        speechDurationSeconds: Number(speechDurationSeconds.toFixed(3)),
+        pauseAfterSeconds: Number(pauseAfterSeconds.toFixed(3)),
+        endSeconds: Number((startSeconds + speechDurationSeconds + pauseAfterSeconds).toFixed(3)),
+      };
+    });
+    if (retimed.length) {
+      const last = retimed[retimed.length - 1];
+      last.pauseAfterSeconds = Number(Math.max(0, durationSeconds - last.startSeconds - last.speechDurationSeconds).toFixed(3));
+      last.endSeconds = Number(durationSeconds.toFixed(3));
+    }
+    timeline.nativeSpeechSpeed = 1.0;
+    timeline.speechSpeed = speechSpeed;
+    timeline.timeStretchMethod = speechSpeed === 1 ? "none" : "ffmpeg-atempo-pitch-preserving";
+    timeline.timeline = retimed;
     timeline.masterOutput = projectArtifactPath(masterOutput);
     timeline.rawOutput = projectArtifactPath(rawOutput);
     timeline.mastering = preset.mastering;
@@ -434,7 +477,7 @@ export async function startLockedFemaleNarration(
         cfgValue: preset.generation.cfgValue,
         inferenceTimesteps: preset.generation.inferenceTimesteps,
         seed: preset.generation.seed,
-        speechSpeed: 1.0,
+        speechSpeed,
         durationSeconds: timeline.durationSeconds,
         timelinePath: projectArtifactPath(timelinePath),
       },

@@ -48,7 +48,14 @@ The production default is `female`. Never infer `male` from legacy assets, filen
 
 Narration starts after C01 copy compliance passes, in parallel with automatic long/short title generation and selection. Store every completed segment's measured start/end immediately, update `recipe.json` and storyboard timing fields, and use those values as the caption and image-hold authority. G03 must wait for this real timeline.
 
-Read the selected project preset before generation. Both variants use VoxCPM2 / `openbmb/VoxCPM2`, CFG 2.0, 20 inference steps, fixed seed 42 for every segment, normalize false, denoise false, retry bad case false, and native 1.00x generation speed.
+Read the selected project preset before generation. Both variants use VoxCPM2 / `openbmb/VoxCPM2`, CFG 2.0, 20 inference steps, fixed seed 42 for every segment, normalize false, denoise false, and retry bad case false. Generate natively first, then apply the configured pitch-preserving tempo only when the configured speech speed is not `1.00x`.
+
+### 舒缓感性旁白默认
+
+- 默认使用 `gentle-reflective` 语气：0.92× 保音调放缓，书名后停顿 2.3 秒，普通段落后停顿 0.85 秒，结尾停顿 0.5 秒。
+- 口播文本只可在不改变字词、事实、引文边界和文案含义的前提下，增加自然的逗号、句号和省略停顿，服务于呼吸、情绪递进和落句；保存这份仅供配音的韵律稿供审计。
+- 对每段真实完成配音重新测时，并以重测后的时长更新字幕、分镜停留和成片时间轴；不得沿用变速前时长。
+- 用户明确要求更快、更慢、更强或更克制的表达时，以用户指令覆盖这组默认值，并记录覆盖参数。
 
 ### 男版音色
 
@@ -81,7 +88,11 @@ Resolve one production variant before narration, caption timing, or mixing:
 | `male` | `male-podcast-locked-v2` (`男版音色`) | `固定/男版前3秒固定开头.mp4` (`男版片头`) | 2.97 seconds |
 | `female` | `female-book-narrator-locked-v1` (`女版音色`) | `固定/女版前3秒固定开头.mp4` (`女版片头`) | 2.97 seconds |
 
-Use `female` as the default when the user has not selected a variant. When the user requests a male version, resolve both voice and intro to `male`. Verify the intro file hash from `assets/default-config.json`, retain its original audio, and use its measured duration as the narration and caption offset. Treat a voice/intro mismatch as a blocking validation error unless the user explicitly authorizes cross-pairing.
+Use `female` as the default when the user has not selected a variant. When the user requests a male version, resolve both voice and intro to `male`. Verify the intro file hash from `assets/default-config.json`, retain its original audio, and use its measured duration as the narration and caption offset. Treat a voice/intro mismatch as a blocking validation error unless the user explicitly authorizes cross-pairing. Do not overlay AI-generation notices, subtitles, or other new text on the fixed opening three seconds unless the user explicitly asks for it; the platform's publication-page AI disclosure remains a separate manual action.
+
+## Deterministic header placement
+
+Read the fixed `读书分享` / book-title / author header positions from `captions.typography.headerPositionsPx`. For the standard 1080×1920 canvas, shift the complete header group down by 10% of canvas height (192px) from the former 95 / 165 / 275px baseline. The default top offsets are therefore 287px for the column label, 357px for the book title, and 467px for the author. Preserve the three lines' internal spacing and apply any future position override to the complete group rather than moving one line independently.
 
 ## Approved final mix
 

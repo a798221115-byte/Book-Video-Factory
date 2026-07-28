@@ -58,6 +58,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Do not create a storyboard or images before G02 confirmation and completed automatic title selection.
 - Derive image count from semantic changes, not a fixed total. Treat roughly eight seconds per image only as a soft pacing check.
 - Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render.
+- Position the deterministic `读书分享` / book-title / author header group from `captions.typography.headerPositionsPx`; the default 1080×1920 template shifts the complete group down by 10% of canvas height while preserving its internal spacing.
 - Run subject-mix, flat-block, anatomy, continuity, and reflection checks defined in `references/creative-standards.md`.
 - Default to `female-book-narrator-locked-v1` with the matching female intro. Use the male pair only when explicitly requested.
 - Treat completed narration duration as the timing authority.

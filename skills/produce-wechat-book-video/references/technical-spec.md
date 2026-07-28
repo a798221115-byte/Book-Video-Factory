@@ -35,7 +35,7 @@ Use these rendered canvas字号 for standard videos unless the user explicitly o
 | --- | ---: |
 | Book title | 88 |
 | Author name | 48 |
-| Chinese captions | 58 |
+| Chinese captions | 68 |
 | English captions | 30 |
 
 Color hierarchy: book title is light orange; author name is light blue.

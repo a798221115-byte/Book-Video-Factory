@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.1 - 2026-07-28
+
+- 将图书视频默认中文字幕渲染字号从 58 调整为 68。
+
 ## 3.2.0 - 2026-07-28
 
 - Move the deterministic `读书分享` / book-title / author header group down by 10% of the 1080×1920 canvas, preserve its internal spacing, and read the positions from the shared skill configuration.

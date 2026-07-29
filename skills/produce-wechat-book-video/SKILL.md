@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a Douyin reference, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic titles, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
+description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a supplied narration transcript, Douyin/video link, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic titles, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -9,7 +9,11 @@ Use this file as the single orchestration entrypoint. Load detailed references o
 
 ## Operating contract
 
-- Treat a Douyin link, book title, or topic as intake only.
+- Route intake automatically:
+  - when the user supplies a usable narration transcript, use the text-intake path and do not download or transcribe a linked reference unless explicitly requested;
+  - when the user supplies only a Douyin or other supported video link, use the link-intake path and preserve the existing TikHub/download/Whisper evidence chain.
+- A substantial supplied transcript takes precedence when the same message also includes a source link. Keep that link as optional provenance metadata.
+- Treat a supplied transcript, Douyin/video link, book title, or topic as intake only.
 - Require exactly two blocking human confirmations on the normal path:
   1. G02 derivative narration copy.
   2. G04 all storyboard images.
@@ -34,9 +38,11 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 
 ## Core workflow
 
-1. Accept a real WeRead topic or supplied reference. When a Douyin link exists, download only through `scripts/download_douyin_tikhub.mjs`; stop if TikHub is unavailable.
-2. Preserve TikHub metadata, untouched Whisper ASR, minimally corrected transcript, and `dbs-content` diagnosis.
-3. Verify the exact WeRead edition and popular highlights. Build a traceable G01 source package and lock the selected evidence automatically; do not add a human stop.
+1. Classify the intake before acquiring evidence:
+   - supplied narration text: preserve it verbatim as `raw-transcript-user.txt`, create the minimally corrected `reference-transcript.txt`, and skip video download and ASR;
+   - link only: for a Douyin link, download only through `scripts/download_douyin_tikhub.mjs`, preserve untouched Whisper ASR, and stop if TikHub is unavailable.
+2. Identify the book from the transcript when possible. If the identity is unambiguous, continue automatically; stop only when the title is missing, low-confidence, or maps to multiple plausible WeRead editions.
+3. Run `dbs-content`, verify the exact WeRead edition, and retrieve the first 10 whole-book popular highlights in returned heat order. Build a traceable G01 source package and lock the selected evidence automatically; do not add a human stop.
 4. Write the derivative narration from verified evidence, reusable abstract mechanisms, and original reflection. Stop for the first confirmation at G02.
 5. Run C01 with `media-publish-check`. Preserve the confirmed copy; block downstream work on a failing or high-risk result.
 6. After C01 passes, run in parallel:
@@ -51,8 +57,9 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 
 ## Hard invariants
 
-- Never silently replace TikHub, WeRead, or another required evidence source.
-- Preserve `raw-transcript-whisper.txt` before cleanup. Correct only context-supported transcription errors; do not rewrite the reference copy.
+- Never silently replace TikHub on the link-intake path, WeRead, or another required evidence source.
+- Preserve the original transcript according to its real source: `raw-transcript-user.txt` for supplied text or `raw-transcript-whisper.txt` for Whisper. Never create a fake Whisper artifact for text intake.
+- Correct only context-supported transcription or punctuation errors in `reference-transcript.txt`; do not rewrite the reference copy.
 - Keep reference-video wording and WeRead quotations as separate evidence classes. Never present an unverified reference sentence as a book quotation.
 - Reuse only abstract reference mechanisms; rebuild content-bearing sentences from verified evidence and original reflection.
 - Do not create a storyboard or images before G02 confirmation and completed automatic title selection.

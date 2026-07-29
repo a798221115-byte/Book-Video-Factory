@@ -15,7 +15,7 @@
 
 ## 1. Intake, Feishu, and workspace
 
-Accept a Douyin link or book title as intake only. Do not infer either required human confirmation or authorization for external publication.
+Accept a supplied narration transcript, Douyin/video link, or book title as intake only. Route a usable supplied transcript to text intake; route a link without usable narration text to link intake. If both are present, text intake takes precedence and the link remains provenance metadata unless the user explicitly requests video verification. Do not infer either required human confirmation or authorization for external publication.
 
 When Feishu sync is enabled:
 
@@ -32,6 +32,7 @@ work/YYYY-MM-DD-book-slug-NN/
   video_clips/
     reference-metadata.json
     reference-audio-16k.wav
+    raw-transcript-user.txt
     raw-transcript-whisper.txt
     reference-transcript.txt
     reference-copy-analysis.md
@@ -66,9 +67,20 @@ Every user-facing gate must expose a return action. A return is a controlled wor
 
 At minimum support returning to book identity, G01 sources, G02 copy, automatic long/short title selection, G03 style, G04 images, G05 post-production, G06 delivery registration, and G08 publication information.
 
+Only create the raw transcript file that matches the actual intake source. Text intake does not create the MP4, WAV, or Whisper artifact; link intake does not create `raw-transcript-user.txt`.
+
 ## 2. Pre-G01: reference acquisition and diagnosis
 
-When the user supplies a Douyin link:
+When the user supplies a usable narration transcript:
+
+1. Preserve the exact input immediately as `raw-transcript-user.txt`.
+2. Write provider, acquisition time, optional source URL, character count, and SHA-256 to `reference-metadata.json`.
+3. Create the simplified, minimally corrected `reference-transcript.txt`.
+4. Do not download a linked video or run ASR unless the user explicitly requests verification.
+5. Apply `dbs-content` to the corrected transcript.
+6. Save the diagnosis as `reference-copy-analysis.md`.
+
+When the user supplies a Douyin link without a usable transcript:
 
 1. Run `scripts/download_douyin_tikhub.mjs`.
 2. Require `TIKHUB_API_KEY`.
@@ -94,17 +106,17 @@ Use `weread-skills` to:
 
 Write `script_sources.md` containing:
 
-- TikHub metadata and reference paths;
+- the intake mode and its real source artifacts: user-text metadata and raw text path, or TikHub metadata and video/Whisper paths;
 - reference transcript;
 - DBS diagnosis;
 - verified edition;
-- ranked highlights;
+- the first 10 whole-book popular highlights in returned heat order, or every returned item when fewer than 10 exist;
 - quotation boundaries;
 - reference claims that WeRead does not verify.
 
 Expose the source package in the workbench and lock the selected evidence when copy generation starts. Sync `G01=已锁定（自动）` and continue to the derivative-copy candidate. G01 is auditable and reversible but is not a separate human confirmation.
 
-If TikHub or WeRead is unavailable, expose that exact blocker. Do not silently replace either source.
+If TikHub is unavailable on link intake, or WeRead is unavailable on either path, expose that exact blocker. Do not silently replace either source.
 
 ## 4. First confirmation G02: derivative copy
 
@@ -133,7 +145,7 @@ Save the draft as `script.txt`, sync `G02=待确认`, set the project to waiting
 
 Start only after explicit G02 approval.
 
-1. Read the original Douyin title from TikHub metadata.
+1. On link intake, read the original Douyin title from TikHub metadata. On text intake, use an explicitly supplied source title when available; otherwise record `sourceTitleMode=user_transcript` and use the reference opening only as a rhythm cue.
 2. Use `dbs-xhs-title` as a formula matcher. Select 5–8 formulas across at least three psychological trigger categories.
 3. Generate exactly 10 WeChat Channels long titles. Imitate the source title's approximate length (normally within about ±20%), oral rhythm, emotional strength, and punctuation pattern, but do not copy its distinctive wording, examples, or sentence sequence.
 4. For every candidate, record the formula ID, trigger category, formula template, original proven example, and one-sentence recommendation reason.

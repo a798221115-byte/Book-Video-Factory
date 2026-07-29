@@ -1,17 +1,44 @@
-# Douyin intake and derivative-copy pipeline
+# Dual intake and derivative-copy pipeline
 
 Use this reference for the stages before storyboard production.
 
 ## Contents
 
-- 1. Download through TikHub
-- 2. Extract and transcribe
-- 3. Diagnose with `dbs-content`
-- 4. Verify with `weread-skills`
-- 5. Build the G01 source package
-- 6. Write and confirm the derivative copy
+- 1. Classify text versus link intake
+- 2. Preserve the reference transcript
+- 3. Link intake through TikHub and Whisper
+- 4. Diagnose with `dbs-content`
+- 5. Verify with `weread-skills`
+- 6. Build the G01 source package
+- 7. Write and confirm the derivative copy
 
-## 1. Download through TikHub
+## 1. Classify text versus link intake
+
+Choose exactly one acquisition path before creating source artifacts:
+
+- **Text intake:** the user supplies a substantial, usable narration transcript. Preserve the supplied text verbatim and skip video download, audio extraction, and ASR.
+- **Link intake:** the user supplies a Douyin or other supported video link without a usable narration transcript. Use the existing download and transcription path.
+
+When one message contains both a substantial transcript and a source link, the transcript takes precedence. Keep the link as optional provenance metadata, but do not download it unless the user explicitly requests video verification.
+
+A short topic, book title, instruction, caption, or link-preview sentence is not a usable narration transcript. Do not misroute those inputs as text intake.
+
+## 2. Preserve the reference transcript
+
+For text intake:
+
+1. Write the exact user-supplied narration to `video_clips/raw-transcript-user.txt` before any cleanup.
+2. Record `provider=user_supplied_text`, acquisition time, optional source URL, original character count, and SHA-256 in `video_clips/reference-metadata.json`.
+3. Convert the working copy to simplified Chinese when needed.
+4. Correct only context-supported book-title errors, obvious homophones, word segmentation, punctuation, and paragraph boundaries.
+5. Save the minimally corrected copy to `video_clips/reference-transcript.txt`.
+6. Never create `raw-transcript-whisper.txt`, a fake video file, or fabricated TikHub metadata for this path.
+
+For link intake, preserve the actual Whisper output and metadata defined below.
+
+Do not rewrite, summarize, expand, reorder, polish, or improve the reference copy during intake cleanup. Keep the raw and corrected files separate.
+
+## 3. Link intake through TikHub and Whisper
 
 Require `TIKHUB_API_KEY`. Do not print the key.
 
@@ -34,7 +61,7 @@ The script must:
 
 If TikHub is unavailable or the key is missing, stop and expose the exact blocker. Do not silently switch providers.
 
-## 2. Extract and transcribe
+After download:
 
 1. Use FFmpeg to create a mono 16 kHz PCM WAV under `video_clips/`.
 2. Use the local Whisper executable and multilingual model configured by the project `AGENTS.md`.
@@ -48,9 +75,7 @@ If TikHub is unavailable or the key is missing, stop and expose the exact blocke
    - paragraph boundaries.
 6. Save the cleaned copy to `reference-transcript.txt`.
 
-Do not rewrite, summarize, expand, reorder, polish, or improve the reference copy during transcription. Keep the raw and cleaned files separate.
-
-## 3. Diagnose with `dbs-content`
+## 4. Diagnose with `dbs-content`
 
 Use `dbs-content` as a diagnostic framework, even though the parent workflow will later write the derivative copy. Save the result to `reference-copy-analysis.md`.
 
@@ -100,29 +125,33 @@ Analyze mechanisms, not just topics. A useful diagnosis explains the order in wh
 
 Do not use `dbs-content` to draft the new narration. The parent skill owns the derivative writing step.
 
-## 4. Verify with `weread-skills`
+## 5. Verify with `weread-skills`
 
 Follow the `weread-skills` documentation:
 
-1. Search by book title with `/store/search` and explicit `scope=10`.
-2. Resolve the exact `bookId`.
-3. Use `/book/info` to verify title, author, translator, publisher, publication date, and ISBN when returned.
-4. Use `/book/bestbookmarks` with `chapterUid=0` for whole-book popular highlights.
-5. Preserve sentence text, chapter, and highlight count.
-6. Stop immediately if the API returns `upgrade_info`; complete the requested skill upgrade before retrying.
-7. Never replace unavailable WeRead evidence with another source without user approval.
+1. Extract the highest-confidence book-title candidate from `reference-transcript.txt`.
+2. If the title is missing or low-confidence, stop and request the book title instead of guessing.
+3. Search by book title with `/store/search` and explicit `scope=10`.
+4. Resolve the exact `bookId`.
+5. Use `/book/info` to verify title, author, translator, publisher, publication date, and ISBN when returned.
+6. Use `/book/bestbookmarks` with `chapterUid=0` for whole-book popular highlights.
+7. Preserve the first 10 returned items in heat order, including sentence text, chapter, and highlight count. If fewer than 10 are returned, preserve all returned items and disclose the shortfall.
+8. Stop immediately if the API returns `upgrade_info`; complete the requested skill upgrade before retrying.
+9. Never replace unavailable WeRead evidence with another source without user approval.
 
 When several books share a title, use visible reference evidence such as author name or original cover to select the edition. If the edition remains ambiguous, present the candidates and stop.
 
-## 5. Build the G01 source package
+## 6. Build the G01 source package
 
 Write `script_sources.md` with:
 
-- TikHub source URL, `awemeId`, title, author, duration, and metadata path;
+- intake mode: `user_supplied_text` or `video_link`;
+- for text intake: raw user transcript path, optional source URL, acquisition time, character count, SHA-256, and metadata path;
+- for link intake: TikHub source URL, `awemeId`, title, author, duration, and metadata path;
 - cleaned reference transcript path;
 - DBS diagnosis path;
 - exact WeRead edition and deep link;
-- ranked popular highlights with chapter names and counts;
+- the first 10 whole-book popular highlights in returned heat order, with chapter names and counts;
 - a quotation ledger separating:
   - verified WeRead quotations;
   - reference-video wording;
@@ -131,7 +160,7 @@ Write `script_sources.md` with:
 
 Show the source package in the workbench, lock the selected evidence when copy generation starts, and continue. G01 is traceable and reversible but does not consume a human confirmation.
 
-## 6. Write the derivative copy after G01 evidence lock
+## 7. Write the derivative copy after G01 evidence lock
 
 Use this sequence:
 
@@ -155,7 +184,7 @@ Save the result as `script.txt`, sync G02 to waiting for confirmation, and stop.
 
 After the first G02 confirmation, run automatic title generation and selection before any storyboard or image work:
 
-- read the TikHub Douyin title;
+- use the TikHub Douyin title on link intake; on text intake, use an explicitly supplied source title when available, otherwise record `sourceTitleMode=user_transcript` and use the reference opening only as a rhythm cue;
 - use `dbs-xhs-title` to match 5–8 formulas across at least three trigger categories;
 - generate and preserve exactly 10 traceable long-title candidates, automatically adopting the first recommendation;
 - generate exactly 10 short-title candidates only from that adopted long title, automatically adopting the first recommendation;

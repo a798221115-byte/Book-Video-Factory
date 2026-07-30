@@ -228,6 +228,12 @@
         "bookTitle": 357,
         "author": 467
       },
+      "captionPositionsPx": {
+        "alignment": 2,
+        "chineseMarginV": 560,
+        "englishMarginV": 510,
+        "renderAsSeparateStyles": true
+      },
       "unit": "rendered_canvas_font_size"
     }
   },

@@ -42,6 +42,15 @@ Color hierarchy: book title is light orange; author name is light blue.
 
 Keep one-line caption layout and safe-area spacing.
 
+Lock the standard bilingual caption placement to the previously approved 1080×1920 baseline:
+
+| Caption | ASS alignment | MarginV |
+| --- | ---: | ---: |
+| Chinese | bottom center (`2`) | 560 |
+| English | bottom center (`2`) | 510 |
+
+Render Chinese and English as two independent ASS styles with identical time boundaries. Do not combine them into a single style with `\N`, and do not substitute a lower bottom margin. These values are production defaults and may change only when the user explicitly requests a different position.
+
 ## Locked narration
 
 The production default is `female`. Never infer `male` from legacy assets, filenames, prior projects, or a stale configuration value; select it only from an explicit user request.
@@ -53,6 +62,7 @@ Read the selected project preset before generation. Both variants use VoxCPM2 / 
 ### 舒缓感性旁白默认
 
 - 默认使用 `gentle-reflective` 语气：0.92× 保音调放缓，书名后停顿 2.3 秒，普通段落后停顿 0.85 秒，结尾停顿 0.5 秒。
+- 在生成成片前验证实际时间轴中的 `speechSpeed` 与停顿参数；若仍为 1.00×、书名后 1.8 秒或普通停顿约 0.55 秒，视为过时配置并阻断渲染。
 - 口播文本只可在不改变字词、事实、引文边界和文案含义的前提下，增加自然的逗号、句号和省略停顿，服务于呼吸、情绪递进和落句；保存这份仅供配音的韵律稿供审计。
 - 对每段真实完成配音重新测时，并以重测后的时长更新字幕、分镜停留和成片时间轴；不得沿用变速前时长。
 - 用户明确要求更快、更慢、更强或更克制的表达时，以用户指令覆盖这组默认值，并记录覆盖参数。

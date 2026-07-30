@@ -66,6 +66,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Derive image count from semantic changes, not a fixed total. Treat roughly eight seconds per image only as a soft pacing check.
 - Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render.
 - Position the deterministic `读书分享` / book-title / author header group from `captions.typography.headerPositionsPx`; the default 1080×1920 template shifts the complete group down by 10% of canvas height while preserving its internal spacing.
+- Render Chinese and English captions as separate bottom-aligned ASS styles. For the standard 1080×1920 template, lock Chinese `MarginV=560` and English `MarginV=510`; never collapse them into one `\N`-joined style or fall back to a low bottom margin.
 - Run subject-mix, flat-block, anatomy, continuity, and reflection checks defined in `references/creative-standards.md`.
 - Default to `female-book-narrator-locked-v1` with the matching female intro. Use the male pair only when explicitly requested.
 - Treat completed narration duration as the timing authority.

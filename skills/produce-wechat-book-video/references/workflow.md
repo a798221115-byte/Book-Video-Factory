@@ -65,7 +65,7 @@ Every user-facing gate must expose a return action. A return is a controlled wor
 6. keep independent completed work when valid, such as retaining V01 narration when only a title changes;
 7. warn that an existing platform draft or published post is an external side effect and will not be automatically deleted or withdrawn.
 
-At minimum support returning to book identity, G01 sources, G02 copy, automatic long/short title selection, G03 style, G04 images, G05 post-production, G06 delivery registration, and G08 publication information.
+At minimum support returning to book identity, G01 sources, G02 copy, automatic long/short title and publication-topic selection, G03 style, G04 images, G05 post-production, G06 delivery registration, and G08 publication information.
 
 Only create the raw transcript file that matches the actual intake source. Text intake does not create the MP4, WAV, or Whisper artifact; link intake does not create `raw-transcript-user.txt`.
 
@@ -152,17 +152,20 @@ Start only after explicit G02 approval.
 5. Save the candidates and source-title evidence to `titles.json`, automatically adopt the first recommendation, and retain all 10 for optional rollback/reselection.
 6. Generate exactly 10 short titles from the adopted long title. Prefer 4–12 Chinese characters and cap at 16.
 7. Save the short candidates, automatically adopt the first recommendation, and retain all 10.
-8. Save the publication topics `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《书名》` in `titles.json`. Resolve `书名` from the verified edition for each project, for example `#《通透》`; never leave the placeholder in a deliverable.
-9. Immediately send one non-blocking title feedback message in the current conversation after both candidate sets exist. Attach or link the current `titles.json`, then visibly list all 10 long titles as `L01–L10` and all 10 short titles as `S01–S10`. Mark the automatically adopted long and short titles inline.
-10. End the message with the exact reselection syntax: `长标题 L04，短标题 S07`. State that selecting only a different short title applies immediately; selecting a different long title invalidates the current short set, regenerates 10 short titles from that long title, and sends a replacement file plus full replacement list.
-11. Never send only the adopted pair, candidate counts, a file path, a Feishu update, a log line, or a workbench-only state. Do not require the user to ask for expansion. Do not defer the complete list to final delivery, and do not wait for confirmation before continuing the title-independent production branch.
-12. If long candidates are regenerated or the adopted long title changes, clear short candidates and regenerate the automatic short-title selection. Send the complete replacement 10+10 feedback, mark the earlier file and pair superseded, and preserve both versions for audit.
+8. Generate exactly 10 publication-topic sets from the verified book identity, confirmed narration, and adopted long title. Number them `T01–T10`, automatically adopt `T01`, and save every set plus its one-sentence recommendation reason in `titles.json`.
+9. Each topic set must contain exactly seven unique hashtags separated by one space and no commas. Always include `#读书`, `#好书推荐`, and the resolved `#《书名》`; select the other four from narration-relevant themes. `T01` defaults to `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《书名》` when those themes fit. Resolve `书名` from the verified edition and never leave a placeholder in a deliverable.
+10. Immediately send one non-blocking selection feedback message in the current conversation after all three candidate sets exist. Attach or link the current `titles.json`, then visibly list all 10 long titles as `L01–L10`, all 10 short titles as `S01–S10`, and all 10 topic sets as `T01–T10`. Mark all three automatically adopted items inline.
+11. End the message with the exact reselection syntax: `长标题 L04，短标题 S07，话题 T03`. State that selecting only a different short title or topic set applies immediately; selecting a different long title invalidates both the current short-title set and topic-set candidates, regenerates 10 of each from that long title, and sends a complete replacement file plus full replacement lists.
+12. Never send only the adopted items, candidate counts, a file path, a Feishu update, a log line, or a workbench-only state. Do not require the user to ask for expansion. Do not defer the complete lists to final delivery, and do not wait for confirmation before continuing the selection-independent production branch.
+13. If long candidates are regenerated or the adopted long title changes, clear short-title and topic-set candidates and regenerate both automatic selections. Send the complete replacement 10+10+10 feedback, mark the earlier file and adopted trio superseded, and preserve both versions for audit.
 
-The workbench UI and the server-side image executor must both reject image generation until one long title and one short title are automatically adopted or explicitly reselected.
+At minimum, `titles.json` must store `topicCandidates` as 10 objects with `id`, `topics`, `line`, and `recommendationReason`, plus `adoptedTopicId`, `adoptedTopics`, and the copy-ready `adoptedTopicLine`. The `topics` array and `line` must represent the same seven resolved hashtags in the same order.
+
+The workbench UI and the server-side image executor must both reject image generation until one long title, one short title, and one publication-topic set are automatically adopted or explicitly reselected.
 
 ## 5. Gate G03: storyboard and exactly one style sample
 
-Start only after explicit G02 approval and completion of automatic long/short title selection.
+Start only after explicit G02 approval and completion of automatic long/short title and publication-topic selection.
 
 Split the approved copy by meaningful changes in idea, action, scene, emotion, or narrative function. Let the copy determine the total number of visual beats; do not set a default range or derive a fixed count from video length.
 
@@ -208,7 +211,7 @@ Immediately after explicit G02 approval, run `media-publish-check` against the a
 
 After C01 passes, start two branches in parallel:
 
-- automatic long-title generation/adoption followed by short-title generation/adoption;
+- automatic long-title generation/adoption followed by short-title and publication-topic-set generation/adoption;
 - V01 locked narration, measured segment timing, `voice/` artifacts, `recipe.json`, storyboard timing fields, and caption timing basis.
 
 G03 cannot start until both branches finish. The measured narration is the timing authority; roughly eight seconds per image remains only a semantic pacing check.
@@ -264,9 +267,9 @@ After C02 passes, automatically register and expose:
 - image continuity and anatomy;
 - final fade-out;
 - cover edition, legibility, safe area, and separation from the MP4;
-- `titles.json` with all 10 long candidates, all 10 short candidates, formula traceability, the adopted pair, and resolved publication topics.
+- `titles.json` with all 10 long candidates, all 10 short candidates, all 10 publication-topic sets, formula traceability, recommendation reasons, the adopted trio, and resolved adopted publication topics.
 
-Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`. In the final conversation handoff, provide its clickable path and repeat the adopted long and short titles plus `#读书 #好书推荐 #人生感悟 #认知成长 #自我提升 #文字的力量 #《当前书名》`. Do not call delivery complete if the manifest entry, user-facing title-document link, or resolved topics are missing.
+Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`. In the final conversation handoff, provide its clickable path and repeat the adopted long title, short title, and copy-ready adopted topic line. Do not call delivery complete if the manifest entry, user-facing selection-document link, complete 10+10+10 candidates, or resolved adopted topics are missing.
 
 Do not add a third production confirmation. The user may explicitly roll back any listed artifact for revision.
 
@@ -276,7 +279,7 @@ After C02 passes, delivery artifacts are registered, and the user explicitly req
 
 1. G07 selects an existing logged-in WeChat Channels account and calls the pinned `dreammis/social-auto-upload` adapter with `is_draft=True`.
 2. Use one deterministic idempotency key per task/account/final-video version. On retry, resume or return the existing upload record instead of creating an uncontrolled duplicate.
-3. Upload the final video, standalone cover, adopted long/short titles, description, and tags. Never automate the formal publish click.
+3. Upload the final video, standalone cover, adopted long/short titles, description, and adopted publication topics. Never automate the formal publish click.
 4. G08 waits for the user to publish in the platform backend and record account, work ID, URL, and actual publication time.
 5. G09 accepts separate 24h, 72h, and 7d snapshots, derives engagement/share/save/follow conversion rates, and writes a review plus next-video experiment.
 

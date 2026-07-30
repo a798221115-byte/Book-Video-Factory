@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.4.0 - 2026-07-30
+
+- Upgrade `produce-wechat-book-video` publication topics into 10 selectable `T01–T10` topic sets alongside the existing long and short title choices.
+- Require complete 10+10+10 feedback, automatic `T01` adoption, topic recommendation reasons, resolved book-title hashtags, and topic regeneration when the adopted long title changes.
+
 ## 3.2.1 - 2026-07-28
 
 - 将图书视频默认中文字幕渲染字号从 58 调整为 68。

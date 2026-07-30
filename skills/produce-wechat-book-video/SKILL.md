@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a supplied narration transcript, Douyin/video link, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic titles, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
+description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a supplied narration transcript, Douyin/video link, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -46,10 +46,10 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 4. Write the derivative narration from verified evidence, reusable abstract mechanisms, and original reflection. Stop for the first confirmation at G02.
 5. Run C01 with `media-publish-check`. Preserve the confirmed copy; block downstream work on a failing or high-risk result.
 6. After C01 passes, run in parallel:
-   - generate 10 traceable long titles, adopt the first recommendation, generate 10 short titles from it, and adopt the first recommendation;
+   - generate 10 traceable long titles, adopt the first recommendation, generate 10 short titles and 10 publication-topic sets from it, and adopt the first recommendation in each set;
    - generate locked narration and persist measured timing to `recipe.json`, storyboard timing fields, and caption timing.
-7. Immediately send one non-blocking title feedback message that attaches or links `titles.json` and visibly lists all 10 long titles plus all 10 short titles, numbered `L01–L10` and `S01–S10`. Mark the adopted pair, include the exact reply syntax for reselection, and never show only the adopted pair. Continue without waiting.
-8. After titles and real timing are complete, build the semantic storyboard, generate exactly one G03 style sample, run automatic visual QA, adopt a passing sample, and continue to the remaining images.
+7. Immediately send one non-blocking selection feedback message that attaches or links `titles.json` and visibly lists all 10 long titles, all 10 short titles, and all 10 publication-topic sets, numbered `L01–L10`, `S01–S10`, and `T01–T10`. Mark the adopted long title, short title, and topic set, include the exact reply syntax for reselection, and never show only the adopted items. Continue without waiting.
+8. After the long title, short title, publication-topic set, and real timing are complete, build the semantic storyboard, generate exactly one G03 style sample, run automatic visual QA, adopt a passing sample, and continue to the remaining images.
 9. Inspect all images and stop for the second confirmation at G04. Regenerate only failing images when practical.
 10. After G04 confirmation, create captions, final mix, 1080x1920 60fps review MP4, validation report, and separate 1080x1260 cover. Do not create a Jianying draft.
 11. Run C02. Block delivery registration on high risk; after a pass, automatically register the MP4, cover, reports, and complete `titles.json` without adding a third production confirmation.
@@ -70,8 +70,9 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Default to `female-book-narrator-locked-v1` with the matching female intro. Use the male pair only when explicitly requested.
 - Treat completed narration duration as the timing authority.
 - Keep the standalone cover separate from the MP4 and preserve the verified original edition artwork.
-- Preserve candidates, adopted titles, formula traceability, and resolved publication topics in `titles.json`.
-- Make the complete 10+10 title set user-visible in the current conversation as soon as automatic selection finishes. A file path alone, candidate counts alone, or only the adopted pair is insufficient.
+- Preserve all candidates, adopted titles, formula traceability, topic-set recommendation reasons, and the resolved adopted publication topics in `titles.json`.
+- Make the complete 10+10+10 selection set user-visible in the current conversation as soon as automatic selection finishes. A file path alone, candidate counts alone, or only the adopted items are insufficient.
+- Generate exactly 10 publication-topic sets. Each set must contain exactly seven unique, space-separated hashtags, always include `#读书`, `#好书推荐`, and the resolved `#《当前书名》`, and use four narration-relevant topics for the remaining positions. Automatically adopt `T01`.
 
 ## Supporting skills and tools
 
@@ -91,8 +92,8 @@ Do not call production complete until required evidence, the two confirmations, 
 In the final handoff:
 
 - link the MP4, cover, validation reports, and `titles.json`;
-- repeat the adopted long and short titles and keep the complete 10+10 candidate document linked;
-- show all resolved publication topics;
+- repeat the adopted long title, short title, and publication-topic set, and keep the complete 10+10+10 candidate document linked;
+- show the adopted publication topics as one copy-ready line;
 - expose missing or low-confidence items;
 - report Feishu state when enabled;
 - distinguish completed production from optional draft upload and manual publication.

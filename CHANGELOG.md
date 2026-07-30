@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.5.0 - 2026-07-30
+
+- Add the `produce-script-video` Skill for the standalone `用成稿直出` control phrase at either end of a final narration script.
+- Preserve the supplied narration without derivative rewriting while automatically running storyboard images, locked narration, captions, editing, validation, and delivery.
+- Keep routine copy and image gates disabled in direct-production mode while preserving explicit compliance, dependency, media-quality, publication, and archival boundaries.
+
 ## 3.4.0 - 2026-07-30
 
 - Upgrade `produce-wechat-book-video` publication topics into 10 selectable `T01–T10` topic sets alongside the existing long and short title choices.

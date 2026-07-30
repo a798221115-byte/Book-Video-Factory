@@ -1,0 +1,4 @@
+interface:
+  display_name: "成稿直出视频"
+  short_description: "粘贴最终口播稿，直接生成图片、配音、字幕和竖屏成片"
+  default_prompt: "Use $produce-script-video to turn my final narration script directly into a finished vertical video without rewriting it."

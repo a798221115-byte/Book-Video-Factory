@@ -22,11 +22,11 @@ Use this integration only when `<project-root>/integrations/feishu-book-pipeline
 | G05 | post-production technical validation | system PASS |
 | C02 | complete pre-publication media review | system PASS |
 | G06 | register MP4, cover, and reports | automatic after C02 PASS |
-| G07 | WeChat Channels draft-only upload | explicit upload request plus selected account |
-| G08 | human publication confirmation | recorded account, work ID, URL, and actual time |
+| G07 | WeChat Channels draft-only upload | explicit draft request plus selected account |
+| G08 | multi-platform automatic publication | selected accounts plus explicit per-task publication authorization |
 | G09 | 24h/72h/7d analytics review | three traceable snapshots |
 
-Formal publication is always manual. G07 may create a platform draft only; it must never click the platform publish action.
+G07 remains draft-only. G08 may automate formal publication only after explicit per-task authorization; record a separate result for every selected platform/account and preserve partial failures for safe retry.
 
 Never infer G02 or G04 confirmation from existing files. Historical projects may use legacy gates, but new projects use only these two production confirmations.
 
@@ -40,7 +40,7 @@ Run the sync script:
 4. when waiting for confirmation (`待确认` / `等待用户确认`);
 5. when validation passes;
 6. when a step fails or is blocked;
-7. when a draft upload, human publication, metric snapshot, or review is recorded.
+7. when a draft upload, publication authorization, per-platform publication result, metric snapshot, or review is recorded.
 
 Example commands:
 

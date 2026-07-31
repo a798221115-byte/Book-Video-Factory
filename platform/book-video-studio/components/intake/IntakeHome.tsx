@@ -50,6 +50,9 @@ const statusCopy: Record<string, { label: string; tone: string }> = {
   media_compliance_failed: { label: "C02 审核失败", tone: "error" },
   waiting_render_review: { label: "自动登记交付产物", tone: "run" },
   ready_for_draft_upload: { label: "待上传视频号草稿", tone: "ready" },
+  publishing: { label: "多平台发布中", tone: "run" },
+  publication_failed: { label: "自动发布失败", tone: "error" },
+  publication_partial_failure: { label: "部分平台发布失败", tone: "error" },
   uploading_draft: { label: "视频号草稿上传中", tone: "run" },
   waiting_publication_confirmation: { label: "待人工发布确认", tone: "wait" },
   waiting_analytics_24h: { label: "待录入 24h 数据", tone: "wait" },
@@ -101,6 +104,7 @@ function gateLabel(task: TaskRow) {
   if (["ready_for_post_production", "waiting_render_review", "done"].includes(task.status)) return "自动后期与交付";
   if (task.status.startsWith("media_compliance_")) return "C02 发布审核";
   if (["ready_for_draft_upload", "uploading_draft"].includes(task.status)) return "G07 草稿上传";
+  if (["publishing", "publication_failed", "publication_partial_failure"].includes(task.status)) return "G08 多平台自动发布";
   if (task.status === "waiting_publication_confirmation") return "G08 人工发布";
   if (task.status.startsWith("waiting_analytics_") || task.status === "analytics_complete") return "G09 数据复盘";
   if (task.status === "failed") return "处理异常";

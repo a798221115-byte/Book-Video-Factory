@@ -25,6 +25,7 @@ for (const route of [
   ["app", "api", "tasks", "[id]", "compliance", "route.ts"],
   ["app", "api", "tasks", "[id]", "voice-timeline", "route.ts"],
   ["app", "api", "tasks", "[id]", "draft-upload", "route.ts"],
+  ["app", "api", "tasks", "[id]", "auto-publish", "route.ts"],
   ["app", "api", "tasks", "[id]", "publication", "route.ts"],
   ["app", "api", "tasks", "[id]", "metrics", "route.ts"],
   ["app", "api", "tasks", "[id]", "rollback", "route.ts"],
@@ -38,10 +39,19 @@ assert.doesNotMatch(uploader, /click\([^)]*正式发布/, "adapter must not auto
 const draftUploadRoute = read("app", "api", "tasks", "[id]", "draft-upload", "route.ts");
 assert.match(draftUploadRoute, /duplicatePrevented/);
 assert.match(draftUploadRoute, /waiting_publication_confirmation/, "restored draft must return to G08");
+const autoPublishRoute = read("app", "api", "tasks", "[id]", "auto-publish", "route.ts");
+assert.match(autoPublishRoute, /AUTO_PUBLISH_CONFIRMED/, "formal publication requires explicit per-task authorization");
+assert.match(autoPublishRoute, /publicationIdempotencyKey/, "formal publication must be idempotent per target");
+assert.match(autoPublishRoute, /publication_partial_failure/, "multi-platform partial failure must be retryable");
+const socialPublisher = read("scripts", "publish_social_video.py");
+assert.match(socialPublisher, /"douyin", "weixin_channels"/, "publisher must support Douyin and WeChat Channels");
+assert.match(socialPublisher, /is_draft=False/, "authorized WeChat Channels publication must publish formally");
 
 const manifest = JSON.parse(read("integrations", "third-party-tools.json"));
-assert.equal(manifest.tools["social-auto-upload"].mode, "weixin_channels_draft_only");
-assert.equal(manifest.tools["social-auto-upload"].formalPublishAutomation, false);
+assert.equal(manifest.tools["social-auto-upload"].mode, "explicit_authorization_multi_platform_publish");
+assert.equal(manifest.tools["social-auto-upload"].formalPublishAutomation, true);
+assert.equal(manifest.tools["social-auto-upload"].requiresPerTaskExplicitAuthorization, true);
+assert.deepEqual(manifest.tools["social-auto-upload"].supportedPlatforms, ["douyin", "weixin_channels"]);
 assert.match(manifest.tools["social-auto-upload"].installPath, /^F:\\/);
 assert.match(manifest.tools["media-publish-check"].installPath, /^F:\\/);
 

@@ -12,7 +12,7 @@
 - 7. C01 and V01 compliance, narration, and timing
 - 8. G05 technical post-production
 - 9. C02 and G06 automatic delivery registration
-- 10. G07–G09 platform draft upload, publication, and review
+- 10. G07–G09 platform draft upload, authorized automatic publication, and review
 
 ## 1. Intake, Feishu, and workspace
 
@@ -298,14 +298,17 @@ Register `titles.json` as a formal delivery artifact in `delivery-manifest.json`
 
 Do not add a third production confirmation. The user may explicitly roll back any listed artifact for revision.
 
-## 10. G07–G09: platform draft upload, human publication, and review
+## 10. G07–G09: platform draft upload, authorized automatic publication, and review
 
-After C02 passes, delivery artifacts are registered, and the user explicitly requests a draft upload:
+After C02 passes and delivery artifacts are registered, expose two separate distribution actions:
 
-1. G07 selects an existing logged-in WeChat Channels account and calls the pinned `dreammis/social-auto-upload` adapter with `is_draft=True`.
-2. Use one deterministic idempotency key per task/account/final-video version. On retry, resume or return the existing upload record instead of creating an uncontrolled duplicate.
-3. Upload the final video, standalone cover, adopted long/short titles, description, and adopted publication topics. Never automate the formal publish click.
-4. G08 waits for the user to publish in the platform backend and record account, work ID, URL, and actual publication time.
-5. G09 accepts separate 24h, 72h, and 7d snapshots, derives engagement/share/save/follow conversion rates, and writes a review plus next-video experiment.
+1. G07 is the compatible WeChat Channels draft action. It requires an explicit draft-upload request and a selected logged-in account, then calls the pinned `dreammis/social-auto-upload` adapter with `is_draft=True`. It never clicks formal publish.
+2. G08 is formal multi-platform distribution. It remains locked until the user selects one or more logged-in Douyin/WeChat Channels accounts and explicitly confirms the irreversible publication action for this task. A prior copy approval, image approval, default account, global preference, completed render, or draft request is not publication authorization.
+3. After G08 authorization, publish the final video and platform-appropriate metadata automatically. Use the standalone 1080x1260 cover only for WeChat Channels; do not force that asset into Douyin's incompatible cover slot.
+4. Use one deterministic idempotency key per task/platform/account/final-video version. On retry, return successful existing records and retry only missing or failed targets. Never create an uncontrolled duplicate.
+5. Persist `platform`, account, authorization time, upload time, publication time, final status, error, and available platform work ID/URL for every target. A mixed result is `publication_partial_failure`; expose the failed targets and keep successful external publications intact.
+6. G09 accepts separate 24h, 72h, and 7d snapshots for successfully published records, derives engagement/share/save/follow conversion rates, and writes a review plus next-video experiment.
 
-Every transition, wait state, retry, error, and artifact must update the same persistent Codex task and the workbench workflow run.
+The initial supported formal-publication targets are `douyin` and `weixin_channels`. Other `social-auto-upload` platforms may be added only after their adapter, account preflight, metadata mapping, success detection, idempotency behavior, and validation are implemented; “等平台” is not permission to guess an unsupported uploader.
+
+Every authorization, transition, wait state, retry, partial failure, error, and artifact must update the same persistent Codex task and the workbench workflow run.

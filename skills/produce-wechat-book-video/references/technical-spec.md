@@ -150,9 +150,10 @@ Check:
 - one-line captions and forbidden punctuation;
 - image and audio paths;
 - sample frames at the intro boundary, middle, and ending.
-- a passing C02 media report before automatic G06 delivery registration and draft upload;
-- draft-only upload mode, selected account, and idempotency record;
-- no automated formal publication action.
+- a passing C02 media report before automatic G06 delivery registration and any draft or formal upload;
+- draft-only mode for G07, selected account, and idempotency record;
+- explicit per-task authorization, selected platform accounts, platform-appropriate cover handling, and per-target idempotency records before G08 formal publication;
+- success detection and a durable per-platform result for every automatic publication attempt.
 
 ## Approved standalone cover
 

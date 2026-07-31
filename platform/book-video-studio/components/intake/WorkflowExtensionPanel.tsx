@@ -15,7 +15,7 @@ const NODE_LABELS: Record<string, string> = {
   voice_timeline: "V01 提前配音与真实时间轴",
   media_compliance: "C02 发布前完整审核",
   draft_upload: "G07 视频号草稿箱",
-  publication: "G08 人工发布确认",
+  publication: "G08 多平台自动发布",
   analytics: "G09 发布数据复盘",
 };
 
@@ -29,6 +29,9 @@ const METRIC_FIELDS = [
 export default function WorkflowExtensionPanel({ taskId, data, reload, onRollback }: Props) {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [accountId, setAccountId] = useState("");
+  const [socialAccounts, setSocialAccounts] = useState<any[]>([]);
+  const [publishAccounts, setPublishAccounts] = useState<Record<string, string>>({});
+  const [publishAuthorized, setPublishAuthorized] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [publication, setPublication] = useState({ platformWorkId: "", url: "", publishedAt: "" });
@@ -45,6 +48,13 @@ export default function WorkflowExtensionPanel({ taskId, data, reload, onRollbac
       .then((payload) => {
         setAccounts(payload.accounts || []);
         if (payload.accounts?.[0]) setAccountId(payload.accounts[0].id);
+        const available = payload.socialAccounts || [];
+        setSocialAccounts(available);
+        setPublishAccounts(Object.fromEntries(
+          ["weixin_channels", "douyin"].map((platform) => [
+            platform, available.find((item: any) => item.platform === platform)?.id || "",
+          ]),
+        ));
       })
       .catch(() => {});
   }, []);
@@ -131,9 +141,48 @@ export default function WorkflowExtensionPanel({ taskId, data, reload, onRollbac
         </div>
       ) : null}
 
-      {status === "waiting_publication_confirmation" || latestRecord?.status === "published" ? (
+      {["ready_for_draft_upload", "done", "publication_failed", "publication_partial_failure"].includes(status) ? (
         <div className="workflow-action-card">
-          <h3>G08 人工发布确认</h3>
+          <h3>G08 明确授权后自动发布</h3>
+          <p>选择平台账号并授权后，系统会点击正式发布。发布是外部不可逆操作；失败目标可按幂等记录安全重试。</p>
+          {["weixin_channels", "douyin"].map((platform) => {
+            const platformAccounts = socialAccounts.filter((item) => item.platform === platform);
+            return (
+              <label key={platform}>
+                <span>{platform === "weixin_channels" ? "视频号" : "抖音"}</span>
+                <select value={publishAccounts[platform] || ""} onChange={(event) => setPublishAccounts({
+                  ...publishAccounts, [platform]: event.target.value,
+                })}>
+                  <option value="">不发布到此平台</option>
+                  {platformAccounts.map((account) => (
+                    <option key={`${platform}-${account.id}`} value={account.id}>{account.label}</option>
+                  ))}
+                </select>
+              </label>
+            );
+          })}
+          <label>
+            <input type="checkbox" checked={publishAuthorized} onChange={(event) => setPublishAuthorized(event.target.checked)} />
+            我确认将本任务成片正式发布到上述账号
+          </label>
+          <button disabled={busy || !publishAuthorized || !Object.values(publishAccounts).some(Boolean)} onClick={() => post(
+            `/api/tasks/${taskId}/auto-publish`,
+            {
+              authorization: "AUTO_PUBLISH_CONFIRMED",
+              targets: Object.entries(publishAccounts)
+                .filter(([, selectedAccount]) => selectedAccount)
+                .map(([platform, selectedAccount]) => ({ platform, accountId: selectedAccount })),
+            },
+          )}>
+            授权并自动发布到所选平台
+          </button>
+          {!socialAccounts.length ? <small>请先用 social-auto-upload 登录抖音或视频号账号。</small> : null}
+        </div>
+      ) : null}
+
+      {status === "waiting_publication_confirmation" ? (
+        <div className="workflow-action-card">
+          <h3>兼容入口：确认旧版视频号草稿已人工发布</h3>
           <p>草稿：{latestRecord?.draftId || "—"} · 账号：{latestRecord?.accountId || "—"}</p>
           <button disabled={busy} onClick={() => onRollback?.("delivery_review")}>返回自动交付结果</button>
           <input placeholder="视频号作品 ID（必填）" value={publication.platformWorkId} onChange={(event) => setPublication({ ...publication, platformWorkId: event.target.value })} />
@@ -147,7 +196,7 @@ export default function WorkflowExtensionPanel({ taskId, data, reload, onRollbac
         </div>
       ) : null}
 
-      {latestRecord?.status === "published" && status !== "waiting_publication_confirmation" ? (
+      {records.some((record: any) => record.status === "published") && status !== "waiting_publication_confirmation" ? (
         <div className="workflow-action-card">
           <h3>G09 发布数据复盘</h3>
           <button disabled={busy} onClick={() => onRollback?.("publication")}>返回修改 G08 发布信息</button>

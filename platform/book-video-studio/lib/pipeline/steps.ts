@@ -63,7 +63,7 @@ export const STEP_LABELS: Record<StepName, string> = {
   voice_timeline: "V01 提前配音与真实时间轴",
   media_compliance: "C02 发布前完整审核",
   draft_upload: "G07 视频号草稿箱",
-  publication: "G08 人工发布确认",
+  publication: "G08 多平台自动发布",
   analytics: "G09 发布数据复盘",
 };
 

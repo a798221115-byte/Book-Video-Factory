@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, draft-upload, and track a WeChat Channels vertical book video from a supplied final narration script, narration reference, Douyin/video link, WeRead discovery, book title, or draft topic. Use for explicit “成稿直出” production without derivative rewriting, evidence-backed derivative copy, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
+description: Produce, review, distribute, and track a vertical book video from a supplied final narration script, narration reference, Douyin/video link, WeRead discovery, book title, or draft topic. Use for explicit “成稿直出” production without derivative rewriting, evidence-backed derivative copy, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional WeChat Channels draft upload, explicitly authorized multi-platform publication, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -20,7 +20,7 @@ Use this file as the single orchestration entrypoint. Load detailed references o
   2. G04 all storyboard images.
 - In direct-final-script mode, the explicit instruction is the first confirmation; G04 remains the only later production stop.
 - Allow extra pauses only for ambiguous book identity, unavailable required evidence or tools, compliance blocks, explicit rollback, or another genuine exception.
-- Keep formal publication separately human-authorized; draft upload is not publication.
+- Keep formal publication separately human-authorized per task. After the user selects accounts and explicitly authorizes the irreversible action, the workbench may complete formal publication automatically.
 - Reuse one persistent Codex task/thread per project.
 - Once a book title is identified, use it as the workbench project title and persistent Codex task/thread title; keep the source-video title unchanged as evidence. Apply corrected book titles to both titles and the dated project directory.
 - Keep every human gate reversible. Before rollback, show downstream impact; preserve prior files and audit history, mark stale artifacts superseded, and rerun affected checks.
@@ -58,7 +58,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 9. Inspect all images and stop for the second confirmation at G04. Regenerate only failing images when practical.
 10. After G04 confirmation, create captions, final mix, 1080x1920 60fps review MP4, validation report, and separate 1080x1260 cover. Do not create a Jianying draft.
 11. Run C02. Block delivery registration on high risk; after a pass, automatically register the MP4, cover, reports, and complete `titles.json` without adding a third production confirmation.
-12. Upload to a selected WeChat Channels draft box only on explicit request. Never automate formal publication. Record real publication and 24h/72h/7d metrics only when supplied.
+12. Keep the compatible WeChat Channels draft-box upload available on explicit request. For formal distribution, require selected platform accounts plus explicit per-task authorization, then use the pinned `dreammis/social-auto-upload` adapter to publish automatically to Douyin and/or WeChat Channels, persist one idempotent result per platform/account/video version, and continue successful publications to 24h/72h/7d review.
 
 ## Hard invariants
 
@@ -90,7 +90,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Use `imagegen` for original storyboard images and revisions.
 - Use `media-publish-check` for C01 and C02.
 - Use local VoxCPM for locked narration and FFmpeg for assembly, audio, captions, and validation.
-- Use the pinned `dreammis/social-auto-upload` adapter only through the workbench in draft-only mode.
+- Use the pinned `dreammis/social-auto-upload` adapter only through the workbench. Draft mode remains draft-only; formal multi-platform publication requires an explicit per-task authorization token and selected accounts.
 - Use the bundled scripts for project initialization, variant resolution, voice tests, mixing, cover composition, Feishu sync, and delivery validation.
 
 ## Completion handoff
@@ -104,4 +104,4 @@ In the final handoff:
 - show the adopted publication topics as one copy-ready line;
 - expose missing or low-confidence items;
 - report Feishu state when enabled;
-- distinguish completed production from optional draft upload and manual publication.
+- distinguish completed production from optional draft upload, pending publication authorization, automatic publication results, and analytics review.

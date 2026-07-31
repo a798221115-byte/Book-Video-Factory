@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.0 - 2026-08-01
+
+- Add an explicitly authorized multi-platform publication action for Douyin and WeChat Channels while retaining the legacy WeChat Channels draft workflow.
+- Add account discovery, platform-specific metadata/cover handling, per-target idempotency, partial-failure retry state, and durable publication records around the pinned `dreammis/social-auto-upload` adapter.
+- Upgrade `produce-wechat-book-video` to 3.8.0 and keep publication outside the two production confirmations.
+
 ## 3.5.0 - 2026-07-30
 
 - Add the `produce-script-video` Skill for the standalone `用成稿直出` control phrase at either end of a final narration script.

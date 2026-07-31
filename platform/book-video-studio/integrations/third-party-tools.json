@@ -11,8 +11,11 @@
       "source": "https://github.com/dreammis/social-auto-upload.git",
       "commit": "dde0eacb91268de2680825396eea873f8d8ddb38",
       "installPath": "F:\\Codex\\tools\\social-auto-upload",
-      "mode": "weixin_channels_draft_only",
-      "formalPublishAutomation": false,
+      "mode": "explicit_authorization_multi_platform_publish",
+      "supportedPlatforms": ["douyin", "weixin_channels"],
+      "formalPublishAutomation": true,
+      "requiresPerTaskExplicitAuthorization": true,
+      "authorizationToken": "AUTO_PUBLISH_CONFIRMED",
       "privateAccountDataPath": "F:\\Codex\\data\\book-video-studio\\weixin-accounts"
     }
   }

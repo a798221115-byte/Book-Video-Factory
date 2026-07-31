@@ -196,14 +196,17 @@ Record:
 - `subjectMode`: `character`, `space`, `landscape`, `object`, `architecture`, or `weather`;
 - `characterNecessity`: `required`, `helpful`, or `not_needed`;
 - `characterJustification` when `characterNecessity=required`;
+- `faceOrientation`: `front`, `three_quarter_front`, `side_profile`, `three_quarter_back`, `back_view`, or `not_applicable`;
+- `cameraDistance`: `close_up`, `medium_portrait`, `environmental_portrait`, `wide_empty_shot`, `object_detail`, or `landscape`;
+- `narrativeFunction`: the independent semantic job performed by the frame;
 - composition safe zones;
 - generated-image prompt;
 - continuity rules;
 - actual voice start/end after narration exists.
 
-Run a subject-mix audit before generating the G03 sample. A person is not the default subject: use space, scenery, architecture, weather, or meaningful objects when they carry the narration more precisely. If every scene uses a character, replan suitable scenes as non-character shots unless every character scene has a narration-specific justification. Do not enforce a fixed quota and do not add unrelated scenery as filler.
+Run subject-mix and sequence-repetition audits before generating the G03 sample. A person is not the default subject: use space, scenery, architecture, weather, or meaningful objects when they carry the narration more precisely. Across character frames, vary front, three-quarter, side, and back orientations; do not repeat one orientation across three consecutive character shots or let side profiles dominate. When semantically supported, include a genuine empty, object, architecture, weather, or landscape shot with its own narrative function. If every scene uses a character, replan suitable scenes as non-character shots unless every character scene has a narration-specific justification. Do not enforce a fixed quota and do not add unrelated scenery as filler.
 
-Generate exactly one representative original 9:16 style sample. Do not reproduce recognizable reference-video characters, compositions, or cover artwork. Run automatic full-frame, anatomy, relevance, continuity, and flat-block QA. A passing sample becomes the style baseline and immediately unlocks the remaining images.
+Generate exactly one representative original 9:16 style sample with the locked `bright-natural-film-orange-accent-v1` profile from `assets/default-config.json`, unless the user explicitly requested a different visual direction. Treat extracted reference frames as analysis evidence only: do not reproduce recognizable reference-video characters, compositions, typography, captions, watermarks, or cover artwork. Run automatic full-frame, anatomy, relevance, natural-skin, brightness, highlight/shadow, flat-block, single-orange-accent, and non-commercial-retouching QA. A passing sample becomes the style baseline and immediately unlocks the remaining images.
 
 ## 6. Gate G04: remaining images and review
 
@@ -211,12 +214,15 @@ Start only after the G03 sample passes automatic QA.
 
 Generate remaining images with the adopted style, palette, identity, period, light, and composition rules. Inspect:
 
+- conformance to the active locked style profile, including soft natural daylight, warm-ivory/pale-gray environmental texture, realistic unretouched skin, airy tonal range, and one restrained muted-orange accent;
 - anatomy at full frame and enlarged detail;
 - semantic relevance;
 - character continuity;
 - duplicate or near-duplicate composition;
 - title and caption safe areas;
 - visual grammar variety;
+- face-orientation and camera-distance diversity, with no side-profile-dominated sequence;
+- appropriate empty, object, architecture, weather, or landscape shots when semantically supported;
 - subject-mix audit result and justification for any all-character storyboard.
 - default avoidance of mirrors and human-bearing reflections;
 - when a reflection was explicitly requested, consistency of identity, pose, gaze, limb count, handedness, object placement, perspective, and lighting.

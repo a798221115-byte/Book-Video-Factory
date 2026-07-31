@@ -69,10 +69,11 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Do not create a storyboard or images before G02 confirmation and completed automatic title selection. An explicit direct-final-script instruction with a usable supplied narration counts as G02 confirmation.
 - Direct-final-script mode does not imply G04 image approval, draft upload, formal publication, or permission to fabricate author, edition, quotation, or cover evidence.
 - Derive image count from semantic changes, not a fixed total. Treat roughly eight seconds per image only as a soft pacing check.
+- Use the locked `bright-natural-film-orange-accent-v1` background-image profile from `assets/default-config.json` for G03 and G04 unless the user explicitly requests a different visual direction. Keep the default bright, breathable, naturally photographed, lightly desaturated, and free of glossy commercial retouching; never silently fall back to the former near-black editorial-collage or colorful painterly styles.
 - Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render.
 - Position the deterministic `读书分享` / book-title / author header group from `captions.typography.headerPositionsPx`; the default 1080×1920 template shifts the complete group down by 10% of canvas height while preserving its internal spacing.
 - Render Chinese and English captions as separate bottom-aligned ASS styles. For the standard 1080×1920 template, lock Chinese `MarginV=560` and English `MarginV=510`; never collapse them into one `\N`-joined style or fall back to a low bottom margin.
-- Run subject-mix, flat-block, anatomy, continuity, and reflection checks defined in `references/creative-standards.md`.
+- Run subject-mix, face-orientation diversity, empty-shot/landscape suitability, flat-block, anatomy, continuity, brightness, single-orange-accent, and reflection checks defined in `references/creative-standards.md`.
 - Default to `female-book-narrator-locked-v1` with the matching female intro. Use the male pair only when explicitly requested.
 - Treat completed narration duration as the timing authority.
 - Keep the standalone cover separate from the MP4 and preserve the verified original edition artwork.

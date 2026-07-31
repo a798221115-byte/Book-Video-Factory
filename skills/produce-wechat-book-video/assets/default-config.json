@@ -106,6 +106,67 @@
     "preserveWholeUnits": ["causal_statement", "contrast", "emotional_unit"],
     "forbidFillerToReachCount": true
   },
+  "visualStyle": {
+    "profileId": "bright-natural-film-orange-accent-v1",
+    "lockedByDefault": true,
+    "allowOverrideOnlyOnExplicitUserRequest": true,
+    "formerDefaultFallbackAllowed": false,
+    "canvasRatio": "9:16",
+    "medium": [
+      "photorealistic_candid_lifestyle_photography",
+      "bright_natural_independent_film_still",
+      "subtle_analog_film_grain"
+    ],
+    "background": {
+      "value": "bright_warm_neutral_environment",
+      "finish": "natural_textured",
+      "requiredDetail": ["warm_ivory_or_pale_gray_surface", "soft_daylight_falloff", "subtle_film_grain", "environmental_depth"],
+      "forbidFlatPureBlackFill": true,
+      "forbidFlatWhiteBeigeOrGrayFill": true,
+      "forbidBlackDominantFrame": true
+    },
+    "palette": {
+      "base": ["warm_ivory", "pale_gray", "light_wood", "muted_charcoal", "natural_skin_tone"],
+      "accentName": "muted_burnt_orange",
+      "accentHexRange": ["#C66A3D", "#DF8755"],
+      "maximumAccentAreaRatio": 0.06,
+      "maximumNarrativeAccentCount": 1,
+      "forbidSecondarySaturatedHue": true,
+      "forbidBroadOrangeSkinOrClothingTint": true,
+      "forbidTealOrangeGrade": true
+    },
+    "lighting": {
+      "mode": "soft_high_key_natural_window_daylight",
+      "protectShadowDetail": true,
+      "protectHighlightDetail": true,
+      "forbidUnderexposure": true,
+      "allowAccentAs": ["single_flower", "small_object", "fabric_detail", "sunrise_reflection", "small_warm_light_patch"]
+    },
+    "composition": {
+      "characterSubjectAreaRatio": [0.4, 0.6],
+      "subjectPlacement": ["lower_middle", "left_or_right_side", "environmental_frame"],
+      "negativeSpace": "bright_breathable_and_textured",
+      "preserveHeaderAndCaptionLandingAreas": true,
+      "forbidCopiedReferenceComposition": true
+    },
+    "promptPrefix": "Original 9:16 bright natural independent-film still, photorealistic candid lifestyle scene, soft high-key window daylight, warm-ivory and pale-gray environment, light wood and muted charcoal details, realistic skin and materials, subtle analog film grain and soft halation, breathable shadow detail, exactly one small narration-relevant muted burnt-orange accent, calm quietly hopeful mood, bright but textured negative space, original composition, no embedded text.",
+    "negativePrompt": "dark oppressive noir, underexposure, black-dominant void, flat white or beige block, empty digital gradient, blown highlights, multiple accent colors, broad orange wash, orange skin or clothing tint, teal-orange grading, neon, glossy commercial photography, fashion editorial, studio glamour, oily skin sheen, porcelain retouching, HDR, oversharpening, painterly illustration, anime, CGI, 3D render, embedded words, letters, numbers, Chinese text, English text, subtitles, book title, logo, signature, watermark, copied reference composition",
+    "referenceFramePolicy": "analysis_evidence_only",
+    "forbidReferenceFramesAsProductionBackgrounds": true,
+    "qualityChecks": [
+      "bright_natural_daylight",
+      "airy_tonal_range",
+      "natural_unretouched_skin",
+      "single_muted_orange_accent",
+      "accent_area_ratio",
+      "bright_textured_environment",
+      "no_black_dominant_or_underexposed_frame",
+      "phone_size_subject_legibility",
+      "no_embedded_text_logo_or_watermark",
+      "no_reference_composition_copy",
+      "g03_g04_style_consistency"
+    ]
+  },
   "visualGrammar": {
     "personIsDefaultSubject": false,
     "subjectModes": ["character", "space", "landscape", "object", "architecture", "weather"],
@@ -116,6 +177,15 @@
     "fixedCharacterQuota": null,
     "forbidDecorativePersonForContinuity": true,
     "forbidUnrelatedSceneryFiller": true,
+    "faceOrientations": ["front", "three_quarter_front", "side_profile", "three_quarter_back", "back_view", "not_applicable"],
+    "cameraDistances": ["close_up", "medium_portrait", "environmental_portrait", "wide_empty_shot", "object_detail", "landscape"],
+    "requireFaceOrientationDiversity": true,
+    "forbidSameFaceOrientationAcrossThreeConsecutiveCharacterShots": true,
+    "forbidSideProfileDominatedSequence": true,
+    "requireSequenceRepetitionAudit": true,
+    "preferAtLeastOneNonCharacterBeatWhenSemanticallySupported": true,
+    "nonCharacterOptions": ["empty_interior", "object_closeup", "architecture", "weather", "path", "field", "water", "mountain", "sky"],
+    "storyboardFieldsRequired": ["subjectMode", "faceOrientation", "cameraDistance", "narrativeFunction"],
     "mirrorPolicy": "avoid_by_default",
     "allowHumanReflectionOnlyWhenExplicitlyRequested": true,
     "humanReflectionSurfaces": ["mirror", "reflective_glass", "water", "polished_metal", "screen"],

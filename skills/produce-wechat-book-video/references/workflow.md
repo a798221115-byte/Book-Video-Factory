@@ -4,6 +4,7 @@
 
 - 1. Intake, Feishu, and workspace
 - 2. Pre-G01 reference acquisition and diagnosis
+- 2.1. Explicit direct-final-script branch
 - 3. G01 automatically locked source package
 - 4. G02 derivative copy and automatic titles
 - 5. G03 storyboard and style sample
@@ -15,7 +16,7 @@
 
 ## 1. Intake, Feishu, and workspace
 
-Accept a supplied narration transcript, Douyin/video link, or book title as intake only. Route a usable supplied transcript to text intake; route a link without usable narration text to link intake. If both are present, text intake takes precedence and the link remains provenance metadata unless the user explicitly requests video verification. Do not infer either required human confirmation or authorization for external publication.
+Accept a supplied narration transcript, Douyin/video link, or book title as intake only by default. Route a usable supplied transcript to text intake; route a link without usable narration text to link intake. If both are present, text intake takes precedence and the link remains provenance metadata unless the user explicitly requests video verification. When the user explicitly marks a usable supplied narration as final, including with `成稿直出`, select the direct-final-script branch and count that instruction as G02 approval. Never infer image approval or authorization for external publication.
 
 When Feishu sync is enabled:
 
@@ -80,6 +81,23 @@ When the user supplies a usable narration transcript:
 5. Apply `dbs-content` to the corrected transcript.
 6. Save the diagnosis as `reference-copy-analysis.md`.
 
+## 2.1 Explicit direct-final-script branch
+
+Use this branch only for a usable supplied narration plus explicit final-script intent such as `成稿直出`.
+
+1. Preserve the exact supplied narration as `raw-transcript-user.txt` and record text-intake metadata.
+2. Write the same exact narration to `script.txt`; do not run derivative drafting or rewrite the approved wording.
+3. Keep the minimally corrected `reference-transcript.txt` separate for audit.
+4. Record `G01=not_required_for_user_supplied_final_script`, `G02=approved_by_explicit_user_instruction`, and one completed human confirmation.
+5. Run C01 against immutable `script.txt`. Stop only on a failing or high-risk result.
+6. After C01 passes, immediately start the automatic 10+10+10 selection branch and the locked-narration branch.
+7. Use real narration timing to build the semantic storyboard, generate and automatically inspect one G03 style sample, then generate the remaining images.
+8. Stop at G04 for the user's all-image confirmation. After approval, continue through G05, C02, cover, and delivery without adding another production confirmation.
+
+Do not require DBS or WeRead evidence to rewrite content because this branch performs no rewriting. Never describe the supplied narration as a verified book quotation. A missing exact edition may remain a later blocker for author typography, original-cover verification, C02, or delivery; disclose it when required instead of stopping image production early.
+
+When the matching fixed intro already contains the meaning of the script's first lead-in, preserve `script.txt` and exclude only the duplicate lead-in from body narration. Start the body voice with `《书名》` and record the delivery-only adaptation in `voice/prosody-notes.md`.
+
 When the user supplies a Douyin link without a usable transcript:
 
 1. Run `scripts/download_douyin_tikhub.mjs`.
@@ -114,13 +132,13 @@ Write `script_sources.md` containing:
 - quotation boundaries;
 - reference claims that WeRead does not verify.
 
-Expose the source package in the workbench and lock the selected evidence when copy generation starts. Sync `G01=已锁定（自动）` and continue to the derivative-copy candidate. G01 is auditable and reversible but is not a separate human confirmation.
+On the normal derivative path, expose the source package in the workbench and lock the selected evidence when copy generation starts. Sync `G01=已锁定（自动）` and continue to the derivative-copy candidate. G01 is auditable and reversible but is not a separate human confirmation.
 
 If TikHub is unavailable on link intake, or WeRead is unavailable on either path, expose that exact blocker. Do not silently replace either source.
 
 ## 4. First confirmation G02: derivative copy
 
-Start after G01 evidence is verified and locked.
+Start after G01 evidence is verified and locked on the normal derivative path. Skip this section when explicit direct-final-script mode has already recorded G02 approval.
 
 Create the narration by:
 
@@ -143,7 +161,7 @@ Save the draft as `script.txt`, sync `G02=待确认`, set the project to waiting
 
 ## 4.1 Automatic title generation and selection
 
-Start only after explicit G02 approval.
+Start only after explicit G02 approval. The user's explicit direct-final-script instruction counts as G02 approval when it accompanies a usable supplied narration.
 
 1. On link intake, read the original Douyin title from TikHub metadata. On text intake, use an explicitly supplied source title when available; otherwise record `sourceTitleMode=user_transcript` and use the reference opening only as a rhythm cue.
 2. Use `dbs-xhs-title` as a formula matcher. Select 5–8 formulas across at least three psychological trigger categories.
@@ -165,7 +183,7 @@ The workbench UI and the server-side image executor must both reject image gener
 
 ## 5. Gate G03: storyboard and exactly one style sample
 
-Start only after explicit G02 approval and completion of automatic long/short title and publication-topic selection.
+Start only after explicit G02 approval and completion of automatic long/short title and publication-topic selection. Direct-final-script approval satisfies the G02 condition.
 
 Split the approved copy by meaningful changes in idea, action, scene, emotion, or narrative function. Let the copy determine the total number of visual beats; do not set a default range or derive a fixed count from video length.
 
@@ -207,7 +225,7 @@ Sync `G04=待确认` and stop for all-image approval.
 
 ## 7. C01 and V01: compliance, early narration, and real timing
 
-Immediately after explicit G02 approval, run `media-publish-check` against the approved copy. Save the immutable input, risk level, risky sentences, categories, suggestions, timestamp, and raw report. A failed or high-risk report blocks titles, voice, images, and post-production. Never overwrite the approved copy.
+Immediately after explicit G02 approval, including direct-final-script approval, run `media-publish-check` against the approved copy. Save the immutable input, risk level, risky sentences, categories, suggestions, timestamp, and raw report. A failed or high-risk report blocks titles, voice, images, and post-production. Never overwrite the approved copy.
 
 After C01 passes, start two branches in parallel:
 

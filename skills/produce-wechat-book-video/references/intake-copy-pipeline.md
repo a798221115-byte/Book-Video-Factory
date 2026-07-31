@@ -5,6 +5,7 @@ Use this reference for the stages before storyboard production.
 ## Contents
 
 - 1. Classify text versus link intake
+- 1.1. Explicit direct-final-script mode
 - 2. Preserve the reference transcript
 - 3. Link intake through TikHub and Whisper
 - 4. Diagnose with `dbs-content`
@@ -22,6 +23,29 @@ Choose exactly one acquisition path before creating source artifacts:
 When one message contains both a substantial transcript and a source link, the transcript takes precedence. Keep the link as optional provenance metadata, but do not download it unless the user explicitly requests video verification.
 
 A short topic, book title, instruction, caption, or link-preview sentence is not a usable narration transcript. Do not misroute those inputs as text intake.
+
+### 1.1 Explicit direct-final-script mode
+
+Select this branch only when both conditions are true:
+
+1. the user supplies a substantial, usable narration transcript; and
+2. the user explicitly says to treat it as final without derivative rewriting, including with `成稿直出`.
+
+Then:
+
+1. preserve the exact text as `raw-transcript-user.txt` and record normal text-intake metadata;
+2. copy the exact supplied narration to `script.txt`; do not silently polish, paraphrase, reorder, expand, or run derivative drafting;
+3. create `reference-transcript.txt` only as a separate minimally corrected audit copy;
+4. record `G01=not_required_for_user_supplied_final_script` and `G02=approved_by_explicit_user_instruction`;
+5. run C01 against the immutable `script.txt`;
+6. after C01 passes, continue directly to automatic 10+10+10 selection, locked narration, real timing, semantic storyboard, G03 sample QA, and all-image generation;
+7. stop at G04 for the remaining image confirmation.
+
+The explicit instruction is the first production confirmation. It does not approve images, publication, draft upload, unverifiable quotations, author metadata, an edition, or a cover.
+
+If the fixed intro already supplies a semantically identical opening such as `我们今天分享的是`, keep `script.txt` unchanged. The body voice may omit only that duplicate lead-in and start with `《书名》`; record the delivery-only adaptation in `voice/prosody-notes.md`.
+
+WeRead and DBS evidence are not prerequisites for producing the user-approved wording in this branch. Treat the displayed book title as user-designated metadata, never present the narration as verified book text, and continue non-blocking edition lookup only when it helps later author or cover work. Missing exact edition evidence may still block author rendering, original-cover creation, C02, or final delivery; expose that blocker at the stage where it becomes required.
 
 ## 2. Preserve the reference transcript
 
@@ -161,6 +185,8 @@ Write `script_sources.md` with:
 Show the source package in the workbench, lock the selected evidence when copy generation starts, and continue. G01 is traceable and reversible but does not consume a human confirmation.
 
 ## 7. Write the derivative copy after G01 evidence lock
+
+This section applies only to the normal derivative path. Do not run it in explicit direct-final-script mode.
 
 Use this sequence:
 

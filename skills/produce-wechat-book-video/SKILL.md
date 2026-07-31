@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, draft-upload, and track a two-confirmation WeChat Channels vertical book video from a supplied narration transcript, Douyin/video link, WeRead discovery, book title, or draft topic. Use for evidence-backed derivative copy, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
+description: Produce, review, draft-upload, and track a WeChat Channels vertical book video from a supplied final narration script, narration reference, Douyin/video link, WeRead discovery, book title, or draft topic. Use for explicit “成稿直出” production without derivative rewriting, evidence-backed derivative copy, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional platform draft upload, human publication recording, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -13,10 +13,12 @@ Use this file as the single orchestration entrypoint. Load detailed references o
   - when the user supplies a usable narration transcript, use the text-intake path and do not download or transcribe a linked reference unless explicitly requested;
   - when the user supplies only a Douyin or other supported video link, use the link-intake path and preserve the existing TikHub/download/Whisper evidence chain.
 - A substantial supplied transcript takes precedence when the same message also includes a source link. Keep that link as optional provenance metadata.
-- Treat a supplied transcript, Douyin/video link, book title, or topic as intake only.
+- Treat a supplied transcript, Douyin/video link, book title, or topic as intake only unless the user explicitly marks a usable supplied transcript as the final script, including with `成稿直出`.
+- In explicit direct-final-script mode, preserve the supplied narration verbatim as `script.txt`, record the user's instruction as G02 approval, skip derivative-copy generation and its evidence prerequisites, and continue at C01. Do not treat a book title, topic, short caption, or link preview as a final script.
 - Require exactly two blocking human confirmations on the normal path:
   1. G02 derivative narration copy.
   2. G04 all storyboard images.
+- In direct-final-script mode, the explicit instruction is the first confirmation; G04 remains the only later production stop.
 - Allow extra pauses only for ambiguous book identity, unavailable required evidence or tools, compliance blocks, explicit rollback, or another genuine exception.
 - Keep formal publication separately human-authorized; draft upload is not publication.
 - Reuse one persistent Codex task/thread per project.
@@ -41,9 +43,11 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 1. Classify the intake before acquiring evidence:
    - supplied narration text: preserve it verbatim as `raw-transcript-user.txt`, create the minimally corrected `reference-transcript.txt`, and skip video download and ASR;
    - link only: for a Douyin link, download only through `scripts/download_douyin_tikhub.mjs`, preserve untouched Whisper ASR, and stop if TikHub is unavailable.
-2. Identify the book from the transcript when possible. If the identity is unambiguous, continue automatically; stop only when the title is missing, low-confidence, or maps to multiple plausible WeRead editions.
-3. Run `dbs-content`, verify the exact WeRead edition, and retrieve the first 10 whole-book popular highlights in returned heat order. Build a traceable G01 source package and lock the selected evidence automatically; do not add a human stop.
-4. Write the derivative narration from verified evidence, reusable abstract mechanisms, and original reflection. Stop for the first confirmation at G02.
+2. Detect explicit direct-final-script intent before derivative evidence acquisition:
+   - when the user supplies a usable narration and says `成稿直出` or otherwise explicitly says to use it as the final script without rewriting, copy the exact narration to `script.txt`, mark `G01=not_required_for_user_supplied_final_script` and `G02=approved_by_explicit_user_instruction`, then continue at C01;
+   - otherwise continue through normal book identification, evidence verification, derivative writing, and G02 confirmation.
+3. On the normal derivative path, identify the book from the transcript when possible. If the identity is unambiguous, continue automatically; stop only when the title is missing, low-confidence, or maps to multiple plausible WeRead editions.
+4. On the normal derivative path, run `dbs-content`, verify the exact WeRead edition, retrieve the first 10 whole-book popular highlights in returned heat order, build G01, write the derivative narration, and stop at G02.
 5. Run C01 with `media-publish-check`. Preserve the confirmed copy; block downstream work on a failing or high-risk result.
 6. After C01 passes, run in parallel:
    - generate 10 traceable long titles, adopt the first recommendation, generate 10 short titles and 10 publication-topic sets from it, and adopt the first recommendation in each set;
@@ -61,8 +65,9 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Preserve the original transcript according to its real source: `raw-transcript-user.txt` for supplied text or `raw-transcript-whisper.txt` for Whisper. Never create a fake Whisper artifact for text intake.
 - Correct only context-supported transcription or punctuation errors in `reference-transcript.txt`; do not rewrite the reference copy.
 - Keep reference-video wording and WeRead quotations as separate evidence classes. Never present an unverified reference sentence as a book quotation.
-- Reuse only abstract reference mechanisms; rebuild content-bearing sentences from verified evidence and original reflection.
-- Do not create a storyboard or images before G02 confirmation and completed automatic title selection.
+- On the derivative path, reuse only abstract reference mechanisms and rebuild content-bearing sentences from verified evidence and original reflection. In direct-final-script mode, preserve the user-approved script verbatim and do not relabel it as a verified book quotation.
+- Do not create a storyboard or images before G02 confirmation and completed automatic title selection. An explicit direct-final-script instruction with a usable supplied narration counts as G02 confirmation.
+- Direct-final-script mode does not imply G04 image approval, draft upload, formal publication, or permission to fabricate author, edition, quotation, or cover evidence.
 - Derive image count from semantic changes, not a fixed total. Treat roughly eight seconds per image only as a soft pacing check.
 - Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render.
 - Position the deterministic `读书分享` / book-title / author header group from `captions.typography.headerPositionsPx`; the default 1080×1920 template shifts the complete group down by 10% of canvas height while preserving its internal spacing.

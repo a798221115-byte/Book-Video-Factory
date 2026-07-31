@@ -1,4 +1,4 @@
 interface:
   display_name: "视频号图书视频生产"
-  short_description: "两次确认完成视频号图书视频、封面与交付流程"
-  default_prompt: "Use $produce-wechat-book-video to produce a two-confirmation WeChat Channels book video with automatic long-title, short-title, and publication-topic selection, immediate full 10+10+10 feedback with titles.json, image QA, post-production, and delivery artifacts."
+  short_description: "支持成稿直出、二创文案与两次确认的视频号图书视频生产"
+  default_prompt: "Use $produce-wechat-book-video to turn an approved final script directly into a WeChat Channels book video, or run the evidence-backed derivative workflow when the script is not yet approved."

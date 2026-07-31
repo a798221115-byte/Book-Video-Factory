@@ -22,15 +22,16 @@
 
 ## Established visual direction
 
-The default locked profile is `bright-natural-film-orange-accent-v1`. Use it for every G03 and G04 background unless the user explicitly requests another visual direction.
+The default locked profile is `warm-cinematic-literary-life-v1`. Read `style-profile-warm-cinematic-literary-life-v1.md` and use its bundled style anchor for every G03 and G04 background unless the user explicitly requests another visual direction.
 
 Core look:
 
-- Build an original bright natural independent-film still from photorealistic lifestyle photography. Keep people sincere and unposed, with natural skin texture, flyaway hair, ordinary clothing, restrained expressions, and no fashion-model or commercial-advertising polish.
-- Use soft high-key window daylight, breathable shadows with visible detail, and airy warm-ivory, pale-gray, light-wood, muted-charcoal, and natural-skin tones. The frame must feel luminous and calm without blown highlights, flat white fill, HDR, or a synthetic studio look.
-- Permit exactly one narration-relevant muted burnt-orange accent, approximately `#C66A3D` to `#DF8755`, normally covering no more than 6% of the frame. The accent may be a single flower, cup, fabric detail, small practical object, sunrise reflection, or narrow patch of warm light.
-- Do not scatter orange across unrelated props, tint the subject's whole skin or clothing orange, introduce a second saturated hue, or apply teal-orange grading.
-- Favor peaceful independence, emotional ease, gentle hope, inward attention, and symbolic clarity. Preserve subtle analog film grain, soft halation, realistic materials, and professional camera clarity without oily skin, porcelain retouching, oversharpening, or glossy commercial finish.
+- Build an original photorealistic contemporary Chinese literary-film still. Keep people sincere and unposed, with natural skin texture, flyaway hair, ordinary clothing, restrained expressions, and no fashion-model or commercial-advertising polish.
+- Use low-saturation warm neutrals: warm ivory, oatmeal beige, light walnut, slate blue-gray, softened charcoal, natural skin, restrained autumn foliage and subdued natural gold.
+- Use low-angle morning or late-afternoon sunlight, gentle side/backlight, long soft shadows and luminous haze. Interiors use warm window light; preserve both highlight and shadow detail.
+- Do not require an orange accent. Reject broad orange wash, teal-orange grading, saturated accent colors, neon or unrelated colored props.
+- Favor peaceful independence, emotional ease, gentle hope, inward attention and symbolic clarity. Preserve subtle analog film grain, restrained halation, realistic materials and professional camera clarity without oily skin, porcelain retouching, oversharpening or glossy commercial finish.
+- When a recurring female protagonist is semantically suitable, default to the same adult East Asian woman with shoulder-length softly wavy black hair, minimal makeup, an oatmeal-beige long coat and a slate-blue-gray scarf. Preserve identity and wardrobe unless the narration requires a change.
 - Compose for 9:16. For character frames, normally let the person occupy roughly 40%–60% of the frame while preserving the deterministic header band and middle-lower caption landing area. For empty, object, architecture, weather, or landscape frames, let the narrative environment fill the frame without adding a decorative person.
 - Keep negative space bright but textured through plaster, curtains, sky, foliage, weather, architecture, or natural light falloff; never manufacture it with a flat white, beige, gray, black, or empty gradient block.
 - Keep backgrounds free of text, letters, numbers, book-title typography, captions, logos, signatures, platform marks, or watermarks. Typography remains deterministic post-production.
@@ -38,31 +39,32 @@ Core look:
 Mandatory prompt prefix:
 
 ```text
-Original 9:16 bright natural independent-film still, photorealistic candid lifestyle scene, soft high-key window daylight, warm-ivory and pale-gray environment, light wood and muted charcoal details, realistic skin and materials, subtle analog film grain and soft halation, breathable shadow detail, exactly one small narration-relevant muted burnt-orange accent, calm quietly hopeful mood, bright but textured negative space, original composition, no embedded text.
+Original 9:16 photorealistic contemporary Chinese literary-film still, matching the bundled warm-cinematic-literary-life-v1 style anchor without copying its composition: low-saturation warm-neutral palette of warm ivory, oatmeal beige, light walnut, slate blue-gray and softened charcoal; natural low-angle morning or late-afternoon golden light, gentle side or backlight, long soft shadows, luminous atmospheric haze, realistic skin hair cloth wood concrete and paper, subtle analog film grain and restrained halation, candid unposed daily life, quiet reflective and gently hopeful mood, breathable textured negative space, professional cinematic clarity, original scene, no embedded text.
 ```
 
 Mandatory negative prompt:
 
 ```text
-dark oppressive noir, underexposure, black-dominant void, flat white or beige block, empty digital gradient, blown highlights, multiple accent colors, broad orange wash, orange skin or clothing tint, teal-orange grading, neon, glossy commercial photography, fashion editorial, studio glamour, oily skin sheen, porcelain retouching, HDR, oversharpening, painterly illustration, anime, CGI, 3D render, embedded words, letters, numbers, Chinese text, English text, subtitles, book title, logo, signature, watermark, copied reference composition
+copied montage layout, split panels, copied reference composition, copied pose or location, high-key white commercial lifestyle photography, mandatory orange accent, broad orange wash, teal-orange grading, saturated colors, neon, dark oppressive noir, black-dominant void, underexposure, blown highlights, flat beige or gray block, empty digital gradient, glossy advertising, fashion editorial, studio glamour, influencer portrait, porcelain skin, oily skin sheen, heavy makeup, HDR, oversharpening, painterly illustration, anime, CGI, 3D render, distorted anatomy, duplicate person, inconsistent face or wardrobe, embedded words, letters, numbers, Chinese text, English text, subtitles, book title, logo, signature, watermark
 ```
 
-For character scenes, append the existing mirror/reflection and anatomy constraints. For object, architecture, landscape, space, or weather scenes, keep the same monochrome/ember grammar without adding a decorative person.
+For recurring-character scenes, append the locked identity/wardrobe prompt from the profile plus the existing mirror/reflection and anatomy constraints. For object, architecture, landscape, space or weather scenes, preserve the same palette, light, grain and emotional temperature without adding a decorative person.
 
 Reference-frame boundary:
 
-- Extracted frames from a user-supplied reference video are evidence for palette, contrast, subject placement, negative-space behavior, and mixed-media treatment only.
-- Never use those frames as production backgrounds or image-to-image inputs that preserve recognizable people, exact compositions, embedded typography, captions, watermarks, or source artwork.
-- The G03 sample must translate the abstract style into a new scene tied to the approved narration.
+- Use `assets/style-references/warm-cinematic-literary-life-v1.png` as the bundled style-conditioning anchor for palette, light, materials, character continuity, camera grammar and emotional temperature.
+- Never use the anchor as a production background or preserve its montage layout, exact compositions, poses, locations or object placement.
+- Other extracted user-video frames remain analysis evidence only and must not become production backgrounds.
+- The G03 sample must translate the locked style into an original scene tied to the approved narration. The anchor's mirror panel does not override the default reflection prohibition.
 
 Style QA:
 
-- Reject a frame if more than one unrelated warm accent competes for attention, orange exceeds the configured area, skin or clothing is broadly colorized, or another saturated hue becomes visible.
-- Reject a frame if the result reads as the former near-black editorial collage, indigo/teal/gold painterly direction, dark oppressive noir, generic high-saturation photography, anime, CGI, studio glamour, or glossy advertising.
+- Reject a frame if it does not match the anchor's warm-neutral palette, low saturation, golden natural light, quiet literary mood, subtle grain and natural materials.
+- Reject a frame if the result reads as the former orange-accent high-key profile, near-black editorial collage, indigo/teal/gold painterly direction, dark oppressive noir, generic high-saturation photography, anime, CGI, studio glamour or glossy advertising.
 - Reject a frame if it is black-dominant or underexposed, highlights are blown, shadows erase spatial information, the bright area becomes a flat white/beige/gray block, or the narrative subject becomes unreadable at phone size.
-- Reject a character frame when skin looks oily, plastic, porcelain-retouched, heavily made up, or fashion-editorial rather than candid and natural.
+- Reject a character frame when skin looks oily, plastic, porcelain-retouched, heavily made up or fashion-editorial rather than candid and natural; also reject unexplained face, age, hairstyle, beige-coat or slate-blue-scarf drift.
 - Reject a frame if embedded text, a logo, a watermark, or a recognizable reference composition survives.
-- Compare every G04 frame with the passing G03 sample for daylight quality, airy tonal range, palette, grain, skin realism, orange hue and area, environmental texture, and emotional temperature.
+- Compare every G04 frame with both the bundled anchor and the passing G03 sample for golden-light quality, warm-neutral palette, low saturation, grain, haze, skin/material realism, identity/wardrobe continuity, environmental texture and emotional temperature.
 - Before G04, inspect the whole sequence for repeated face direction and repeated framing. Do not approve a sequence dominated by side profiles or near-identical medium portraits.
 
 Storyboard segmentation:

@@ -206,7 +206,7 @@ Record:
 
 Run subject-mix and sequence-repetition audits before generating the G03 sample. A person is not the default subject: use space, scenery, architecture, weather, or meaningful objects when they carry the narration more precisely. Across character frames, vary front, three-quarter, side, and back orientations; do not repeat one orientation across three consecutive character shots or let side profiles dominate. When semantically supported, include a genuine empty, object, architecture, weather, or landscape shot with its own narrative function. If every scene uses a character, replan suitable scenes as non-character shots unless every character scene has a narration-specific justification. Do not enforce a fixed quota and do not add unrelated scenery as filler.
 
-Generate exactly one representative original 9:16 style sample with the locked `bright-natural-film-orange-accent-v1` profile from `assets/default-config.json`, unless the user explicitly requested a different visual direction. Treat extracted reference frames as analysis evidence only: do not reproduce recognizable reference-video characters, compositions, typography, captions, watermarks, or cover artwork. Run automatic full-frame, anatomy, relevance, natural-skin, brightness, highlight/shadow, flat-block, single-orange-accent, and non-commercial-retouching QA. A passing sample becomes the style baseline and immediately unlocks the remaining images.
+Generate exactly one representative original 9:16 style sample with the locked `warm-cinematic-literary-life-v1` profile and bundled anchor from `assets/default-config.json`, unless the user explicitly requested a different visual direction. Pass the bundled anchor as style-conditioning evidence while explicitly forbidding its montage layout, exact compositions, poses, locations and object placement. Treat other extracted reference frames as analysis evidence only. Run automatic full-frame, anatomy, relevance, natural-skin, warm-golden-light, muted-palette, grain/haze, identity/wardrobe, flat-block, composition-copy and non-commercial-retouching QA. Record the anchor path and SHA-256 in the G03 report. A passing sample becomes the style baseline and immediately unlocks the remaining images.
 
 ## 6. Gate G04: remaining images and review
 
@@ -214,7 +214,8 @@ Start only after the G03 sample passes automatic QA.
 
 Generate remaining images with the adopted style, palette, identity, period, light, and composition rules. Inspect:
 
-- conformance to the active locked style profile, including soft natural daylight, warm-ivory/pale-gray environmental texture, realistic unretouched skin, airy tonal range, and one restrained muted-orange accent;
+- conformance to `warm-cinematic-literary-life-v1`, including the bundled anchor, low-saturation warm-neutral palette, low-angle natural golden light, long soft shadows, luminous haze, realistic unretouched skin/materials, subtle grain and no recognizable anchor-composition copy;
+- recurring-character face, age, shoulder-length softly wavy black hair, oatmeal-beige long coat and slate-blue-gray scarf continuity when that default protagonist is active;
 - anatomy at full frame and enlarged detail;
 - semantic relevance;
 - character continuity;

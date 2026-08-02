@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.6.2 - 2026-08-02
+
+- Support the current WeChat Channels “视频标注” control and its localized “含AI產生內容” option.
+- Verify the selected AI label through the closed `mark-tag-select` control before allowing publication.
+- Require a visible cover editor and a successful independent-cover upload whenever a cover was supplied.
+- Capture actionable declaration diagnostics when the platform UI changes again.
+
 ## 3.6.1 - 2026-08-02
 
 - Fail closed before WeChat Channels publication unless both original-content and AI-generated-content declarations are selected and verified.

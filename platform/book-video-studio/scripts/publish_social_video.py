@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import re
 import sys
 import threading
 from pathlib import Path
@@ -83,6 +84,31 @@ async def publish(args, account_file, video_file, cover_file, tags):
     )
 
     class StrictAiTencentVideo(TencentVideo):
+        async def open_thumbnail_dialog(self, page, selectors, dialog_titles):
+            for selector in selectors:
+                cover_entry = page.locator(selector).first
+                try:
+                    if not await cover_entry.count():
+                        continue
+                    await cover_entry.wait_for(state="visible", timeout=3000)
+                    await cover_entry.click()
+                    await page.wait_for_timeout(500)
+                    break
+                except Exception:
+                    continue
+
+            for title in dialog_titles:
+                cover_dialog = page.locator("div.weui-desktop-dialog:visible").filter(has_text=title).first
+                if await cover_dialog.count():
+                    return cover_dialog
+            return None
+
+        async def set_single_thumbnail(self, page, thumbnail_path, selectors, dialog_titles, label):
+            cover_dialog = await self.open_thumbnail_dialog(page, selectors, dialog_titles)
+            if cover_dialog is None:
+                raise RuntimeError(f"未打开视频号{label}封面编辑弹窗，已阻止正式发布")
+            await self.upload_thumbnail_in_dialog(page, cover_dialog, thumbnail_path)
+
         async def apply_original_statement(self, page):
             await super().apply_original_statement(page)
             if not await self._original_is_confirmed(page):
@@ -121,27 +147,117 @@ async def publish(args, account_file, video_file, cover_file, tags):
             return False
 
         async def _select_ai_generated_declaration(self, page):
-            declaration = page.get_by_text("内容声明", exact=True).first
-            if not await declaration.count() or not await declaration.is_visible():
-                raise RuntimeError("未找到视频号“内容声明”，已阻止正式发布")
+            scopes = [page, *[frame for frame in page.frames if frame != page.main_frame]]
+            declaration_scope = None
+            declaration = None
+            for scope in scopes:
+                for entry_text in (
+                    "选择视频标注",
+                    "视频标注",
+                    "内容声明",
+                    "AI内容声明",
+                    "AI生成内容标识",
+                    "内容标记",
+                ):
+                    candidate = scope.get_by_text(entry_text, exact=True).first
+                    if await candidate.count() and await candidate.is_visible():
+                        declaration_scope = scope
+                        declaration = candidate
+                        break
+                if declaration is not None:
+                    break
+            if declaration is None:
+                diagnostic_path = video_file.parent.parent / "reports" / "publication-diagnostic-weixin.png"
+                diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+                await page.screenshot(path=str(diagnostic_path), full_page=True)
+                visible_markers = []
+                for scope in scopes:
+                    try:
+                        for body_text in await scope.locator("body").all_inner_texts():
+                            visible_markers.extend(
+                                line.strip()
+                                for line in body_text.splitlines()
+                                if any(marker in line for marker in ("AI", "声明", "原创", "标注", "标记"))
+                            )
+                    except Exception:
+                        continue
+                marker_summary = " | ".join(dict.fromkeys(visible_markers))[:800]
+                raise RuntimeError(
+                    "未找到视频号“内容声明”，已阻止正式发布；"
+                    f"诊断截图: {diagnostic_path}；页面相关文字: {marker_summary or '无'}"
+                )
             await declaration.click()
+            await page.wait_for_timeout(300)
+            option_scopes = [page, *[frame for frame in page.frames if frame != page.main_frame]]
             selected_text = ""
+            ai_label_pattern = re.compile(r"含\s*AI\s*(?:產生|生成)\s*(?:內容|内容)", re.IGNORECASE)
+            for scope in (declaration_scope, *option_scopes):
+                option = scope.locator("div.mark-tag-option").filter(has_text=ai_label_pattern).first
+                if await option.count() and await option.is_visible():
+                    selected_text = (await option.inner_text()).strip()
+                    await option.click()
+                    declaration_scope = scope
+                    break
+            for scope in (declaration_scope, *option_scopes):
+                if selected_text:
+                    break
+                option = scope.get_by_text(ai_label_pattern).last
+                if await option.count() and await option.is_visible():
+                    selected_text = (await option.inner_text()).strip()
+                    await option.click()
+                    declaration_scope = scope
+                    break
             for option_text in (
+                "含AI產生內容",
+                "含AI生成内容",
                 "含有AI生成内容",
                 "内容含有AI生成",
                 "内容由AI生成",
                 "AI生成内容",
-            ):
-                option = page.get_by_text(option_text, exact=True).last
-                if await option.count() and await option.is_visible():
-                    await option.click()
-                    selected_text = option_text
+            ) if not selected_text else ():
+                for scope in (declaration_scope, *option_scopes):
+                    option = scope.get_by_text(option_text, exact=False).last
+                    if await option.count() and await option.is_visible():
+                        await option.click()
+                        selected_text = option_text
+                        declaration_scope = scope
+                        break
+                if selected_text:
                     break
             if not selected_text:
-                raise RuntimeError("未找到视频号“含有AI生成内容”选项，已阻止正式发布")
+                diagnostic_path = video_file.parent.parent / "reports" / "publication-diagnostic-weixin.png"
+                dom_path = video_file.parent.parent / "reports" / "publication-dom-weixin.json"
+                diagnostic_path.parent.mkdir(parents=True, exist_ok=True)
+                await page.screenshot(path=str(diagnostic_path), full_page=True)
+                frame_diagnostics = []
+                for scope in option_scopes:
+                    try:
+                        ai_elements = await scope.locator("div.mark-tag-options *, div.mark-tag-select *").evaluate_all(
+                            """elements => elements
+                                .map(element => ({
+                                    tag: element.tagName,
+                                    className: typeof element.className === 'string' ? element.className : '',
+                                    text: (element.innerText || element.textContent || '').trim()
+                                }))
+                                .filter(item => item.text.includes('AI'))
+                                .slice(-60)"""
+                        )
+                        frame_diagnostics.append({"url": getattr(scope, "url", "page"), "aiElements": ai_elements})
+                    except Exception as exc:
+                        frame_diagnostics.append({"url": getattr(scope, "url", "page"), "error": str(exc)})
+                dom_path.write_text(json.dumps(frame_diagnostics, ensure_ascii=False, indent=2), encoding="utf-8")
+                raise RuntimeError(
+                    "未找到视频号“含有AI生成内容”选项，已阻止正式发布；"
+                    f"诊断截图: {diagnostic_path}；页面结构: {dom_path}"
+                )
             await page.wait_for_timeout(500)
-            body_text = await page.locator("body").inner_text()
-            if selected_text not in body_text:
+            selected_control = declaration_scope.locator("div.mark-tag-select").first
+            selected_display = (await selected_control.inner_text()).strip() if await selected_control.count() else ""
+            selected_class = (await selected_control.get_attribute("class")) if await selected_control.count() else ""
+            if (
+                not re.search(ai_label_pattern, selected_display)
+                or (selected_class and "is-open" in selected_class)
+            ):
                 raise RuntimeError("无法验证视频号AI生成声明已选中，已阻止正式发布")
 
     uploader = StrictAiTencentVideo(

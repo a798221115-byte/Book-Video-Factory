@@ -54,7 +54,8 @@ export function registerRemainingImageFile(
   const imageMeta = {
     jobId: sceneJobId,
     codexJobId: input.codexJobId || null,
-    generatedBy: "codex-sdk-imagegen",
+    generatedBy: "gpt-image-2-api-kit",
+    imageModel: "gpt-image-2",
     revision: Number(input.revision || 1),
     feedback: String(input.feedback || ""),
     sha256,

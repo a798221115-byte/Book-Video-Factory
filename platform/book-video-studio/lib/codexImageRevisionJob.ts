@@ -12,7 +12,8 @@ import {
 } from "./pipeline/repo";
 import { registerRemainingImageFile } from "./remainingImageRegistry";
 import { parseArtifactMeta } from "./storyboardGeneration";
-import { runVisibleCodexTask, type CodexTaskEvent } from "./codexAppServer";
+import type { CodexTaskEvent } from "./codexAppServer";
+import { getImage } from "./providers/image";
 
 type ImageRevisionStatus = "queued" | "starting" | "running" | "succeeded" | "failed";
 
@@ -61,7 +62,7 @@ const runningJobs = new Map<string, Promise<void>>();
 function updateJob(jobArtifactId: string, patch: Partial<CodexImageRevisionJobMeta>) {
   const artifact = getArtifactById(jobArtifactId);
   const current = parseMeta(artifact?.meta);
-  if (!artifact || !current) throw new Error("Codex 单张图片修改任务记录不存在");
+  if (!artifact || !current) throw new Error("GPT Image 2 单张图片修改任务记录不存在");
   const next = { ...current, ...patch };
   patchArtifact(jobArtifactId, { meta: JSON.stringify(next) });
   return next;
@@ -102,7 +103,7 @@ function buildPrompt(taskId: string, scene: any, currentImagePath: string, outpu
     "",
     "严格要求：",
     "1. 先阅读当前项目 AGENTS.md、storyboard/storyboard.json、当前分镜提示词和当前图片。",
-    "2. 使用内置 image_gen/imagegen，基于当前图片进行单张修改；只修改用户指出的内容，保留文案语义和整体画风。",
+    "2. 不得调用内置生图能力；工作台会使用指定 GPT Image 2 API kit 和当前图片执行单张编辑。",
     "3. 输出仍为 9:16 竖屏；无中文、无英文、无书名、无字幕、无标志、无水印。",
     "4. 不修改其他分镜，不进入配音、字幕、视频、封面、发布或归档。",
     `5. 将修改后的图片保存到：${outputImagePath}`,
@@ -131,45 +132,53 @@ function eventSummary(event: CodexTaskEvent) {
 
 async function runJob(taskId: string, jobArtifactId: string) {
   const initial = parseMeta(getArtifactById(jobArtifactId)?.meta);
-  if (!initial) throw new Error("Codex 单张图片修改任务记录不存在");
+  if (!initial) throw new Error("GPT Image 2 单张图片修改任务记录不存在");
   const logDir = path.join(taskDir(taskId), "storyboard", "codex-jobs");
   fs.mkdirSync(logDir, { recursive: true });
   const logPath = path.join(logDir, `${jobArtifactId}.jsonl`);
   updateJob(jobArtifactId, {
     status: "starting",
     phase: "starting",
-    message: "正在启动 Codex 单张图片修改任务",
+    message: "正在启动 GPT Image 2 单张图片修改任务",
     progress: 0.08,
     startedAt: initial.startedAt || Date.now(),
     heartbeatAt: Date.now(),
     eventLogPath: projectArtifactPath(logPath),
     error: null,
   });
-  const projectRoot = path.resolve(path.join(taskDir(taskId), "..", ".."));
   const { manifest } = manifestFor(taskId);
   const scene = (manifest.jobs || []).find((item: any) => item.id === initial.sceneJobId);
   if (!scene) throw new Error("分镜任务不存在");
   const outputImagePath = path.join(taskDir(taskId), "storyboard", "images", initial.expectedImageFileName);
   const outputPromptPath = path.join(taskDir(taskId), "storyboard", "prompts", initial.expectedPromptFileName);
-  const task = getTask(taskId);
-  await runVisibleCodexTask({
-    title: task?.bookTitle || task?.title || taskId,
-    prompt: buildPrompt(taskId, scene, initial.currentImagePath, outputImagePath, outputPromptPath, initial.feedback, initial.revision),
-    projectRoot,
-    existingThreadId: task?.codexThreadId || initial.threadId,
-    onEvent: async (event) => {
-      if (event.type === "thread.started") updateTask(taskId, { codexThreadId: event.thread_id });
-      appendEvent(logPath, event.raw);
-      updateJob(jobArtifactId, {
-        status: "running",
-        threadId: event.type === "thread.started" ? event.thread_id : undefined,
-        heartbeatAt: Date.now(),
-        ...(eventSummary(event) || {}),
-      });
-    },
+  const currentPromptPath = path.join(taskDir(taskId), "storyboard", "prompts", path.basename(String(scene.promptFileName || "")));
+  const currentPrompt = fs.existsSync(currentPromptPath) ? fs.readFileSync(currentPromptPath, "utf8").trim() : String(scene.label || scene.id);
+  const editPrompt = [
+    currentPrompt,
+    "Edit the supplied image according to the following user feedback. Change only what is requested; preserve the scene meaning, recurring character identity, warm cinematic literary style, lighting logic, and 9:16 composition.",
+    `User feedback: ${initial.feedback}`,
+    "No Chinese or English text, no book title, no subtitles, no logo, no watermark.",
+  ].join("\n\n");
+  fs.mkdirSync(path.dirname(outputPromptPath), { recursive: true });
+  fs.mkdirSync(path.dirname(outputImagePath), { recursive: true });
+  fs.writeFileSync(outputPromptPath, editPrompt, "utf8");
+  const provider = getImage();
+  if (!provider.edit) throw new Error("当前 GPT Image 2 provider 不支持图片编辑接口");
+  await provider.edit(editPrompt, initial.currentImagePath, outputImagePath, {
+    size: "1024x1792",
+    onProgress: (event) => updateJob(jobArtifactId, {
+      status: "running",
+      phase: event.stage === "retry" ? "retrying_image" : "generating_image",
+      message: event.stage === "retry"
+        ? `GPT Image 2 正在重试分镜 ${initial.sceneJobId}（${event.attempt}/${event.maxAttempts}）`
+        : `GPT Image 2 API kit 正在修改分镜 ${initial.sceneJobId}`,
+      progress: event.stage === "response" || event.stage === "download" ? 0.9 : 0.55,
+      heartbeatAt: Date.now(),
+    }),
   });
+  appendEvent(logPath, { provider: provider.name, sceneJobId: initial.sceneJobId, outputImagePath: projectArtifactPath(outputImagePath) });
   if (!fs.existsSync(outputImagePath) || fs.statSync(outputImagePath).size < 10_000) {
-    throw new Error(`Codex 任务结束，但没有找到有效图片：${outputImagePath}`);
+    throw new Error(`GPT Image 2 任务结束，但没有找到有效图片：${outputImagePath}`);
   }
   registerRemainingImageFile(taskId, {
     sceneJobId: initial.sceneJobId,

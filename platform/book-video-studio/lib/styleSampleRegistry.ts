@@ -60,7 +60,8 @@ export function registerStyleSampleFile(
     (item) => item.stepName === "storyboard" && item.kind === "style_sample",
   );
   const meta = {
-    generatedBy: "codex-sdk-imagegen",
+    generatedBy: "gpt-image-2-api-kit",
+    imageModel: "gpt-image-2",
     codexJobId: input.codexJobId || null,
     prompt,
     promptPath: promptPath && fs.existsSync(promptPath) ? projectArtifactPath(promptPath) : null,
@@ -139,7 +140,8 @@ export function replaceConfirmedStyleSampleFile(
 
   const storedPath = projectArtifactPath(imagePath);
   const meta = {
-    generatedBy: "codex-sdk-imagegen",
+    generatedBy: "gpt-image-2-api-kit",
+    imageModel: "gpt-image-2",
     codexJobId: null,
     prompt,
     promptPath: promptPath && fs.existsSync(promptPath) ? projectArtifactPath(promptPath) : null,

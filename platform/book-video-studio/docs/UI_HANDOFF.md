@@ -105,7 +105,7 @@
 - 更新 artifact meta：`provider`、`regeneratedAt`。
 
 注意：
-- 如果配置了真实 `IMAGE_API_KEY`，单图重生成会产生实际生图调用成本。
+- 单图重生成通过 `GPT_IMAGE2_KIT_FILE` 指向的 GPT Image 2 API kit 调用，会产生实际生图费用。
 - 若未配置真实生图 provider，会走 MockImageProvider。
 
 ### 轻量去重微调（附件C，旁路工具）

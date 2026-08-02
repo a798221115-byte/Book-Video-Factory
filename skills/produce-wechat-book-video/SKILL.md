@@ -33,6 +33,7 @@ Use this file as the single orchestration entrypoint. Load detailed references o
 | Douyin download, Whisper transcript, DBS diagnosis, WeRead evidence, or derivative copy | `references/intake-copy-pipeline.md` |
 | Copy voice, storyboard semantics, image prompts, anatomy, reflections, or typography | `references/creative-standards.md` |
 | Locked default visual profile and style-reference usage | `references/style-profile-warm-cinematic-literary-life-v1.md` |
+| GPT Image 2 API kit loading, generation, editing, and secret handling | `references/gpt-image-2-api-kit.md` |
 | Narration, timing, motion, render, audio mix, or technical validation | `references/technical-spec.md` |
 | Standalone WeChat Channels cover | `references/cover-style-spec.md` |
 | Feishu-bound or Feishu-originated work | `references/feishu-integration.md` |
@@ -70,6 +71,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Do not create a storyboard or images before G02 confirmation and completed automatic title selection. An explicit direct-final-script instruction with a usable supplied narration counts as G02 confirmation.
 - Direct-final-script mode does not imply G04 image approval, draft upload, formal publication, or permission to fabricate author, edition, quotation, or cover evidence.
 - Derive image count from semantic changes, not a fixed total. Treat roughly eight seconds per image only as a soft pacing check.
+- Route every image-generation and image-editing operation through the GPT Image 2 API kit defined in `assets/default-config.json`. Never call Codex built-in `imagegen`, silently switch providers, copy the key into a project, or expose it in logs and artifacts.
 - Use the locked `warm-cinematic-literary-life-v1` background-image profile and its bundled style anchor from `assets/default-config.json` for every G03 and G04 image unless the user explicitly requests a different visual direction. Keep the default photorealistic, low-saturation, warm-golden, literary and naturally lived-in; never silently fall back to orange-accent high-key photography, near-black editorial collage, colorful painterly illustration, glossy advertising, or generic AI portraiture.
 - Keep generated backgrounds free of text. Add title, author, column, and captions through deterministic render.
 - Position the deterministic `读书分享` / book-title / author header group from `captions.typography.headerPositionsPx`; the default 1080×1920 template shifts the complete group down by 10% of canvas height while preserving its internal spacing.
@@ -91,7 +93,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 - Use `dbs-content` for reference-copy diagnosis, not derivative drafting.
 - Use `weread-skills` for edition verification and popular highlights.
 - Use `dbs-xhs-title` for traceable title formulas.
-- Use `imagegen` for original storyboard images and revisions.
+- Use the workbench GPT Image 2 API-kit provider for original storyboard images, style-conditioned G04 images, revisions, and generated cover backgrounds. Load the key only at runtime from the configured kit file.
 - Use `media-publish-check` for C01 and C02.
 - Use local VoxCPM for locked narration and FFmpeg for assembly, audio, captions, and validation.
 - Use the pinned `dreammis/social-auto-upload` adapter only through the workbench. Draft mode remains draft-only; formal multi-platform publication requires an explicit per-task authorization token and selected accounts.

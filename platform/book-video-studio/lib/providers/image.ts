@@ -9,6 +9,7 @@ export interface ImageProvider {
   readonly name: string;
   // 生成一张图，写到 outPath（png）。size 形如 "1024x1024"
   generate(prompt: string, outPath: string, opts?: ImageGenerateOptions): Promise<{ path: string; provider?: string }>;
+  edit?(prompt: string, inputPath: string, outPath: string, opts?: ImageGenerateOptions): Promise<{ path: string; provider?: string }>;
 }
 
 export type ImageGenerateProgress = {
@@ -88,6 +89,29 @@ function notify(opts: ImageGenerateOptions | undefined, event: ImageGenerateProg
 const DEFAULT_TIMEOUT_MS = toBoundedInt(process.env.IMAGE_TIMEOUT_MS, 240_000, 30_000, 600_000);
 const DEFAULT_MAX_ATTEMPTS = toBoundedInt(process.env.IMAGE_MAX_ATTEMPTS, 3, 1, 3);
 const WAITING_PROGRESS_INTERVAL_MS = 15_000;
+const DEFAULT_GPT_IMAGE2_KIT_FILE = "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/配置/GPTImage2.txt";
+
+function readGptImage2KitKey(): string {
+  const kitPath = process.env.GPT_IMAGE2_KIT_FILE?.trim() || DEFAULT_GPT_IMAGE2_KIT_FILE;
+  if (!fs.existsSync(kitPath)) {
+    throw new ImageProviderError(`GPT Image 2 API kit 不存在：${kitPath}`, {
+      provider: "gpt-image-2-api-kit",
+      kind: "unknown",
+    });
+  }
+  const key = fs.readFileSync(kitPath, "utf8")
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => /^sk-\S+$/.test(line));
+  if (!key) {
+    throw new ImageProviderError(`GPT Image 2 API kit 中未找到 sk- 开头的 API Key：${kitPath}`, {
+      provider: "gpt-image-2-api-kit",
+      kind: "unknown",
+    });
+  }
+  return key;
+}
 
 // gpt-image-2（中转站偶发超时，默认最多重试 1 次；可用 IMAGE_MAX_ATTEMPTS 覆盖到 1-3）
 class GptImageProvider implements ImageProvider {
@@ -121,6 +145,78 @@ class GptImageProvider implements ImageProvider {
       }
     }
     throw lastErr;
+  }
+  async edit(prompt: string, inputPath: string, outPath: string, opts?: ImageGenerateOptions): Promise<{ path: string; provider?: string }> {
+    if (!fs.existsSync(inputPath)) {
+      throw new ImageProviderError(`编辑输入图不存在：${inputPath}`, { provider: this.name, kind: "unknown" });
+    }
+    let lastErr: unknown;
+    const maxAttempts = toBoundedInt(opts?.maxAttempts, DEFAULT_MAX_ATTEMPTS, 1, 3);
+    const timeoutMs = toBoundedInt(opts?.timeoutMs, DEFAULT_TIMEOUT_MS, 30_000, 600_000);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      notify(opts, { stage: "attempt", attempt, maxAttempts, timeoutMs, provider: this.name });
+      try {
+        return await this.editOnce(prompt, inputPath, outPath, opts, attempt, maxAttempts, timeoutMs);
+      } catch (error: any) {
+        lastErr = error;
+        const message = String(error?.message || error);
+        const transient = /\b429\b|rate_limit|rate limit|\b5\d\d\b|upstream|timeout|ETIMEDOUT|ECONNRESET|fetch failed|aborted/i.test(message);
+        if (!transient || attempt === maxAttempts) throw error;
+        const retryDelayMs = /\b429\b|rate_limit|rate limit/i.test(message)
+          ? Math.min(180_000, 60_000 * attempt)
+          : Math.min(10_000, 2000 * 2 ** (attempt - 1));
+        notify(opts, { stage: "retry", attempt, maxAttempts, timeoutMs, retryDelayMs, provider: this.name, message: message.slice(0, 160) });
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+    throw lastErr;
+  }
+  private async editOnce(
+    prompt: string,
+    inputPath: string,
+    outPath: string,
+    opts: ImageGenerateOptions | undefined,
+    attempt: number,
+    maxAttempts: number,
+    timeoutMs: number,
+  ): Promise<{ path: string; provider?: string }> {
+    const ctrl = new AbortController();
+    const startedAt = Date.now();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const heartbeat = setInterval(() => notify(opts, {
+      stage: "waiting", attempt, maxAttempts, timeoutMs, provider: this.name, elapsedMs: Date.now() - startedAt,
+    }), WAITING_PROGRESS_INTERVAL_MS);
+    try {
+      const bytes = fs.readFileSync(inputPath);
+      const extension = pathExtension(inputPath);
+      const form = new FormData();
+      form.append("model", this.model);
+      form.append("prompt", prompt);
+      form.append("size", opts?.size || "1024x1024");
+      form.append("image", new Blob([bytes], { type: extension === ".jpg" || extension === ".jpeg" ? "image/jpeg" : "image/png" }), `input${extension || ".png"}`);
+      const resp = await fetch(`${this.baseUrl}/images/edits`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+        body: form,
+        signal: ctrl.signal,
+      }).catch((error) => {
+        throw new ImageProviderError(
+          ctrl.signal.aborted ? `gpt-image-2 edit timeout after ${Math.round(timeoutMs / 1000)}s` : String(error?.message || error || "fetch failed"),
+          { provider: this.name, kind: ctrl.signal.aborted ? "timeout" : "network" },
+        );
+      });
+      notify(opts, { stage: "response", attempt, maxAttempts, timeoutMs, provider: this.name, elapsedMs: Date.now() - startedAt, message: String(resp.status) });
+      if (!resp.ok) {
+        throw new ImageProviderError(`gpt-image-2 edit ${resp.status}: ${(await resp.text()).slice(0, 300)}`, {
+          provider: this.name, kind: "http", status: resp.status,
+        });
+      }
+      await writeImageResponse(resp, outPath, ctrl.signal, opts, attempt, maxAttempts, timeoutMs, this.name, startedAt);
+      return { path: outPath, provider: this.name };
+    } finally {
+      clearInterval(heartbeat);
+      clearTimeout(timer);
+    }
   }
   private async once(
     prompt: string,
@@ -217,6 +313,44 @@ class GptImageProvider implements ImageProvider {
   }
 }
 
+function pathExtension(filePath: string) {
+  const match = /\.[^.\\/]+$/.exec(filePath);
+  return match?.[0]?.toLowerCase() || ".png";
+}
+
+async function writeImageResponse(
+  resp: Response,
+  outPath: string,
+  signal: AbortSignal,
+  opts: ImageGenerateOptions | undefined,
+  attempt: number,
+  maxAttempts: number,
+  timeoutMs: number,
+  provider: string,
+  startedAt: number,
+) {
+  const json: any = await resp.json();
+  const item = json?.data?.[0] || {};
+  fs.mkdirSync(requirePathDir(outPath), { recursive: true });
+  if (item.b64_json) {
+    fs.writeFileSync(outPath, Buffer.from(item.b64_json, "base64"));
+    return;
+  }
+  if (item.url) {
+    notify(opts, { stage: "download", attempt, maxAttempts, timeoutMs, provider, elapsedMs: Date.now() - startedAt });
+    const image = await fetch(item.url, { signal });
+    if (!image.ok) throw new ImageProviderError(`image download ${image.status}`, { provider, kind: "http", status: image.status });
+    fs.writeFileSync(outPath, Buffer.from(await image.arrayBuffer()));
+    return;
+  }
+  throw new ImageProviderError("生图响应无 b64_json/url", { provider, kind: "empty" });
+}
+
+function requirePathDir(filePath: string) {
+  const normalized = filePath.replace(/[\\/][^\\/]+$/, "");
+  return normalized || ".";
+}
+
 // Mock：用 ffmpeg 画一张带网格的纯色占位图（让链路跑通，不花钱）
 class MockImageProvider implements ImageProvider {
   readonly name = "mock-image";
@@ -301,31 +435,19 @@ function parseImageChannels(raw: string | undefined): ImageChannelConfig[] {
         name: name || `image-${index + 1}`,
         baseUrl,
         apiKey,
-        model: model || process.env.IMAGE_MODEL?.trim() || "gpt-image-1",
+        model: model || "gpt-image-2",
       };
     })
     .filter((channel): channel is ImageChannelConfig => !!channel);
 }
 
 function configuredImageChannels(): ImageChannelConfig[] {
-  const channels = parseImageChannels(process.env.IMAGE_CHANNELS);
-  const key = process.env.IMAGE_API_KEY?.trim();
-  const primaryDisabled = process.env.IMAGE_PRIMARY_DISABLED === "1";
-  if (key && !primaryDisabled) {
-    channels.unshift({
-      name: process.env.IMAGE_CHANNEL_NAME?.trim() || "primary",
-      apiKey: key,
-      baseUrl: process.env.IMAGE_BASE_URL?.trim() || "https://api.openai.com/v1",
-      model: process.env.IMAGE_MODEL?.trim() || "gpt-image-1",
-    });
-  }
-  const seen = new Set<string>();
-  return channels.filter((channel) => {
-    const dedupKey = `${channel.baseUrl}|${channel.apiKey}|${channel.model}`;
-    if (seen.has(dedupKey)) return false;
-    seen.add(dedupKey);
-    return true;
-  });
+  return [{
+    name: "gpt-image-2-api-kit",
+    apiKey: readGptImage2KitKey(),
+    baseUrl: process.env.GPT_IMAGE2_BASE_URL?.trim() || "https://api.openai.com/v1",
+    model: process.env.GPT_IMAGE2_MODEL?.trim() || "gpt-image-2",
+  }];
 }
 
 export function getConfiguredImageChannels(): PublicImageChannelConfig[] {
@@ -333,9 +455,7 @@ export function getConfiguredImageChannels(): PublicImageChannelConfig[] {
     name: channel.name,
     baseUrl: channel.baseUrl,
     model: channel.model,
-    keyHint: channel.apiKey.length > 10
-      ? `${channel.apiKey.slice(0, 6)}...${channel.apiKey.slice(-4)}`
-      : channel.apiKey ? "已配置" : "未配置",
+    keyHint: channel.apiKey ? "已配置（已隐藏）" : "未配置",
   }));
 }
 
@@ -382,7 +502,13 @@ export function getImageChannelCount() {
 }
 
 export function getImage(): ImageProvider {
-  const channels = configuredImageChannels();
+  let channels: ImageChannelConfig[];
+  try {
+    channels = configuredImageChannels();
+  } catch (error) {
+    if (process.env.ALLOW_MOCK_PROVIDERS === "1") return new MockImageProvider();
+    throw error;
+  }
   if (channels.length === 1) {
     const channel = channels[0];
     return new GptImageProvider(channel.apiKey, channel.baseUrl, channel.model, channel.name);
@@ -392,5 +518,5 @@ export function getImage(): ImageProvider {
       channels.map((channel) => new GptImageProvider(channel.apiKey, channel.baseUrl, channel.model, channel.name)),
     );
   }
-  return new MockImageProvider();
+  throw new ImageProviderError("GPT Image 2 API kit 未配置", { provider: "gpt-image-2-api-kit", kind: "unknown" });
 }

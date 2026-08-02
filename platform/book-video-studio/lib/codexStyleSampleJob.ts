@@ -13,6 +13,7 @@ import {
 import { registerStyleSampleFile } from "./styleSampleRegistry";
 import { assertStyleSampleInputsComplete } from "./titleWorkflow";
 import { runVisibleCodexTask, type CodexTaskEvent } from "./codexAppServer";
+import { getImage } from "./providers/image";
 
 export type CodexStyleSampleJobStatus =
   | "queued"
@@ -82,8 +83,8 @@ function summarizeEvent(event: CodexTaskEvent) {
   }
   if (event.type === "item.started") {
     const item = event.item as any;
-    if (item.type === "mcpToolCall" || item.type === "mcp_tool_call" || item.type === "image_generation") {
-      return { phase: "generating_image", message: "Codex imagegen 正在生成代表性样图", progress: 0.55 };
+    if (item.type === "mcpToolCall" || item.type === "mcp_tool_call") {
+      return { phase: "planning", message: "Codex 正在完善分镜与样图提示词", progress: 0.55 };
     }
     if (item.type === "commandExecution" || item.type === "command_execution") {
       return { phase: "saving", message: "Codex 正在整理并保存 G03 产物", progress: 0.72 };
@@ -127,12 +128,12 @@ function buildPrompt(taskId: string, imageFileName: string, promptFileName: stri
     "1. 先完整阅读当前项目的 AGENTS.md，以及该任务目录中的 script.txt、titles.json、script_sources.md（如存在）。",
     "2. 依据已确认文案按语义生成 storyboard/storyboard.json；图片数量由语义自然决定，不使用固定数量公式。",
     "3. 只选择一个最有代表性的镜头作为 G03 样图，写出对应提示词。",
-    "4. 必须使用内置 image_gen/imagegen 能力生成恰好一张 9:16 竖屏样图；不得生成其余分镜图片。",
+    "4. 不得调用任何内置生图能力；工作台会在你完成后使用指定 GPT Image 2 API kit 生成恰好一张样图。",
     "5. 图片无中文、无英文、无书名、无字幕、无标志、无水印；为顶部标题和中下部字幕保留自然低信息区。",
-    "6. 样图必须保存到下面指定的绝对路径；提示词必须保存到指定提示词路径。",
-    `7. 图片路径：${imagePath}`,
+    "6. 只需把最终实际生图提示词保存到指定提示词路径，不要创建或修改图片文件。",
+    `7. 工作台图片输出路径（仅供理解，不得自行写入）：${imagePath}`,
     `8. 提示词路径：${promptPath}`,
-    "9. 完成后检查图片文件确实存在、可读取，并在最终回复中明确写出保存路径。",
+    "9. 完成后检查提示词文件确实存在、可读取，并在最终回复中明确写出保存路径。",
     "10. 不进入 G04，不生成配音、字幕、视频、封面，不发布，不归档。",
   ].join("\n");
 }
@@ -197,14 +198,32 @@ async function runJob(taskId: string, jobArtifactId: string) {
     },
   });
 
+  const promptPath = path.join(taskDir(taskId), "storyboard", "prompts", initial.expectedPromptFileName);
+  if (!fs.existsSync(promptPath) || fs.statSync(promptPath).size < 100) {
+    throw new Error(`Codex 规划结束，但没有在指定位置找到有效样图提示词：${promptPath}`);
+  }
   const imagePath = path.join(
     taskDir(taskId),
     "storyboard",
     "images",
     initial.expectedImageFileName,
   );
+  fs.mkdirSync(path.dirname(imagePath), { recursive: true });
+  const imagePrompt = fs.readFileSync(promptPath, "utf8").trim();
+  await getImage().generate(imagePrompt, imagePath, {
+    size: "1024x1792",
+    onProgress: (event) => updateJob(jobArtifactId, {
+      status: "running",
+      phase: event.stage === "retry" ? "retrying_image" : "generating_image",
+      message: event.stage === "retry"
+        ? `GPT Image 2 正在重试样图（${event.attempt}/${event.maxAttempts}）`
+        : "GPT Image 2 API kit 正在生成代表性样图",
+      progress: event.stage === "response" || event.stage === "download" ? 0.9 : 0.78,
+      heartbeatAt: Date.now(),
+    }),
+  });
   if (!fs.existsSync(imagePath) || fs.statSync(imagePath).size < 10_000) {
-    throw new Error(`Codex 任务结束，但没有在指定位置找到有效样图：${imagePath}`);
+    throw new Error(`GPT Image 2 任务结束，但没有在指定位置找到有效样图：${imagePath}`);
   }
   registerStyleSampleFile(taskId, {
     imageFileName: initial.expectedImageFileName,

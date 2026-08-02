@@ -65,7 +65,7 @@ docs/UI_HANDOFF.md  2026-06-25 UI 产品化改版交接：采集页/任务流/�
 - **ASR**（兜底链，前者失败/空文本自动切下一个）：`ASR_API_KEY`(中转站whisper) → `TENCENT_SECRET_ID/KEY`(腾讯云) → Mock。**腾讯云识别质量最好且自带标点**。
 - **TTS**：`TTS_PROVIDER`显式指定 > `INDEX_TTS2_URL`(Windows GPU,已部署) > `REPLICATE_API_TOKEN` > macOS say(仅darwin) > Mock。
 - **LLM**：`OPENAI_API_KEY`(gpt-5.5) / `DEEPSEEK_API_KEY`(书名)。
-- **图像**：`IMAGE_API_KEY`(gpt-image-2)。固定用 gpt-image-2，不再考虑本地 SDXL/ComfyUI。
+- **图像**：运行时读取 `GPT_IMAGE2_KIT_FILE`（默认指向本机 `GPTImage2.txt`），固定使用 `gpt-image-2`，不得把 Key 复制进仓库、配置产物或日志。
 - **背景**：`RENDER_BG` = video|images|auto(默认,有配图优先轮播)。
 
 ## 六、踩过的坑（务必知道，避免重蹈）

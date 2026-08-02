@@ -11,6 +11,24 @@
     "metadataPath": "video_clips/reference-metadata.json"
   },
   "projectRoot": "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/AI视频",
+  "imageGeneration": {
+    "provider": "openai-gpt-image-2-api-kit",
+    "model": "gpt-image-2",
+    "generationEndpoint": "/images/generations",
+    "editEndpoint": "/images/edits",
+    "baseUrlDefault": "https://api.openai.com/v1",
+    "baseUrlEnv": "GPT_IMAGE2_BASE_URL",
+    "modelEnv": "GPT_IMAGE2_MODEL",
+    "apiKitFileEnv": "GPT_IMAGE2_KIT_FILE",
+    "apiKitFileDefault": "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/配置/GPTImage2.txt",
+    "apiKeyLinePattern": "^sk-\\S+$",
+    "loadSecretAtRuntimeOnly": true,
+    "allowImplicitProviderFallback": false,
+    "allowBuiltInImagegen": false,
+    "storyboardRequestSize": "1024x1792",
+    "storyboardDeliverySize": "1080x1920",
+    "outputFormat": "png"
+  },
   "workflow": {
     "confirmationMode": "two_step",
     "requiredHumanConfirmations": ["script", "images"],

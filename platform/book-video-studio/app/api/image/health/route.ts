@@ -4,21 +4,15 @@ import { getConfiguredImageChannels, probeImageChannel } from "@/lib/providers/i
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const channels = getConfiguredImageChannels();
-  if (!channels.length) {
+  let channels;
+  try {
+    channels = getConfiguredImageChannels();
+  } catch (error: any) {
     return NextResponse.json({
-      ok: true,
-      channels: [{
-        name: "mock-image",
-        baseUrl: "local",
-        model: "mock",
-        keyHint: "无需 key",
-        ok: true,
-        status: 200,
-        latencyMs: 0,
-        message: "未配置外部生图通道，当前会使用本地占位图。",
-      }],
-    });
+      ok: false,
+      channels: [],
+      message: String(error?.message || error || "GPT Image 2 API kit 配置不可用"),
+    }, { status: 503 });
   }
 
   const results = await Promise.all(channels.map((channel) => probeImageChannel(channel)));

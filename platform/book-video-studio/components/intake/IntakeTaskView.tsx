@@ -1818,7 +1818,7 @@ export default function IntakeTaskView({ taskId }: { taskId: string }) {
                   返回修改风格样图
                 </button>
               ) : null}
-              <span className="intake-dbs-version">Codex imagegen</span>
+              <span className="intake-dbs-version">GPT Image 2 API kit</span>
             </div>
           </div>
 

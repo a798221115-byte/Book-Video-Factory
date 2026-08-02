@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.0 - 2026-08-02
+
+- Route every generated and edited image through the runtime-only GPT Image 2 API kit, without persisting or revealing the key.
+- Move G03 generation, G04 style-conditioned images, targeted revisions, health checks, and generated cover backgrounds onto `gpt-image-2` generation/edit endpoints.
+- Upgrade `produce-wechat-book-video` to 3.9.0 while preserving its existing 9:16 visual profile, confirmation gates, and image QA contract.
+
 ## 3.6.2 - 2026-08-02
 
 - Support the current WeChat Channels “视频标注” control and its localized “含AI產生內容” option.

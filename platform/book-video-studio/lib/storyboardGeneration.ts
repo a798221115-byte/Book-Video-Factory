@@ -156,7 +156,7 @@ export function startRemainingImageQueue(
     };
   });
   const meta = {
-    generator: "codex-built-in-imagegen",
+    generator: "gpt-image-2-api-kit",
     status: jobs.every((job) => job.status === "done") ? "done" : "queued",
     requestedAt: Date.now(),
     imageRevision: forceNewImageRevision ? imageRevision : null,

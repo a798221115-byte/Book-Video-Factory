@@ -555,6 +555,11 @@ function parseImageChannels(raw: string | undefined): ImageChannelConfig[] {
 }
 
 function configuredImageChannels(): ImageChannelConfig[] {
+  const kitPath = process.env.GPT_IMAGE2_KIT_FILE?.trim() || DEFAULT_GPT_IMAGE2_KIT_FILE;
+  // Image generation is optional during server startup and Next.js route
+  // collection. Keep the channel list empty until a real kit is configured;
+  // getImage() will still fail closed when generation is actually requested.
+  if (!fs.existsSync(kitPath)) return [];
   const kit = readGptImage2Kit();
   return [{
     name: "gpt-image-2-api-kit",

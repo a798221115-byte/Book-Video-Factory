@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.7.3 - 2026-08-02
+
+- Allow Book Video Studio to build and start when the optional GPT Image 2 API kit is not configured.
+- Continue to fail closed with a clear error only when image generation is actually requested.
+
 ## 3.7.2 - 2026-08-02
 
 - Set APIMart production image requests to the user-approved `9:16` 1K tier, verified as `941x1672` on the configured channel.

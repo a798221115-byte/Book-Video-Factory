@@ -27,8 +27,8 @@
     "allowImplicitProviderFallback": false,
     "allowBuiltInImagegen": false,
     "gatewayPortraitRatio": "9:16",
-    "gatewayResolution": "2k",
-    "storyboardRequestSize": "1152x2048",
+    "gatewayResolution": "1k",
+    "storyboardRequestSize": "941x1672",
     "storyboardDeliverySize": "1080x1920",
     "outputFormat": "png"
   },

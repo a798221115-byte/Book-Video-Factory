@@ -353,7 +353,7 @@ class GptImageProvider implements ImageProvider {
         prompt,
         n: 1,
         size: apiMartSize(opts?.size),
-        resolution: process.env.GPT_IMAGE2_RESOLUTION?.trim() || "2k",
+        resolution: process.env.GPT_IMAGE2_RESOLUTION?.trim() || "1k",
       };
       if (inputPath) {
         const extension = pathExtension(inputPath);

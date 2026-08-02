@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.7.2 - 2026-08-02
+
+- Set APIMart production image requests to the user-approved `9:16` 1K tier, verified as `941x1672` on the configured channel.
+- Keep deterministic final rendering at `1080x1920` and upgrade `produce-wechat-book-video` to 3.9.2.
+
 ## 3.7.1 - 2026-08-02
 
 - Detect the APIMart Base URL directly from the local GPT Image 2 kit.

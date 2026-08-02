@@ -1,0 +1,4 @@
+interface:
+  display_name: "图书视频矩阵调度"
+  short_description: "从已完成主账号项目安全生成管理并复盘多个账号的分发版本"
+  default_prompt: "Use $produce-wechat-book-video-matrix to create an isolated second-account variant from a completed primary book-video project."

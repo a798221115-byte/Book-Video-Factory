@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "account-profile.schema.json",
+  "title": "Book video matrix account profile",
+  "type": "object",
+  "required": ["account", "audience", "content", "production", "publishing"],
+  "properties": {
+    "account": {
+      "type": "object",
+      "required": ["id", "name", "platform", "role"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$"},
+        "name": {"type": "string", "minLength": 1},
+        "platform": {"enum": ["weixin_channels", "douyin"]},
+        "role": {"enum": ["main", "experiment", "vertical", "repost"]},
+        "credential_alias": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "audience": {
+      "type": "object",
+      "required": ["description", "content_pillars"],
+      "properties": {
+        "description": {"type": "string", "minLength": 8},
+        "content_pillars": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": false
+    },
+    "content": {"type": "object", "required": ["tone", "allowed_hook_types", "cta_style"]},
+    "production": {"type": "object", "required": ["duration_seconds", "intro", "voice", "bgm", "visual", "captions"]},
+    "publishing": {"type": "object", "required": ["mode", "daily_target"]},
+    "analytics": {"type": "object"}
+  },
+  "additionalProperties": false
+}

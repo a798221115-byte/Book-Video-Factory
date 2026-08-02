@@ -1,0 +1,51 @@
+account:
+  id: account-02
+  name: "待填写"
+  platform: weixin_channels
+  role: experiment
+  credential_alias: ""
+
+audience:
+  description: "待填写：具体年龄、处境、问题和内容偏好"
+  content_pillars:
+    - "待填写"
+
+content:
+  tone: "温柔、克制、生活化"
+  allowed_hook_types:
+    - resonance
+    - story
+  cta_style: "轻提醒，不强推销"
+  forbidden_topics: []
+
+production:
+  duration_seconds:
+    preferred: 50
+    maximum: 60
+  intro:
+    path: "固定/女版前3秒固定开头.mp4"
+  voice:
+    preset: female-book-narrator-locked-v1
+  bgm:
+    path: "固定/背景音乐.mp3"
+    volume: 0.63
+  visual:
+    profile: warm-cinematic-literary-life-v1
+  typography:
+    profile: primary-default
+  captions:
+    chinese: true
+    english: true
+  ending:
+    fade_out: true
+
+publishing:
+  mode: manual
+  daily_target: 1
+  preferred_windows: []
+
+analytics:
+  horizons:
+    - 24h
+    - 72h
+    - 7d

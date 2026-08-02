@@ -212,7 +212,7 @@ Generate exactly one representative original 9:16 style sample through the confi
 
 Start only after the G03 sample passes automatic QA.
 
-Generate remaining images with the configured GPT Image 2 image-edit endpoint, passing the adopted G03 sample as style-conditioning input. Use the same provider for every targeted revision, with the current frame as edit input. Preserve the adopted style, palette, identity, period, light, and composition rules. Inspect:
+Generate remaining images with the configured GPT Image 2 provider's reference-image operation, passing the adopted G03 sample as style-conditioning input. On APIMart, use `/images/generations` with `image_urls` and poll the asynchronous task; on a native OpenAI-compatible channel, use the edit endpoint. Use the same provider for every targeted revision, with the current frame as edit input. Preserve the adopted style, palette, identity, period, light, and composition rules. Inspect:
 
 - conformance to `warm-cinematic-literary-life-v1`, including the bundled anchor, low-saturation warm-neutral palette, low-angle natural golden light, long soft shadows, luminous haze, realistic unretouched skin/materials, subtle grain and no recognizable anchor-composition copy;
 - recurring-character face, age, shoulder-length softly wavy black hair, oatmeal-beige long coat and slate-blue-gray scarf continuity when that default protagonist is active;

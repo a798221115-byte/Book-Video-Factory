@@ -91,7 +91,7 @@ const DEFAULT_MAX_ATTEMPTS = toBoundedInt(process.env.IMAGE_MAX_ATTEMPTS, 3, 1, 
 const WAITING_PROGRESS_INTERVAL_MS = 15_000;
 const DEFAULT_GPT_IMAGE2_KIT_FILE = "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/配置/GPTImage2.txt";
 
-function readGptImage2KitKey(): string {
+function readGptImage2Kit(): { apiKey: string; baseUrl?: string } {
   const kitPath = process.env.GPT_IMAGE2_KIT_FILE?.trim() || DEFAULT_GPT_IMAGE2_KIT_FILE;
   if (!fs.existsSync(kitPath)) {
     throw new ImageProviderError(`GPT Image 2 API kit 不存在：${kitPath}`, {
@@ -99,18 +99,31 @@ function readGptImage2KitKey(): string {
       kind: "unknown",
     });
   }
-  const key = fs.readFileSync(kitPath, "utf8")
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => /^sk-\S+$/.test(line));
+  const raw = fs.readFileSync(kitPath, "utf8").replace(/^\uFEFF/, "");
+  const key = raw.match(/sk-[^\s"']+/)?.[0];
   if (!key) {
     throw new ImageProviderError(`GPT Image 2 API kit 中未找到 sk- 开头的 API Key：${kitPath}`, {
       provider: "gpt-image-2-api-kit",
       kind: "unknown",
     });
   }
-  return key;
+  const baseUrl = raw.match(/https?:\/\/[^\s"']+/)?.[0]?.replace(/\/$/, "");
+  return { apiKey: key, baseUrl };
+}
+
+function normalizeApiBaseUrl(value: string) {
+  const baseUrl = value.replace(/\/$/, "");
+  return /\/v1$/i.test(baseUrl) ? baseUrl : `${baseUrl}/v1`;
+}
+
+function isApiMartBaseUrl(baseUrl: string) {
+  try { return new URL(baseUrl).hostname.toLowerCase() === "api.apimart.ai"; }
+  catch { return false; }
+}
+
+function apiMartSize(size: string | undefined) {
+  if (!size || size === "1024x1792" || size === "1080x1920") return "9:16";
+  return /^\d+:\d+$/.test(size) ? size : "9:16";
 }
 
 // gpt-image-2（中转站偶发超时，默认最多重试 1 次；可用 IMAGE_MAX_ATTEMPTS 覆盖到 1-3）
@@ -156,6 +169,9 @@ class GptImageProvider implements ImageProvider {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       notify(opts, { stage: "attempt", attempt, maxAttempts, timeoutMs, provider: this.name });
       try {
+        if (isApiMartBaseUrl(this.baseUrl)) {
+          return await this.apiMartOnce(prompt, outPath, inputPath, opts, attempt, maxAttempts, timeoutMs);
+        }
         return await this.editOnce(prompt, inputPath, outPath, opts, attempt, maxAttempts, timeoutMs);
       } catch (error: any) {
         lastErr = error;
@@ -226,6 +242,9 @@ class GptImageProvider implements ImageProvider {
     maxAttempts: number,
     timeoutMs: number,
   ): Promise<{ path: string; provider?: string }> {
+    if (isApiMartBaseUrl(this.baseUrl)) {
+      return this.apiMartOnce(prompt, outPath, undefined, opts, attempt, maxAttempts, timeoutMs);
+    }
     const ctrl = new AbortController();
     const startedAt = Date.now();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -306,6 +325,100 @@ class GptImageProvider implements ImageProvider {
         });
       }
       return { path: outPath, provider: this.name };
+    } finally {
+      clearInterval(heartbeat);
+      clearTimeout(timer);
+    }
+  }
+
+  private async apiMartOnce(
+    prompt: string,
+    outPath: string,
+    inputPath: string | undefined,
+    opts: ImageGenerateOptions | undefined,
+    attempt: number,
+    maxAttempts: number,
+    timeoutMs: number,
+  ): Promise<{ path: string; provider?: string }> {
+    const ctrl = new AbortController();
+    const startedAt = Date.now();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    const heartbeat = setInterval(() => notify(opts, {
+      stage: "waiting", attempt, maxAttempts, timeoutMs, provider: this.name, elapsedMs: Date.now() - startedAt,
+      message: "APIMart 异步任务处理中",
+    }), WAITING_PROGRESS_INTERVAL_MS);
+    try {
+      const body: Record<string, unknown> = {
+        model: this.model,
+        prompt,
+        n: 1,
+        size: apiMartSize(opts?.size),
+        resolution: process.env.GPT_IMAGE2_RESOLUTION?.trim() || "2k",
+      };
+      if (inputPath) {
+        const extension = pathExtension(inputPath);
+        const mime = extension === ".jpg" || extension === ".jpeg" ? "image/jpeg" : "image/png";
+        body.image_urls = [`data:${mime};base64,${fs.readFileSync(inputPath).toString("base64")}`];
+      }
+      const submit = await fetch(`${this.baseUrl}/images/generations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+      notify(opts, { stage: "response", attempt, maxAttempts, timeoutMs, provider: this.name, elapsedMs: Date.now() - startedAt, message: String(submit.status) });
+      if (!submit.ok) {
+        throw new ImageProviderError(`APIMart gpt-image-2 ${submit.status}: ${(await submit.text()).slice(0, 300)}`, {
+          provider: this.name, kind: "http", status: submit.status,
+        });
+      }
+      const submitted: any = await submit.json();
+      const taskId = submitted?.data?.[0]?.task_id;
+      if (!taskId) throw new ImageProviderError("APIMart 生图响应无 task_id", { provider: this.name, kind: "empty" });
+      let task: any;
+      while (!ctrl.signal.aborted) {
+        await new Promise((resolve) => setTimeout(resolve, 3_000));
+        const poll = await fetch(`${this.baseUrl}/tasks/${encodeURIComponent(taskId)}`, {
+          headers: { Authorization: `Bearer ${this.apiKey}` },
+          signal: ctrl.signal,
+        }).catch(() => {
+          throw new ImageProviderError("APIMart 已提交生图任务，但轮询网络异常；为避免重复计费未自动重提", {
+            provider: this.name, kind: "unknown",
+          });
+        });
+        if (!poll.ok) {
+          throw new ImageProviderError(`APIMart task ${poll.status}: ${(await poll.text()).slice(0, 300)}`, {
+            provider: this.name, kind: "http", status: poll.status,
+          });
+        }
+        task = await poll.json();
+        const status = String(task?.data?.status || "");
+        notify(opts, {
+          stage: "waiting", attempt, maxAttempts, timeoutMs, provider: this.name,
+          elapsedMs: Date.now() - startedAt,
+          message: `${status || "processing"} ${Number(task?.data?.progress || 0)}%`,
+        });
+        if (status === "completed") break;
+        if (["failed", "error", "cancelled"].includes(status)) {
+          throw new ImageProviderError(`APIMart 生图任务失败：${status}`, { provider: this.name, kind: "unknown" });
+        }
+      }
+      if (ctrl.signal.aborted) {
+        throw new ImageProviderError("APIMart 已提交生图任务，但本次轮询未完成", { provider: this.name, kind: "unknown" });
+      }
+      const imageUrl = task?.data?.result?.images?.[0]?.url?.[0];
+      if (!imageUrl) throw new ImageProviderError("APIMart 完成响应无图片 URL", { provider: this.name, kind: "empty" });
+      notify(opts, { stage: "download", attempt, maxAttempts, timeoutMs, provider: this.name, elapsedMs: Date.now() - startedAt });
+      const image = await fetch(imageUrl, { signal: ctrl.signal });
+      if (!image.ok) throw new ImageProviderError(`APIMart image download ${image.status}`, { provider: this.name, kind: "http", status: image.status });
+      fs.mkdirSync(requirePathDir(outPath), { recursive: true });
+      fs.writeFileSync(outPath, Buffer.from(await image.arrayBuffer()));
+      return { path: outPath, provider: this.name };
+    } catch (error) {
+      if (ctrl.signal.aborted && !(error instanceof ImageProviderError)) {
+        throw new ImageProviderError("APIMart 已提交生图任务，但本次轮询未完成", { provider: this.name, kind: "unknown" });
+      }
+      throw error;
     } finally {
       clearInterval(heartbeat);
       clearTimeout(timer);
@@ -442,10 +555,11 @@ function parseImageChannels(raw: string | undefined): ImageChannelConfig[] {
 }
 
 function configuredImageChannels(): ImageChannelConfig[] {
+  const kit = readGptImage2Kit();
   return [{
     name: "gpt-image-2-api-kit",
-    apiKey: readGptImage2KitKey(),
-    baseUrl: process.env.GPT_IMAGE2_BASE_URL?.trim() || "https://api.openai.com/v1",
+    apiKey: kit.apiKey,
+    baseUrl: normalizeApiBaseUrl(process.env.GPT_IMAGE2_BASE_URL?.trim() || kit.baseUrl || "https://api.openai.com/v1"),
     model: process.env.GPT_IMAGE2_MODEL?.trim() || "gpt-image-2",
   }];
 }

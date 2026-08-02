@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.1 - 2026-08-02
+
+- Detect the APIMart Base URL directly from the local GPT Image 2 kit.
+- Support APIMart asynchronous image tasks, 9:16 2K output, polling, downloads, and `image_urls` reference conditioning without duplicate resubmission after polling interruptions.
+- Upgrade `produce-wechat-book-video` to 3.9.1.
+
 ## 3.7.0 - 2026-08-02
 
 - Route every generated and edited image through the runtime-only GPT Image 2 API kit, without persisting or revealing the key.

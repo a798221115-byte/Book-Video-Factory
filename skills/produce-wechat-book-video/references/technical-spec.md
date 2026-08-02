@@ -98,7 +98,7 @@ Resolve one production variant before narration, caption timing, or mixing:
 | `male` | `male-podcast-locked-v2` (`男版音色`) | `固定/男版前3秒固定开头.mp4` (`男版片头`) | 2.97 seconds |
 | `female` | `female-book-narrator-locked-v1` (`女版音色`) | `固定/女版前3秒固定开头.mp4` (`女版片头`) | 2.97 seconds |
 
-Use `female` as the default when the user has not selected a variant. When the user requests a male version, resolve both voice and intro to `male`. Verify the intro file hash from `assets/default-config.json`, retain its original audio, and use its measured duration as the narration and caption offset. Treat a voice/intro mismatch as a blocking validation error unless the user explicitly authorizes cross-pairing. Do not overlay AI-generation notices, subtitles, or other new text on the fixed opening three seconds unless the user explicitly asks for it; the platform's publication-page AI disclosure remains a separate manual action.
+Use `female` as the default when the user has not selected a variant. When the user requests a male version, resolve both voice and intro to `male`. Verify the intro file hash from `assets/default-config.json`, retain its original audio, and use its measured duration as the narration and caption offset. Treat a voice/intro mismatch as a blocking validation error unless the user explicitly authorizes cross-pairing. Do not overlay subtitles or other new text on the fixed opening three seconds unless the user explicitly asks for it. Never overlay or burn AI-generation notices anywhere in the finished MP4, including `本视频含AI生成画面与AI合成配音`; the platform's publication-page AI disclosure remains a separate manual action and must not be implemented as video or cover text.
 
 ## Deterministic header placement
 
@@ -119,10 +119,12 @@ For `男版音色`, apply body voice clarity in two deterministic stages:
 
 Approved decoded pure-voice targets are approximately -12.4 LUFS, LRA 2.5 LU, and -0.8dBFS true peak. Do not add presence EQ merely to make the waveform brighter; the approved clarity comes from the v2 reference clone at native speed.
 
-For `女版音色`, use the mastering chain stored in `female-book-narrator-locked-v1.json`:
+For `女版音色`, use the user-approved `soft-v2` mastering chain stored in `female-book-narrator-locked-v1.json`. This changes only post-generation mastering; keep the locked reference audio, prompt transcript, VoxCPM2 parameters, fixed seed, native generated timing, and voice/intro binding unchanged:
 
-1. `highpass=f=75,equalizer=f=3200:t=q:w=1.1:g=1.5,acompressor=threshold=0.12:ratio=1.4:attack=12:release=140:makeup=1.02,loudnorm=I=-15.1:LRA=8:TP=-1.0`
-2. `volume=1.45,alimiter=limit=0.91:level=false`
+1. `highpass=f=65,lowpass=f=12000,equalizer=f=250:t=q:w=1.0:g=1.0,equalizer=f=3200:t=q:w=1.15:g=-2.0,acompressor=threshold=0.15:ratio=1.2:attack=25:release=220:makeup=1.0,loudnorm=I=-15.5:LRA=10:TP=-1.5`
+2. `volume=1.25,alimiter=limit=0.88:level=false`
+
+Use final-mix limiter `0.90` and final-mix gain `1.00` for the female profile. The intent is a rounder, warmer narration with less 3.2kHz hardness and gentler compression; do not restore the former +1.5dB presence boost or 1.4:1 compressor unless the user explicitly requests the brighter legacy treatment.
 
 Do not apply the male mastering chain to the female preset or vice versa.
 
@@ -150,6 +152,7 @@ Check:
 - one-line captions and forbidden punctuation;
 - image and audio paths;
 - sample frames at the intro boundary, middle, and ending.
+- no burned-in AI-generation disclosure at the opening, body, ending, or cover; platform AI declaration is tracked separately as publication metadata or a publication-page action;
 - a passing C02 media report before automatic G06 delivery registration and any draft or formal upload;
 - draft-only mode for G07, selected account, and idempotency record;
 - explicit per-task authorization, selected platform accounts, platform-appropriate cover handling, and per-target idempotency records before G08 formal publication;

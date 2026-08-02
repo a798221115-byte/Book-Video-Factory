@@ -74,10 +74,12 @@ def main() -> int:
 
     if args.voice_profile == "female-locked-v1":
         voice_processing = (
-            "highpass=f=75,equalizer=f=3200:t=q:w=1.1:g=1.5,"
-            "acompressor=threshold=0.12:ratio=1.4:attack=12:release=140:makeup=1.02,"
-            "loudnorm=I=-15.1:LRA=8:TP=-1.0,"
-            "volume=1.45,alimiter=limit=0.91:level=false"
+            "highpass=f=65,lowpass=f=12000,"
+            "equalizer=f=250:t=q:w=1.0:g=1.0,"
+            "equalizer=f=3200:t=q:w=1.15:g=-2.0,"
+            "acompressor=threshold=0.15:ratio=1.2:attack=25:release=220:makeup=1.0,"
+            "loudnorm=I=-15.5:LRA=10:TP=-1.5,"
+            "volume=1.25,alimiter=limit=0.88:level=false"
         )
     elif args.voice_profile == "new-reference-natural":
         voice_processing = (
@@ -116,8 +118,8 @@ def main() -> int:
             "volume=1.14,alimiter=limit=0.86:level=false"
         )
 
-    final_mix_limiter = 0.70 if args.voice_profile == "female-locked-v1" else 0.90
-    final_mix_gain = 0.65 if args.voice_profile == "female-locked-v1" else 1.00
+    final_mix_limiter = 0.90
+    final_mix_gain = 1.00
 
     filters = (
         "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,"

@@ -23,6 +23,15 @@ function newestCover(projectPath: string) {
     .sort((left, right) => fs.statSync(right).mtimeMs - fs.statSync(left).mtimeMs)[0] || "";
 }
 
+function auditedPublicationDescription(filePath: string, longTitle: string) {
+  if (!fs.existsSync(filePath)) return "";
+  const lines = fs.readFileSync(filePath, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim());
+  if (lines[0] === longTitle) lines.shift();
+  return lines.filter((line) => !line.startsWith("#")).join("\n").trim();
+}
+
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const task = getTask(id);
@@ -65,12 +74,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!videoArtifact?.path) return NextResponse.json({ error: "缺少审核成片" }, { status: 409 });
   const videoPath = resolveArtifactPath(videoArtifact.path);
   const coverPath = newestCover(task.projectPath);
+  const publicationCopyPath = path.join(task.projectPath, "publication-copy.txt");
   const titles = readTitleWorkflowMeta(id);
   const longTitle = String(titles.selected_long_title || "");
   const shortTitle = String(titles.selected_short_title || "");
   if (!longTitle || !shortTitle) {
     return NextResponse.json({ error: "长标题或短标题尚未采用" }, { status: 409 });
   }
+  const description = auditedPublicationDescription(publicationCopyPath, longTitle);
 
   updateTask(id, { status: "publishing", currentGate: "AUTO_PUBLICATION" });
   upsertWorkflowRun(id, "publication", {
@@ -93,14 +104,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       meta: JSON.stringify({ authorization: AUTHORIZATION, authorizedAt: Date.now() }),
     });
     try {
-      await publishSocialVideo({
+      const uploadResult = await publishSocialVideo({
         platform: target.platform,
         accountFile: account.file,
         videoPath,
         coverPath: coverPath || undefined,
         title: longTitle,
         shortTitle,
-        description: `${longTitle}\n${(titles.hashtags || []).join(" ")}`.trim(),
+        description,
         tags: titles.hashtags || [],
       });
       const publishedAt = Date.now();
@@ -114,6 +125,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         error: null,
         meta: JSON.stringify({
           mode: "automatic_publish", authorization: AUTHORIZATION, coverPath, videoPath,
+          publicationCopyPath: fs.existsSync(publicationCopyPath) ? publicationCopyPath : null,
+          publicationEvidence: uploadResult.publicationEvidence || null,
         }),
       });
       results.push({ ok: true, duplicatePrevented: false, record });

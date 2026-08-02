@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.1 - 2026-08-02
+
+- Fail closed before WeChat Channels publication unless both original-content and AI-generated-content declarations are selected and verified.
+- Capture declaration evidence before the publish click and run Patchright async automation in the verified Windows Proactor thread.
+- Upgrade `produce-wechat-book-video` to 3.8.5.
+
 ## 3.6.0 - 2026-08-01
 
 - Add an explicitly authorized multi-platform publication action for Douyin and WeChat Channels while retaining the legacy WeChat Channels draft workflow.

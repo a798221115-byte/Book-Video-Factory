@@ -156,6 +156,7 @@ Check:
 - a passing C02 media report before automatic G06 delivery registration and any draft or formal upload;
 - draft-only mode for G07, selected account, and idempotency record;
 - explicit per-task authorization, selected platform accounts, platform-appropriate cover handling, and per-target idempotency records before G08 formal publication;
+- for WeChat Channels, a fail-closed pre-publish screenshot proving both the original declaration and `含有AI生成内容` platform declaration were selected; no proof means no publish click;
 - success detection and a durable per-platform result for every automatic publication attempt.
 
 ## Approved standalone cover

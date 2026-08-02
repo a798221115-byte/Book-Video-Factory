@@ -43,9 +43,14 @@ const autoPublishRoute = read("app", "api", "tasks", "[id]", "auto-publish", "ro
 assert.match(autoPublishRoute, /AUTO_PUBLISH_CONFIRMED/, "formal publication requires explicit per-task authorization");
 assert.match(autoPublishRoute, /publicationIdempotencyKey/, "formal publication must be idempotent per target");
 assert.match(autoPublishRoute, /publication_partial_failure/, "multi-platform partial failure must be retryable");
+assert.match(autoPublishRoute, /publication-copy\.txt/, "formal publication must prefer the audited publication copy");
 const socialPublisher = read("scripts", "publish_social_video.py");
 assert.match(socialPublisher, /"douyin", "weixin_channels"/, "publisher must support Douyin and WeChat Channels");
 assert.match(socialPublisher, /is_draft=False/, "authorized WeChat Channels publication must publish formally");
+assert.match(socialPublisher, /含有AI生成内容/, "WeChat Channels publisher must select the AI-generated-content declaration");
+assert.match(socialPublisher, /未确认视频号原创声明，已阻止正式发布/, "missing original declaration must fail closed");
+assert.match(socialPublisher, /无法验证视频号AI生成声明已选中，已阻止正式发布/, "unverified AI declaration must fail closed");
+assert.match(socialPublisher, /ProactorEventLoop/, "Windows async browser automation must use the verified Proactor thread runner");
 
 const manifest = JSON.parse(read("integrations", "third-party-tools.json"));
 assert.equal(manifest.tools["social-auto-upload"].mode, "explicit_authorization_multi_platform_publish");

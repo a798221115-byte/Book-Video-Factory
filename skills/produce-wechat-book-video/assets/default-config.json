@@ -258,7 +258,7 @@
   "aiDisclosure": {
     "burnIntoVideo": false,
     "burnIntoCover": false,
-    "forbiddenBurnedInText": ["本视频含AI生成画面与AI合成配音"],
+    "forbiddenBurnedInText": ["本视频含AI生成/合成内容，非真实影像", "本视频含AI生成画面与AI合成配音"],
     "publicationHandling": "platform_setting_or_publication_copy_only",
     "validateAbsenceInC02": true
   },

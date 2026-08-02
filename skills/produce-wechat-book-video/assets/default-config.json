@@ -10,6 +10,20 @@
     "videoFilename": "reference-YYYY-MM-DD.mp4",
     "metadataPath": "video_clips/reference-metadata.json"
   },
+  "bookMetadata": {
+    "primaryProvider": "weread",
+    "fallbackProvider": "douban_book",
+    "fallbackTrigger": "weread_search_returned_no_matching_book",
+    "fallbackScript": "scripts/lookup_douban_book.py",
+    "sourceRepository": "https://github.com/lanbing510/DouBanSpider.git",
+    "installedToolRoot": "F:/Codex/tools/DouBanSpider",
+    "maximumCandidates": 5,
+    "minimumRequestDelaySeconds": 0.8,
+    "requireUniqueEditionBeforeCoverDownload": true,
+    "allowedFallbackFields": ["title", "author", "translator", "publisher", "publicationDate", "isbn", "edition", "cover"],
+    "forbidFallbackAsTextualEvidence": true,
+    "allowAccessControlBypass": false
+  },
   "projectRoot": "E:/BaiduNetdiskWorkspace/电脑其他文件同步/视频号/AI视频",
   "imageGeneration": {
     "provider": "openai-gpt-image-2-api-kit",

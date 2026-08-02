@@ -9,7 +9,7 @@ Use this reference for the stages before storyboard production.
 - 2. Preserve the reference transcript
 - 3. Link intake through TikHub and Whisper
 - 4. Diagnose with `dbs-content`
-- 5. Verify with `weread-skills`
+- 5. Verify with `weread-skills`, with bounded Douban metadata fallback on no match
 - 6. Build the G01 source package
 - 7. Write and confirm the derivative copy
 
@@ -149,7 +149,7 @@ Analyze mechanisms, not just topics. A useful diagnosis explains the order in wh
 
 Do not use `dbs-content` to draft the new narration. The parent skill owns the derivative writing step.
 
-## 5. Verify with `weread-skills`
+## 5. Verify with `weread-skills`, with bounded Douban metadata fallback on no match
 
 Follow the `weread-skills` documentation:
 
@@ -161,9 +161,12 @@ Follow the `weread-skills` documentation:
 6. Use `/book/bestbookmarks` with `chapterUid=0` for whole-book popular highlights.
 7. Preserve the first 10 returned items in heat order, including sentence text, chapter, and highlight count. If fewer than 10 are returned, preserve all returned items and disclose the shortfall.
 8. Stop immediately if the API returns `upgrade_info`; complete the requested skill upgrade before retrying.
-9. Never replace unavailable WeRead evidence with another source without user approval.
+9. If the WeRead search completed successfully but returned no matching book, record `wereadLookupStatus=no_matching_book`, then load `douban-book-fallback.md` and run `scripts/lookup_douban_book.py` for bibliographic metadata and cover candidates only.
+10. Do not trigger Douban fallback for WeRead downtime, timeout, authentication failure, `upgrade_info`, low-confidence title extraction, or a merely ambiguous WeRead result.
 
 When several books share a title, use visible reference evidence such as author name or original cover to select the edition. If the edition remains ambiguous, present the candidates and stop.
+
+Douban fallback may supply title, author, translator, publisher, publication date, ISBN, subject URL, and a selected edition's cover. It may not supply WeRead highlights, quotations, chapter text, or claims attributed to the book. On the normal derivative path, if WeRead has no matching book, Douban metadata alone does not satisfy G01; obtain another explicitly approved textual source with traceable evidence or stop before derivative drafting. Direct-final-script mode may continue with user-approved wording, but must not label that wording as verified book text.
 
 ## 6. Build the G01 source package
 
@@ -174,8 +177,8 @@ Write `script_sources.md` with:
 - for link intake: TikHub source URL, `awemeId`, title, author, duration, and metadata path;
 - cleaned reference transcript path;
 - DBS diagnosis path;
-- exact WeRead edition and deep link;
-- the first 10 whole-book popular highlights in returned heat order, with chapter names and counts;
+- exact WeRead edition and deep link, or `bookIdentitySource=douban_book`, the selected Douban subject URL, ISBN, cover provenance, and `wereadLookupStatus=no_matching_book`;
+- the first 10 whole-book popular highlights in returned heat order, with chapter names and counts; when WeRead has no match, record that these are unavailable and do not fabricate or replace them with Douban content;
 - a quotation ledger separating:
   - verified WeRead quotations;
   - reference-video wording;

@@ -1,6 +1,6 @@
 ---
 name: produce-wechat-book-video
-description: Produce, review, distribute, and track a vertical book video from a supplied final narration script, narration reference, Douyin/video link, WeRead discovery, book title, or draft topic. Use for explicit “成稿直出” production without derivative rewriting, evidence-backed derivative copy, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional WeChat Channels draft upload, explicitly authorized multi-platform publication, and 24h/72h/7d review.
+description: Produce, review, distribute, and track a vertical book video from a supplied final narration script, narration reference, Douyin/video link, WeRead discovery, book title, or draft topic. Use for explicit “成稿直出” production without derivative rewriting, evidence-backed derivative copy, bounded Douban title/author/edition/cover fallback when WeRead returns no matching book, automatic title and publication-topic selection, locked narration, storyboard images, post-production, standalone covers, delivery validation, optional WeChat Channels draft upload, explicitly authorized multi-platform publication, and 24h/72h/7d review.
 ---
 
 # Produce WeChat Book Video
@@ -31,6 +31,7 @@ Use this file as the single orchestration entrypoint. Load detailed references o
 | --- | --- |
 | Full state machine, artifacts, rollback, delivery, or publication tracking | `references/workflow.md` |
 | Douyin download, Whisper transcript, DBS diagnosis, WeRead evidence, or derivative copy | `references/intake-copy-pipeline.md` |
+| WeRead no-match handling or Douban title, author, edition, and cover fallback | `references/douban-book-fallback.md` |
 | Copy voice, storyboard semantics, image prompts, anatomy, reflections, or typography | `references/creative-standards.md` |
 | Locked default visual profile and style-reference usage | `references/style-profile-warm-cinematic-literary-life-v1.md` |
 | GPT Image 2 API kit loading, generation, editing, and secret handling | `references/gpt-image-2-api-kit.md` |
@@ -48,8 +49,8 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 2. Detect explicit direct-final-script intent before derivative evidence acquisition:
    - when the user supplies a usable narration and says `成稿直出` or otherwise explicitly says to use it as the final script without rewriting, copy the exact narration to `script.txt`, mark `G01=not_required_for_user_supplied_final_script` and `G02=approved_by_explicit_user_instruction`, then continue at C01;
    - otherwise continue through normal book identification, evidence verification, derivative writing, and G02 confirmation.
-3. On the normal derivative path, identify the book from the transcript when possible. If the identity is unambiguous, continue automatically; stop only when the title is missing, low-confidence, or maps to multiple plausible WeRead editions.
-4. On the normal derivative path, run `dbs-content`, verify the exact WeRead edition, retrieve the first 10 whole-book popular highlights in returned heat order, build G01, write the derivative narration, and stop at G02.
+3. On the normal derivative path, identify the book from the transcript when possible. If WeRead returns no matching book after a successful search, run the bounded Douban metadata fallback to collect title, author, translator, publisher, publication date, ISBN, edition candidates, and cover only. Stop when the title is missing or low-confidence, multiple plausible editions remain, or the fallback cannot uniquely identify an edition.
+4. On the normal derivative path, run `dbs-content`, verify the exact WeRead edition, retrieve the first 10 whole-book popular highlights in returned heat order, build G01, write the derivative narration, and stop at G02. Douban metadata alone never replaces WeRead highlights or textual evidence; when WeRead has no match, obtain another explicitly approved textual source or stop before derivative drafting.
 5. Run C01 with `media-publish-check`. Preserve the confirmed copy; block downstream work on a failing or high-risk result.
 6. After C01 passes, run in parallel:
    - generate 10 traceable long titles, adopt the first recommendation, generate 10 short titles and 10 publication-topic sets from it, and adopt the first recommendation in each set;
@@ -63,7 +64,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 
 ## Hard invariants
 
-- Never silently replace TikHub on the link-intake path, WeRead, or another required evidence source.
+- Never silently replace TikHub on the link-intake path, WeRead, or another required evidence source. The only standing exception is the user-approved Douban bibliographic fallback after a successful WeRead search records `no_matching_book`; it supplements metadata and cover only and never replaces WeRead highlights, quotations, or book-text evidence.
 - Preserve the original transcript according to its real source: `raw-transcript-user.txt` for supplied text or `raw-transcript-whisper.txt` for Whisper. Never create a fake Whisper artifact for text intake.
 - Correct only context-supported transcription or punctuation errors in `reference-transcript.txt`; do not rewrite the reference copy.
 - Keep reference-video wording and WeRead quotations as separate evidence classes. Never present an unverified reference sentence as a book quotation.
@@ -92,6 +93,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 
 - Use `dbs-content` for reference-copy diagnosis, not derivative drafting.
 - Use `weread-skills` for edition verification and popular highlights.
+- After WeRead records `no_matching_book`, use `scripts/lookup_douban_book.py` for a bounded single-title metadata lookup. Preserve all candidates and source URLs, require unique edition selection before downloading a cover, and follow `references/douban-book-fallback.md`.
 - Use `dbs-xhs-title` for traceable title formulas.
 - Use the workbench GPT Image 2 API-kit provider for original storyboard images, style-conditioned G04 images, revisions, and generated cover backgrounds. Load the key only at runtime from the configured kit file.
 - Use `media-publish-check` for C01 and C02.

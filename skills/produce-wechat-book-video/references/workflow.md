@@ -115,7 +115,7 @@ Read `references/intake-copy-pipeline.md` for the artifact contract and template
 
 ## 3. G01: automatically locked source package
 
-Use `weread-skills` to:
+Use `weread-skills` as the primary source to:
 
 1. Confirm the exact title, author, translator, publisher, and edition.
 2. Fetch the highest-count whole-book popular highlights.
@@ -134,7 +134,9 @@ Write `script_sources.md` containing:
 
 On the normal derivative path, expose the source package in the workbench and lock the selected evidence when copy generation starts. Sync `G01=已锁定（自动）` and continue to the derivative-copy candidate. G01 is auditable and reversible but is not a separate human confirmation.
 
-If TikHub is unavailable on link intake, or WeRead is unavailable on either path, expose that exact blocker. Do not silently replace either source.
+If WeRead search succeeds but returns no matching book, record the no-match result and use the bounded Douban fallback defined in `references/douban-book-fallback.md` for title, author, translator, publisher, publication date, ISBN, edition candidates, and cover only. Preserve all candidates and stop when the edition remains ambiguous. Douban metadata does not replace popular highlights or textual evidence, so the normal derivative path still needs another explicitly approved textual source before G01 can be locked.
+
+If TikHub is unavailable on link intake, or WeRead is unavailable, times out, requires authentication, or returns `upgrade_info` on either path, expose that exact blocker. Do not trigger the Douban no-match fallback for those conditions and do not silently replace either source.
 
 ## 4. First confirmation G02: derivative copy
 
@@ -277,7 +279,7 @@ Validate content, timing, audio peaks, paths, anatomy, typography, and media ran
 
 ## 9. C02 and G06: automatic delivery registration and cover
 
-Verify the exact original cover from WeRead or another authoritative public listing. Do not substitute a similar edition.
+Verify the exact original cover from WeRead or another authoritative public listing. A uniquely selected Douban subject is allowed when WeRead recorded `no_matching_book`; preserve its subject URL, ISBN when available, cover URL, downloaded-file SHA-256, and `bookIdentitySource=douban_book`. Do not substitute a similar edition.
 
 Create one separate 1080x1260 cover with `scripts/compose_wechat_cover.py`. Preserve the original cover artwork and typography. Generated imagery may be used only around it.
 

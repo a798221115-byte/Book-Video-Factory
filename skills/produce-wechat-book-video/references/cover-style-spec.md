@@ -34,6 +34,7 @@ Use this specification for every standalone book-video cover unless the user exp
 ## Original book cover
 
 - Verify the exact edition before composition.
+- Prefer WeRead. When a successful WeRead search recorded `no_matching_book`, a uniquely selected Douban subject may supply the original cover; save the subject URL, ISBN when available, source image URL, byte count, SHA-256, and `bookIdentitySource=douban_book`. Multiple plausible Douban editions remain a blocker.
 - Place the complete original cover centered, without cropping, redrawing, recoloring, replacing typography, or removing publisher marks.
 - Target width 470–540 px, with a subtle shadow and optional 1–2 px warm border.
 - Preserve the original cover aspect ratio. If the cover is unusually wide or tall, reduce it to remain inside x=220–860 and y=320–1020.

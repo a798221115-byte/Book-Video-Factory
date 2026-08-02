@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.8.0 - 2026-08-03
+
+- Install and review `lanbing510/DouBanSpider` under `F:/Codex/tools` as the user-selected Douban source tool.
+- Add a bounded Python 3 single-book adapter to `produce-wechat-book-video` for title, author, translator, publisher, publication date, ISBN, edition, and cover fallback only after WeRead returns no matching book.
+- Upgrade `produce-wechat-book-video` to 3.10.0 while preserving WeRead as the primary source and prohibiting Douban metadata from replacing highlights, quotations, or derivative-copy evidence.
+
 ## 3.7.3 - 2026-08-02
 
 - Allow Book Video Studio to build and start when the optional GPT Image 2 API kit is not configured.

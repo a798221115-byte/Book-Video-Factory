@@ -199,10 +199,13 @@
     },
     "defaultRecurringCharacter": {
       "useWhenSemanticallySuitable": true,
-      "identity": "adult_east_asian_woman",
-      "hair": "shoulder_length_softly_wavy_black_hair",
+      "identity": "young_adult_east_asian_woman",
+      "faceShape": "softly_oval_face",
+      "skin": "warm_light_natural_skin_with_subtle_freckles_across_nose_and_upper_cheeks",
+      "facialFeatures": ["soft_straight_dark_brows", "dark_brown_almond_shaped_eyes", "small_straight_nose", "natural_muted_rose_lips"],
+      "hair": "black_hair_in_loose_high_messy_bun_with_wispy_face_framing_strands",
       "makeup": "minimal_natural",
-      "wardrobe": ["oatmeal_beige_long_coat", "slate_blue_gray_scarf"],
+      "wardrobe": ["oversized_charcoal_gray_chunky_textured_cable_knit_crewneck_sweater", "dark_charcoal_relaxed_trousers"],
       "expression": "restrained_and_natural",
       "requireIdentityAndWardrobeContinuity": true,
       "allowChangeOnlyForNarrationReason": true
@@ -216,7 +219,7 @@
       "forbidCopiedReferenceComposition": true
     },
     "promptPrefix": "Original 9:16 photorealistic contemporary Chinese literary-film still, matching the bundled warm-cinematic-literary-life-v1 style anchor without copying its composition: low-saturation warm-neutral palette of warm ivory, oatmeal beige, light walnut, slate blue-gray and softened charcoal; natural low-angle morning or late-afternoon golden light, gentle side or backlight, long soft shadows, luminous atmospheric haze, realistic skin hair cloth wood concrete and paper, subtle analog film grain and restrained halation, candid unposed daily life, quiet reflective and gently hopeful mood, breathable textured negative space, professional cinematic clarity, original scene, no embedded text.",
-    "recurringCharacterPrompt": "same adult East Asian woman across the sequence, shoulder-length softly wavy black hair, minimal makeup, oatmeal-beige long coat, slate-blue-gray scarf, natural body proportions and restrained expression; preserve facial identity, age, hairstyle, coat and scarf colors.",
+    "recurringCharacterPrompt": "same young adult East Asian woman across the sequence, softly oval face, warm light natural skin with subtle freckles across the nose and upper cheeks, soft straight dark brows, dark-brown almond-shaped eyes, small straight nose, natural muted-rose lips, black hair gathered into a loose high messy bun with wispy face-framing strands, minimal natural makeup, oversized charcoal-gray chunky textured cable-knit crewneck sweater, dark-charcoal relaxed trousers, natural body proportions and restrained expression; preserve facial identity, age, face shape, freckles, eye and brow shape, nose, lips, hairstyle, sweater texture and color, and trouser color.",
     "negativePrompt": "copied montage layout, split panels, copied reference composition, copied pose or location, high-key white commercial lifestyle photography, mandatory orange accent, broad orange wash, teal-orange grading, saturated colors, neon, dark oppressive noir, black-dominant void, underexposure, blown highlights, flat beige or gray block, empty digital gradient, glossy advertising, fashion editorial, studio glamour, influencer portrait, porcelain skin, oily skin sheen, heavy makeup, HDR, oversharpening, painterly illustration, anime, CGI, 3D render, distorted anatomy, duplicate person, inconsistent face or wardrobe, embedded words, letters, numbers, Chinese text, English text, subtitles, book title, logo, signature, watermark",
     "referenceFramePolicy": "bundled_anchor_for_style_conditioning_only",
     "forbidReferenceFramesAsProductionBackgrounds": true,

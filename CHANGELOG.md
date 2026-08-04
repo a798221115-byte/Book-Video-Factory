@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.8.1 - 2026-08-04
+
+- Replace the default recurring female protagonist's face, hairstyle, and wardrobe in `produce-wechat-book-video` with the user-approved visual details while preserving every other visual and production rule.
+- Upgrade `produce-wechat-book-video` to 3.10.1.
+
 ## 3.8.0 - 2026-08-03
 
 - Install and review `lanbing510/DouBanSpider` under `F:/Codex/tools` as the user-selected Douban source tool.

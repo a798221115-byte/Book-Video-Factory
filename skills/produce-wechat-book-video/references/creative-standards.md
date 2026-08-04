@@ -31,7 +31,7 @@ Core look:
 - Use low-angle morning or late-afternoon sunlight, gentle side/backlight, long soft shadows and luminous haze. Interiors use warm window light; preserve both highlight and shadow detail.
 - Do not require an orange accent. Reject broad orange wash, teal-orange grading, saturated accent colors, neon or unrelated colored props.
 - Favor peaceful independence, emotional ease, gentle hope, inward attention and symbolic clarity. Preserve subtle analog film grain, restrained halation, realistic materials and professional camera clarity without oily skin, porcelain retouching, oversharpening or glossy commercial finish.
-- When a recurring female protagonist is semantically suitable, default to the same adult East Asian woman with shoulder-length softly wavy black hair, minimal makeup, an oatmeal-beige long coat and a slate-blue-gray scarf. Preserve identity and wardrobe unless the narration requires a change.
+- When a recurring female protagonist is semantically suitable, default to the same young adult East Asian woman with a softly oval face, warm light natural skin, subtle freckles across the nose and upper cheeks, soft straight dark brows, dark-brown almond-shaped eyes, a small straight nose and natural muted-rose lips. Keep her black hair in a loose high messy bun with wispy face-framing strands; use minimal natural makeup, an oversized charcoal-gray chunky textured cable-knit crewneck sweater and dark-charcoal relaxed trousers. Preserve identity and wardrobe unless the narration requires a change.
 - Compose for 9:16. For character frames, normally let the person occupy roughly 40%–60% of the frame while preserving the deterministic header band and middle-lower caption landing area. For empty, object, architecture, weather, or landscape frames, let the narrative environment fill the frame without adding a decorative person.
 - Keep negative space bright but textured through plaster, curtains, sky, foliage, weather, architecture, or natural light falloff; never manufacture it with a flat white, beige, gray, black, or empty gradient block.
 - Keep backgrounds free of text, letters, numbers, book-title typography, captions, logos, signatures, platform marks, or watermarks. Typography remains deterministic post-production.
@@ -52,7 +52,7 @@ For recurring-character scenes, append the locked identity/wardrobe prompt from 
 
 Reference-frame boundary:
 
-- Use `assets/style-references/warm-cinematic-literary-life-v1.png` as the bundled style-conditioning anchor for palette, light, materials, character continuity, camera grammar and emotional temperature.
+- Use `assets/style-references/warm-cinematic-literary-life-v1.png` as the bundled style-conditioning anchor for palette, light, materials, camera grammar and emotional temperature. Do not inherit a person's face, hair or clothing from the anchor; the locked recurring-character prompt is authoritative.
 - Never use the anchor as a production background or preserve its montage layout, exact compositions, poses, locations or object placement.
 - Other extracted user-video frames remain analysis evidence only and must not become production backgrounds.
 - The G03 sample must translate the locked style into an original scene tied to the approved narration. The anchor's mirror panel does not override the default reflection prohibition.
@@ -62,7 +62,7 @@ Style QA:
 - Reject a frame if it does not match the anchor's warm-neutral palette, low saturation, golden natural light, quiet literary mood, subtle grain and natural materials.
 - Reject a frame if the result reads as the former orange-accent high-key profile, near-black editorial collage, indigo/teal/gold painterly direction, dark oppressive noir, generic high-saturation photography, anime, CGI, studio glamour or glossy advertising.
 - Reject a frame if it is black-dominant or underexposed, highlights are blown, shadows erase spatial information, the bright area becomes a flat white/beige/gray block, or the narrative subject becomes unreadable at phone size.
-- Reject a character frame when skin looks oily, plastic, porcelain-retouched, heavily made up or fashion-editorial rather than candid and natural; also reject unexplained face, age, hairstyle, beige-coat or slate-blue-scarf drift.
+- Reject a character frame when skin looks oily, plastic, porcelain-retouched, heavily made up or fashion-editorial rather than candid and natural; also reject unexplained face shape, freckles, facial-feature, loose-high-bun, charcoal-gray cable-knit-sweater or dark-charcoal-trouser drift.
 - Reject a frame if embedded text, a logo, a watermark, or a recognizable reference composition survives.
 - Compare every G04 frame with both the bundled anchor and the passing G03 sample for golden-light quality, warm-neutral palette, low saturation, grain, haze, skin/material realism, identity/wardrobe continuity, environmental texture and emotional temperature.
 - Before G04, inspect the whole sequence for repeated face direction and repeated framing. Do not approve a sequence dominated by side profiles or near-identical medium portraits.

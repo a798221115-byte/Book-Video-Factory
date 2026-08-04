@@ -217,7 +217,7 @@ Start only after the G03 sample passes automatic QA.
 Generate remaining images with the configured GPT Image 2 provider's reference-image operation, passing the adopted G03 sample as style-conditioning input. On APIMart, use `/images/generations` with `image_urls` and poll the asynchronous task; on a native OpenAI-compatible channel, use the edit endpoint. Use the same provider for every targeted revision, with the current frame as edit input. Preserve the adopted style, palette, identity, period, light, and composition rules. Inspect:
 
 - conformance to `warm-cinematic-literary-life-v1`, including the bundled anchor, low-saturation warm-neutral palette, low-angle natural golden light, long soft shadows, luminous haze, realistic unretouched skin/materials, subtle grain and no recognizable anchor-composition copy;
-- recurring-character face, age, shoulder-length softly wavy black hair, oatmeal-beige long coat and slate-blue-gray scarf continuity when that default protagonist is active;
+- recurring-character face shape, subtle nose-and-cheek freckles, soft straight brows, dark-brown almond-shaped eyes, small straight nose, muted-rose lips, loose high messy black bun with wispy face-framing strands, oversized charcoal-gray chunky textured cable-knit crewneck sweater and dark-charcoal relaxed-trouser continuity when that default protagonist is active;
 - anatomy at full frame and enlarged detail;
 - semantic relevance;
 - character continuity;

@@ -84,6 +84,57 @@ def normalize(value: str | None) -> str:
     return "".join(char for char in value if char.isalnum())
 
 
+def parse_publication_date(value: str | None) -> tuple[int, int | None, int | None] | None:
+    """Parse the available year/month/day without inventing missing precision."""
+    if not value:
+        return None
+    normalized = unicodedata.normalize("NFKC", value)
+    match = re.search(
+        r"(?P<year>\d{4})(?:\s*(?:年|[-./])\s*(?P<month>\d{1,2}))?"
+        r"(?:\s*(?:月|[-./])\s*(?P<day>\d{1,2}))?",
+        normalized,
+    )
+    if not match:
+        return None
+    year = int(match.group("year"))
+    month = int(match.group("month")) if match.group("month") else None
+    day = int(match.group("day")) if match.group("day") else None
+    if not 1000 <= year <= 2999:
+        return None
+    if month is not None and not 1 <= month <= 12:
+        return None
+    if day is not None and not 1 <= day <= 31:
+        return None
+    return year, month, day
+
+
+def choose_latest_publication(
+    candidates: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Return a uniquely latest candidate only when date precision supports it."""
+    dated: list[tuple[dict[str, Any], tuple[int, int | None, int | None]]] = []
+    for item in candidates:
+        parsed = parse_publication_date(
+            item.get("publicationDate") or item.get("year")
+        )
+        if parsed is None:
+            return None
+        dated.append((item, parsed))
+    if len(dated) < 2:
+        return None
+
+    remaining = dated
+    for index in range(3):
+        values = [date[index] for _, date in remaining]
+        if any(value is None for value in values):
+            return None
+        latest = max(value for value in values if value is not None)
+        remaining = [entry for entry in remaining if entry[1][index] == latest]
+        if len(remaining) == 1:
+            return remaining[0][0]
+    return None
+
+
 def extract_info_field(info_html: str, labels: list[str]) -> str | None:
     for label in labels:
         pattern = (
@@ -178,6 +229,12 @@ def choose_candidate(
 
     if len(pool) == 1 and normalize(pool[0].get("title")) == normalize(title):
         return "selected", pool[0], ["unique_exact_title_match"]
+    if len(pool) > 1 and all(
+        normalize(item.get("title")) == normalize(title) for item in pool
+    ):
+        latest = choose_latest_publication(pool)
+        if latest:
+            return "selected", latest, ["latest_publication_date_default"]
     if not candidates:
         return "no_match", None, reasons or ["no_book_candidates"]
     return "ambiguous", None, reasons or ["multiple_plausible_editions"]

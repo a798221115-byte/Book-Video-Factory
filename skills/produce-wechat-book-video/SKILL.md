@@ -49,7 +49,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 2. Detect explicit direct-final-script intent before derivative evidence acquisition:
    - when the user supplies a usable narration and says `成稿直出` or otherwise explicitly says to use it as the final script without rewriting, copy the exact narration to `script.txt`, mark `G01=not_required_for_user_supplied_final_script` and `G02=approved_by_explicit_user_instruction`, then continue at C01;
    - otherwise continue through normal book identification, evidence verification, derivative writing, and G02 confirmation.
-3. On the normal derivative path, identify the book from the transcript when possible. If WeRead returns no matching book after a successful search, run the bounded Douban metadata fallback to collect title, author, translator, publisher, publication date, ISBN, edition candidates, and cover only. Stop when the title is missing or low-confidence, multiple plausible editions remain, or the fallback cannot uniquely identify an edition.
+3. On the normal derivative path, identify the book from the transcript when possible. If WeRead returns no matching book after a successful search, run the bounded Douban metadata fallback to collect title, author, translator, publisher, publication date, ISBN, edition candidates, and cover only. Honor an explicitly supplied subject ID or ISBN first; otherwise, when several plausible editions of the same book remain, automatically select the uniquely latest parseable publication date. Stop when the title is missing or low-confidence, the latest date is tied or cannot be determined reliably, or the fallback still cannot uniquely identify an edition.
 4. On the normal derivative path, run `dbs-content`, verify the exact WeRead edition, retrieve the first 10 whole-book popular highlights in returned heat order, build G01, write the derivative narration, and stop at G02. Douban metadata alone never replaces WeRead highlights or textual evidence; when WeRead has no match, obtain another explicitly approved textual source or stop before derivative drafting.
 5. Run C01 with `media-publish-check`. Preserve the confirmed copy; block downstream work on a failing or high-risk result.
 6. After C01 passes, run in parallel:
@@ -93,7 +93,7 @@ Use `assets/default-config.json` unless the user explicitly overrides it. Inspec
 
 - Use `dbs-content` for reference-copy diagnosis, not derivative drafting.
 - Use `weread-skills` for edition verification and popular highlights.
-- After WeRead records `no_matching_book`, use `scripts/lookup_douban_book.py` for a bounded single-title metadata lookup. Preserve all candidates and source URLs, require unique edition selection before downloading a cover, and follow `references/douban-book-fallback.md`.
+- After WeRead records `no_matching_book`, use `scripts/lookup_douban_book.py` for a bounded single-title metadata lookup. Preserve all candidates and source URLs; honor explicit edition identifiers, otherwise default same-book edition selection to the uniquely latest reliable publication date before downloading a cover, and follow `references/douban-book-fallback.md`.
 - Use `dbs-xhs-title` for traceable title formulas.
 - Use the workbench GPT Image 2 API-kit provider for original storyboard images, style-conditioned G04 images, revisions, and generated cover backgrounds. Load the key only at runtime from the configured kit file.
 - Use `media-publish-check` for C01 and C02.

@@ -35,7 +35,7 @@ python scripts/lookup_douban_book.py `
 
 The adapter performs one suggestion request and at most five subject-detail requests. It does not crawl tags, reviews, ratings, quotes, or highlights; it does not bypass CAPTCHA, login, rate limits, or other access controls. Stop and preserve the error on HTTP 403, 418, or 429.
 
-When the first lookup returns several editions, do not search again after the user chooses one. Reuse the saved candidates and select the confirmed subject ID locally:
+When the first lookup cannot determine a uniquely latest edition, do not search again after the user chooses one. Reuse the saved candidates and select the confirmed subject ID locally:
 
 ```powershell
 python scripts/lookup_douban_book.py `
@@ -50,8 +50,10 @@ python scripts/lookup_douban_book.py `
 ## Selection and storage
 
 - Save every returned candidate with title, author, translator, publisher, publication date, ISBN, Douban subject ID/URL, and cover URL when available.
-- Automatically select only a unique ISBN match, unique exact-title-and-author match, or unique exact-title match.
-- When multiple plausible editions remain, keep `selectionStatus=ambiguous`, show candidates, and stop for edition confirmation.
+- Selection priority is: an explicitly supplied Douban subject ID, an explicitly supplied ISBN, the exact title and optional author filter, then publication date.
+- When several editions of the same exact-title book remain and the user did not explicitly specify an edition, automatically select the candidate with the uniquely latest reliably parseable publication date and record `latest_publication_date_default` in `selectionReasons`.
+- Compare year first, then month, then day only when the tied candidates provide enough precision. If any remaining candidate has no parseable date, or the latest date is tied or cannot be distinguished at the available precision, keep `selectionStatus=ambiguous`, show all candidates, and stop for edition confirmation.
+- A user-supplied ISBN, Douban subject ID, cover, or other explicit edition choice always overrides the latest-date default.
 - Never download a cover before a unique edition is selected.
 - Save the downloaded cover under `cover/`, along with byte count and SHA-256 from the adapter output.
 - Record `bookIdentitySource=douban_book` and `wereadLookupStatus=no_matching_book` in `script_sources.md` or the direct-final metadata package.
